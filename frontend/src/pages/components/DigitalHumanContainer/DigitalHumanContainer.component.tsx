@@ -42,17 +42,61 @@ const DigitalHumanContainer = () => {
     ctx.ellipse(cx, cy - 20 * s, 70 * s, 85 * s, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Hair — long side-swept bob
+    // Hair — long flowing style
+    ctx.save();
     ctx.fillStyle = '#4A3728';
+    // Main hair (top cap)
     ctx.beginPath();
-    ctx.ellipse(cx - 62 * s, cy - 30 * s, 25 * s, 70 * s, -0.3, 0, Math.PI * 2);
+    ctx.moveTo(cx - 68 * s, cy - 25 * s);
+    ctx.quadraticCurveTo(cx - 74 * s, cy - 50 * s, cx - 55 * s, cy - 82 * s);
+    ctx.quadraticCurveTo(cx - 30 * s, cy - 98 * s, cx, cy - 95 * s);
+    ctx.quadraticCurveTo(cx + 30 * s, cy - 98 * s, cx + 55 * s, cy - 82 * s);
+    ctx.quadraticCurveTo(cx + 74 * s, cy - 50 * s, cx + 68 * s, cy - 25 * s);
+    ctx.quadraticCurveTo(cx + 62 * s, cy - 58 * s, cx + 40 * s, cy - 78 * s);
+    ctx.quadraticCurveTo(cx + 15 * s, cy - 90 * s, cx, cy - 88 * s);
+    ctx.quadraticCurveTo(cx - 15 * s, cy - 90 * s, cx - 40 * s, cy - 78 * s);
+    ctx.quadraticCurveTo(cx - 62 * s, cy - 58 * s, cx - 68 * s, cy - 25 * s);
+    ctx.closePath();
     ctx.fill();
+
+    // Side hair — long flowing down (narrower, more natural)
     ctx.beginPath();
-    ctx.ellipse(cx + 62 * s, cy - 30 * s, 25 * s, 70 * s, 0.3, 0, Math.PI * 2);
+    ctx.moveTo(cx - 68 * s, cy - 25 * s);
+    ctx.quadraticCurveTo(cx - 78 * s, cy + 5 * s, cx - 65 * s, cy + 40 * s);
+    ctx.quadraticCurveTo(cx - 58 * s, cy + 55 * s, cx - 52 * s, cy + 60 * s);
+    ctx.quadraticCurveTo(cx - 56 * s, cy + 45 * s, cx - 58 * s, cy + 20 * s);
+    ctx.quadraticCurveTo(cx - 62 * s, cy - 5 * s, cx - 60 * s, cy - 30 * s);
+    ctx.quadraticCurveTo(cx - 65 * s, cy - 42 * s, cx - 68 * s, cy - 25 * s);
+    ctx.closePath();
     ctx.fill();
+
     ctx.beginPath();
-    ctx.ellipse(cx, cy - 95 * s, 70 * s, 25 * s, 0, 0, Math.PI * 2);
+    ctx.moveTo(cx + 68 * s, cy - 25 * s);
+    ctx.quadraticCurveTo(cx + 78 * s, cy + 5 * s, cx + 65 * s, cy + 40 * s);
+    ctx.quadraticCurveTo(cx + 58 * s, cy + 55 * s, cx + 52 * s, cy + 60 * s);
+    ctx.quadraticCurveTo(cx + 56 * s, cy + 45 * s, cx + 58 * s, cy + 20 * s);
+    ctx.quadraticCurveTo(cx + 62 * s, cy - 5 * s, cx + 60 * s, cy - 30 * s);
+    ctx.quadraticCurveTo(cx + 65 * s, cy - 42 * s, cx + 68 * s, cy - 25 * s);
+    ctx.closePath();
     ctx.fill();
+
+    // Bangs — soft fringe
+    ctx.beginPath();
+    ctx.moveTo(cx - 55 * s, cy - 68 * s);
+    ctx.quadraticCurveTo(cx - 45 * s, cy - 56 * s, cx - 35 * s, cy - 60 * s);
+    ctx.quadraticCurveTo(cx - 20 * s, cy - 52 * s, cx - 12 * s, cy - 57 * s);
+    ctx.quadraticCurveTo(cx, cy - 50 * s, cx + 12 * s, cy - 57 * s);
+    ctx.quadraticCurveTo(cx + 20 * s, cy - 52 * s, cx + 35 * s, cy - 60 * s);
+    ctx.quadraticCurveTo(cx + 45 * s, cy - 56 * s, cx + 55 * s, cy - 68 * s);
+    ctx.quadraticCurveTo(cx + 50 * s, cy - 74 * s, cx + 40 * s, cy - 76 * s);
+    ctx.quadraticCurveTo(cx + 25 * s, cy - 68 * s, cx + 12 * s, cy - 72 * s);
+    ctx.quadraticCurveTo(cx, cy - 68 * s, cx - 12 * s, cy - 72 * s);
+    ctx.quadraticCurveTo(cx - 25 * s, cy - 68 * s, cx - 40 * s, cy - 76 * s);
+    ctx.quadraticCurveTo(cx - 50 * s, cy - 74 * s, cx - 55 * s, cy - 68 * s);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
 
     // Eyes — large, round
     const eyeY = cy - 15 * s;
@@ -161,6 +205,7 @@ const DigitalHumanContainer = () => {
     ctx.fillStyle = skinGrad;
 
     // Head — squarer jaw
+    ctx.save();
     ctx.beginPath();
     ctx.moveTo(cx - 65 * s, cy - 65 * s);
     ctx.quadraticCurveTo(cx - 72 * s, cy - 20 * s, cx - 55 * s, cy + 45 * s);
@@ -170,17 +215,46 @@ const DigitalHumanContainer = () => {
     ctx.quadraticCurveTo(cx, cy - 88 * s, cx - 65 * s, cy - 65 * s);
     ctx.fill();
 
-    // Hair — short side-part
+    // Hair — short textured style (drawn as a cap over the head)
     ctx.fillStyle = '#2C1810';
+    // Main hair cap — covers top and sides naturally
     ctx.beginPath();
-    ctx.ellipse(cx - 58 * s, cy - 45 * s, 30 * s, 60 * s, -0.2, 0, Math.PI * 2);
+    ctx.moveTo(cx - 68 * s, cy - 20 * s);
+    ctx.quadraticCurveTo(cx - 72 * s, cy - 40 * s, cx - 55 * s, cy - 78 * s);
+    ctx.quadraticCurveTo(cx - 30 * s, cy - 95 * s, cx, cy - 92 * s);
+    ctx.quadraticCurveTo(cx + 30 * s, cy - 95 * s, cx + 55 * s, cy - 78 * s);
+    ctx.quadraticCurveTo(cx + 72 * s, cy - 40 * s, cx + 68 * s, cy - 20 * s);
+    ctx.quadraticCurveTo(cx + 60 * s, cy - 55 * s, cx + 40 * s, cy - 72 * s);
+    ctx.quadraticCurveTo(cx + 15 * s, cy - 82 * s, cx, cy - 80 * s);
+    ctx.quadraticCurveTo(cx - 15 * s, cy - 82 * s, cx - 40 * s, cy - 72 * s);
+    ctx.quadraticCurveTo(cx - 60 * s, cy - 55 * s, cx - 68 * s, cy - 20 * s);
+    ctx.closePath();
+    ctx.fill();
+
+    // Sideburn/side hair (thinner, natural)
+    ctx.beginPath();
+    ctx.ellipse(cx - 64 * s, cy - 35 * s, 18 * s, 40 * s, -0.15, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(cx + 58 * s, cy - 45 * s, 22 * s, 55 * s, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(cx + 64 * s, cy - 35 * s, 18 * s, 40 * s, 0.15, 0, Math.PI * 2);
     ctx.fill();
+
+    // Forehead fringe (short bangs)
     ctx.beginPath();
-    ctx.ellipse(cx, cy - 88 * s, 68 * s, 25 * s, 0, 0, Math.PI * 2);
+    ctx.moveTo(cx - 52 * s, cy - 68 * s);
+    ctx.quadraticCurveTo(cx - 40 * s, cy - 58 * s, cx - 30 * s, cy - 62 * s);
+    ctx.quadraticCurveTo(cx - 15 * s, cy - 55 * s, cx, cy - 58 * s);
+    ctx.quadraticCurveTo(cx + 15 * s, cy - 55 * s, cx + 30 * s, cy - 62 * s);
+    ctx.quadraticCurveTo(cx + 40 * s, cy - 58 * s, cx + 52 * s, cy - 68 * s);
+    ctx.quadraticCurveTo(cx + 55 * s, cy - 72 * s, cx + 48 * s, cy - 75 * s);
+    ctx.quadraticCurveTo(cx + 30 * s, cy - 68 * s, cx + 15 * s, cy - 72 * s);
+    ctx.quadraticCurveTo(cx, cy - 68 * s, cx - 15 * s, cy - 72 * s);
+    ctx.quadraticCurveTo(cx - 30 * s, cy - 68 * s, cx - 48 * s, cy - 75 * s);
+    ctx.quadraticCurveTo(cx - 55 * s, cy - 72 * s, cx - 52 * s, cy - 68 * s);
+    ctx.closePath();
     ctx.fill();
+
+    ctx.restore();
 
     // Eyes — smaller, narrower
     const eyeY = cy - 12 * s;
