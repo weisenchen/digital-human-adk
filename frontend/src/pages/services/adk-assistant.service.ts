@@ -9,7 +9,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:8000';
 
 let sessionCounter = 0;
 
-/** Send AI response text -> get audio file (non-streaming, full sentence) */
+/** Send AI response text -> get audio file (full sentence) */
 export const getAIAudioFromText = async (text: string, language: string) => {
   const formData = new FormData();
   formData.append('text', text);
@@ -22,20 +22,25 @@ export const getAIAudioFromText = async (text: string, language: string) => {
  * Send user text -> get AI reply via SSE streaming.
  *
  * Calls ADK's /run_sse endpoint and yields text tokens as they arrive.
+ * Automatically detects sentence boundaries and calls onSentence for
+ * streaming text-to-speech.
  *
  * @param text - User input text
- * @param onToken - Called with each text chunk as it streams in (partial=true)
- * @param onComplete - Called with the full response text when streaming finishes
+ * @param onToken - Called with each text chunk as it streams in
+ * @param onSentence - Called with each complete sentence for TTS
+ * @param onComplete - Called when streaming finishes (all sentences flushed)
  * @param onError - Called on error
  */
 export const sendChatStream = (
   text: string,
   onToken: (chunk: string) => void,
+  onSentence: (sentence: string) => void,
   onComplete: (fullText: string) => void,
   onError?: (error: unknown) => void,
 ) => {
   const sessionId = `web_${++sessionCounter}`;
   let accumulatedText = '';
+  let fullResponse = '';
 
   const body = JSON.stringify({
     app_name: 'digital_human',
@@ -72,7 +77,6 @@ export const sendChatStream = (
 
         // Parse SSE lines: "data: {...}\n\n"
         const lines = buffer.split('\n');
-        // Keep last incomplete chunk in buffer
         buffer = lines.pop() || '';
 
         for (const line of lines) {
@@ -82,7 +86,6 @@ export const sendChatStream = (
             const author = event.author || '';
             const isPartial = event.partial === true;
 
-            // Only process non-user, text content
             if (author === 'user') continue;
 
             const textPart =
@@ -96,24 +99,53 @@ export const sendChatStream = (
               // Partial events: incremental token delta
               accumulatedText += textPart;
               onToken(textPart);
+              fullResponse += textPart;
+
+              // Detect sentence boundaries
+              flushSentences();
             } else {
-              // Non-partial event: complete final text
-              onComplete(textPart);
+              // Non-partial event: flush everything remaining
+              const remaining = accumulatedText.trim();
+              if (remaining) {
+                onSentence(remaining);
+              }
+              onComplete(fullResponse + textPart);
               accumulatedText = '';
+              fullResponse = '';
             }
           } catch {
-            // Skip malformed JSON lines silently
+            // Skip malformed JSON lines
           }
         }
       }
 
-      // Flush remaining buffer
-      if (accumulatedText) {
-        onComplete(accumulatedText);
+      // Flush any remaining text (stream ended without a terminal event)
+      const remaining = accumulatedText.trim();
+      if (remaining) {
+        onSentence(remaining);
+        onComplete(fullResponse);
+        accumulatedText = '';
+        fullResponse = '';
       }
     })
     .catch((err) => {
       console.error('SSE stream error:', err);
       onError?.(err);
     });
+
+  /** Extract complete sentences from accumulatedText and call onSentence */
+  function flushSentences() {
+    // Split on . ! ? or newline (keeping the delimiter)
+    const boundaryRegex = /[.!?\n]/;
+    let match: RegExpExecArray | null;
+
+    while ((match = boundaryRegex.exec(accumulatedText)) !== null) {
+      const endIdx = match.index + 1; // include the delimiter
+      const sentence = accumulatedText.slice(0, endIdx).trim();
+      if (sentence) {
+        onSentence(sentence);
+      }
+      accumulatedText = accumulatedText.slice(endIdx);
+    }
+  }
 };

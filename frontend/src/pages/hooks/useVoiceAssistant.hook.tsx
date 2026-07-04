@@ -1,7 +1,7 @@
 "use client";
 
 import { sendChatStream, getAIAudioFromText } from "@/pages/services/adk-assistant.service"
-import {useState} from "react"
+import { useRef, useState, useCallback } from "react"
 
 interface Message {
     text: string;
@@ -11,25 +11,33 @@ interface Message {
 const useVoiceAssistant = ()=>{
     const [isWaitingAIOutput,setIsWaitingAIOutput] = useState<boolean>(false)
     const [lastAIReplyURL,setLastAIReplyURL] = useState<string|undefined>(undefined)
-    const [selectedLanguage, setSelectedLanguage] = useState<string>("en-GB"); //default language 
+    const [selectedLanguage, setSelectedLanguage] = useState<string>("en-GB");
     const [chatData, setChatData] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [mouthOpen, setMouthOpen] = useState(0);
 
+    // Audio playback queue (refs so they survive re-renders)
+    const audioQueueRef = useRef<Blob[]>([]);
+    const isPlayingRef = useRef(false);
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+    const generationRef = useRef(0); // increment on each new input to discard stale TTS
+
   const handleUserInput = async (input: string) => {
+    // Cancel any in-progress playback
+    cancelPlayback();
+    const gen = ++generationRef.current;
+
     setChatData((prev) => [...prev, { text: input, isUser: true }]);
 
     // Add a placeholder AI message for streaming
     setChatData((prev) => [...prev, { text: '', isUser: false }]);
     setIsWaitingAIOutput(true);
 
-    let fullResponse = '';
-
     sendChatStream(
       input,
-      // onToken: append to the last AI message in chat
+      // onToken: append to the streaming message
       (chunk) => {
-        fullResponse += chunk;
         setChatData((prev) => {
           const updated = [...prev];
           const lastIdx = updated.length - 1;
@@ -39,21 +47,22 @@ const useVoiceAssistant = ()=>{
           return updated;
         });
       },
-      // onComplete: stream finished, trigger TTS
-      async (fullText) => {
-        setIsWaitingAIOutput(false);
-        if (!fullText.trim()) return;
-
-        // Generate TTS audio for the full response
+      // onSentence: enqueue TTS for each completed sentence
+      async (sentence) => {
         try {
-          const aiAudioResult = await getAIAudioFromText(fullText, selectedLanguage);
-          if (aiAudioResult) {
-            const url = URL.createObjectURL(aiAudioResult);
-            speaking(url);
-          }
-        } catch (aiAudioError) {
-          console.error("Error generating AI audio:", aiAudioError);
+          const blob = await getAIAudioFromText(sentence, selectedLanguage);
+          // Discard if a newer generation has started (user sent a new message)
+          if (generationRef.current !== gen) return;
+          audioQueueRef.current.push(blob);
+          playNextInQueue();
+        } catch (err) {
+          console.error("TTS error for sentence:", sentence, err);
         }
+      },
+      // onComplete: streaming finished
+      (fullText) => {
+        setIsWaitingAIOutput(false);
+        // No additional TTS needed — all sentences were already flushed
       },
       // onError
       (err) => {
@@ -61,6 +70,90 @@ const useVoiceAssistant = ()=>{
         setIsWaitingAIOutput(false);
       },
     );
+  };
+
+  /** Cancel current playback and clear the queue */
+  const cancelPlayback = useCallback(() => {
+    // Stop current audio
+    if (currentSourceRef.current) {
+      try { currentSourceRef.current.stop(); } catch {}
+      currentSourceRef.current = null;
+    }
+    if (audioContextRef.current) {
+      try { audioContextRef.current.close(); } catch {}
+      audioContextRef.current = null;
+    }
+    // Clear the queue
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+    setMouthOpen(0);
+  }, []);
+
+  /** Play the next item in the audio queue */
+  const playNextInQueue = useCallback(() => {
+    if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
+    isPlayingRef.current = true;
+
+    const blob = audioQueueRef.current.shift()!;
+    const url = URL.createObjectURL(blob);
+
+    // Use the existing speaking function, then chain to next
+    speakFromBlob(url).then(() => {
+      isPlayingRef.current = false;
+      playNextInQueue();
+    });
+  }, []);
+
+  /** Play an audio blob and return when done */
+  const speakFromBlob = async (audioUrl: string): Promise<void> => {
+    return new Promise((resolve) => {
+      // Close previous context if still around
+      if (audioContextRef.current) {
+        try { audioContextRef.current.close(); } catch {}
+      }
+
+      const audioContext = new AudioContext();
+      audioContextRef.current = audioContext;
+
+      fetch(audioUrl)
+        .then((res) => res.arrayBuffer())
+        .then((audioData) => audioContext.decodeAudioData(audioData))
+        .then((audioBuffer) => {
+          const source = audioContext.createBufferSource();
+          currentSourceRef.current = source;
+          const analyser = audioContext.createAnalyser();
+
+          source.buffer = audioBuffer;
+          analyser.connect(audioContext.destination);
+          source.connect(analyser);
+
+          source.start(0);
+
+          // Lip-sync loop
+          const updateMouth = () => {
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(dataArray);
+            const volume = dataArray.reduce((a, b) => a + b) / dataArray.length;
+            setMouthOpen(Math.min(1, volume / 50));
+
+            if (audioContext.state !== "closed") {
+              requestAnimationFrame(updateMouth);
+            }
+          };
+          updateMouth();
+
+          source.onended = () => {
+            URL.revokeObjectURL(audioUrl);
+            setMouthOpen(0);
+            resolve();
+          };
+        })
+        .catch((err) => {
+          console.error("speakFromBlob error:", err);
+          setMouthOpen(0);
+          resolve(); // Don't block the queue on error
+        });
+    });
   };
 
   const handleTextSubmit = (e: React.FormEvent) => {
@@ -71,69 +164,33 @@ const useVoiceAssistant = ()=>{
     }
   };
 
-    /**
-     * Called when the browser's Web Speech API returns a recognized transcript.
-     * The text is sent to the backend /run_sse endpoint (no raw audio to the server).
-     */
-    const handleSpeechRecognized = async (transcript: string) => {
-      if (!transcript.trim()) return;
-      handleUserInput(transcript);
-    };
+  /** Called when browser Web Speech API returns a transcript */
+  const handleSpeechRecognized = (transcript: string) => {
+    if (!transcript.trim()) return;
+    handleUserInput(transcript);
+  };
 
-    const speaking = async (Audiourl: string) => {
-      let audioContext = new (window.AudioContext);
-      const response = await fetch(Audiourl);
-      const audioData = await response.arrayBuffer();
-      const audioBuffer = await audioContext.decodeAudioData(audioData);
-  
-      const source = audioContext.createBufferSource();
-      const analyser = audioContext.createAnalyser();
-  
-      source.buffer = audioBuffer;
-      analyser.connect(audioContext.destination);
-      source.connect(analyser);
-  
-      source.start(0);
-  
-      const updateMouth = () => {
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        analyser.getByteFrequencyData(dataArray);
-  
-        const volume = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        const mouthOpen = Math.min(1, volume / 50); // normalize to [0, 1]
-  
-        setMouthOpen(mouthOpen); 
-  
-        if (audioContext.state !== "closed") {
-          requestAnimationFrame(updateMouth);
-        }
-      };
-  
-      updateMouth();
-    };
+  const handleOnAudioPlayEnd = () => {
+    setLastAIReplyURL(undefined);
+  };
 
-    const handleOnAudioPlayEnd = ()=>{
-        setLastAIReplyURL(undefined)
-    }
+  const handleLanguageChange = (language: string) => {
+    setSelectedLanguage(language);
+  };
 
-    const handleLanguageChange = (language:string) => {
-        setSelectedLanguage(language);
-    };
-
-    return{
-        handleSpeechRecognized,
-        isWaitingAIOutput,
-        lastAIReplyURL,
-        handleOnAudioPlayEnd,
-        selectedLanguage,
-        handleLanguageChange,
-        chatData,
-        inputText,
-        setInputText,
-        handleTextSubmit,
-        mouthOpen,
-    }
-}
-
+  return {
+    handleSpeechRecognized,
+    isWaitingAIOutput,
+    lastAIReplyURL,
+    handleOnAudioPlayEnd,
+    selectedLanguage,
+    handleLanguageChange,
+    chatData,
+    inputText,
+    setInputText,
+    handleTextSubmit,
+    mouthOpen,
+  };
+};
 
 export default useVoiceAssistant;
