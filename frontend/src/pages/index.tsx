@@ -19,15 +19,17 @@ export default function Home() {
 
         {/* Main content */}
         <main className="flex-1 flex flex-col min-h-0 min-w-0">
-          {/* Top bar with hamburger toggle */}
+          {/* Top bar with hamburger toggle (hidden when sidebar is open) */}
           <div className="flex items-center px-4 py-2 border-b border-gray-100">
-            <button
-              onClick={() => setShowSidebar(!showSidebar)}
-              className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500 transition-colors"
-              title="Toggle settings"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
+            {!showSidebar && (
+              <button
+                onClick={() => setShowSidebar(true)}
+                className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500 transition-colors"
+                title="Open settings"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
           {/* Chat area */}
