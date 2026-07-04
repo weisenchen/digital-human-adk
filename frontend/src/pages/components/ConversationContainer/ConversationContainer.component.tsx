@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useContext, useRef, useEffect } from 'react';
-import { MessageCircle, Send, Trash2, Sparkles, Bot } from 'lucide-react';
+import { MessageCircle, Send, Trash2, Sparkles, Bot, FileText } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -11,6 +11,7 @@ import ChatDisplay from '../ChatDisplay/ChatDisplay.component';
 import VoiceRecorder from '../VoiceRecorder/VoiceRecorder.component';
 import Loading from '../Loading/Loading.component'
 import CharacterSelector from '../CharacterSelector/CharacterSelector.component';
+import PresentationMode from '../PresentationMode/PresentationMode.component';
 
 const SUGGESTIONS = [
   { text: 'Hello! 👋', en: 'Hello! 👋', zh: '你好！👋' },
@@ -26,6 +27,8 @@ const PERSONALITIES = [
 ];
 
 export default function ConversationContainer() {
+  const [showPresentation, setShowPresentation] = useState(false);
+
   const context = useContext(VoiceAssistantContext);
   if (!context) {
     throw new Error('VoiceAssistantContext is undefined.');
@@ -43,6 +46,8 @@ export default function ConversationContainer() {
     handlePersonalityChange,
     toastMessage,
     clearChat,
+    characterName,
+    selectedVoice,
   } = context;
 
   const isEnglish = selectedLanguage === 'en-GB' || selectedLanguage === 'en-US';
@@ -62,6 +67,15 @@ export default function ConversationContainer() {
           {isEnglish ? 'Chat' : '对话'}
         </h2>
         <div className="flex items-center gap-1">
+          {/* Read Script / Presentation */}
+          <button
+            onClick={() => setShowPresentation(true)}
+            className="state-layer rounded-[var(--shape-full)] p-1.5 text-[var(--md-on-surface-variant)] hover:text-[var(--md-primary)] transition-colors duration-[var(--motion-sm)]"
+            aria-label="Read a script in presentation mode"
+            title="Read Script"
+          >
+            <FileText className="w-4 h-4" />
+          </button>
           {/* Clear chat */}
           {chatData.length > 0 && (
             <button
@@ -154,6 +168,16 @@ export default function ConversationContainer() {
         </div>
         <VoiceRecorder onSpeechRecognized={handleSpeechRecognized} language={speechRecognitionLang} />
       </form>
+
+      {/* Presentation Mode Overlay */}
+      {showPresentation && (
+        <PresentationMode
+          characterName={characterName || 'Xiao Wei'}
+          voiceId={selectedVoice}
+          language={selectedLanguage}
+          onClose={() => setShowPresentation(false)}
+        />
+      )}
 
       {/* Keyboard shortcut hint */}
       <div className="flex justify-center mt-1.5 gap-3">
