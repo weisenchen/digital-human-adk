@@ -42,34 +42,34 @@ const DigitalHumanContainer = () => {
     ctx.ellipse(cx, cy - 20 * s, 70 * s, 85 * s, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Hair — simple overlapping shapes (NO donut paths!)
+    // Hair — simple overlapping shapes, proper forehead proportion
     ctx.fillStyle = '#4A3728';
-    // Top hair cap — solid ellipse covering the crown
+    // Top hair cap — sits above eyes, leaves forehead gap
     ctx.beginPath();
-    ctx.ellipse(cx, cy - 55 * s, 68 * s, 50 * s, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy - 68 * s, 68 * s, 38 * s, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Long side hair — left (narrow flowing strand)
+    // Long side hair — left (narrow strand, stays outside face)
     ctx.beginPath();
-    ctx.ellipse(cx - 62 * s, cy - 10 * s, 14 * s, 60 * s, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(cx - 62 * s, cy - 20 * s, 12 * s, 50 * s, -0.15, 0, Math.PI * 2);
     ctx.fill();
 
     // Long side hair — right
     ctx.beginPath();
-    ctx.ellipse(cx + 62 * s, cy - 10 * s, 14 * s, 60 * s, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(cx + 62 * s, cy - 20 * s, 12 * s, 50 * s, 0.15, 0, Math.PI * 2);
     ctx.fill();
 
-    // Side hair lower extensions
+    // Side extensions down
     ctx.beginPath();
-    ctx.ellipse(cx - 58 * s, cy + 35 * s, 10 * s, 28 * s, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(cx - 58 * s, cy + 25 * s, 8 * s, 30 * s, -0.2, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(cx + 58 * s, cy + 35 * s, 10 * s, 28 * s, 0.3, 0, Math.PI * 2);
+    ctx.ellipse(cx + 58 * s, cy + 25 * s, 8 * s, 30 * s, 0.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Fringe / bangs
+    // Fringe — sits on forehead
     ctx.beginPath();
-    ctx.ellipse(cx, cy - 75 * s, 55 * s, 22 * s, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy - 65 * s, 50 * s, 18 * s, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Eyes — large, round
@@ -189,24 +189,24 @@ const DigitalHumanContainer = () => {
     ctx.quadraticCurveTo(cx, cy - 88 * s, cx - 65 * s, cy - 65 * s);
     ctx.fill();
 
-    // Hair — short style, simple overlapping shapes
+    // Hair — short style, natural proportions
     ctx.fillStyle = '#2C1810';
-    // Top hair cap — solid ellipse covering the crown
+    // Top hair cap — sits above eyes, leaves forehead
     ctx.beginPath();
-    ctx.ellipse(cx, cy - 50 * s, 68 * s, 48 * s, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy - 66 * s, 68 * s, 36 * s, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Sideburns — thin strips at sides
+    // Sideburns — narrow, sits along head contour
     ctx.beginPath();
-    ctx.ellipse(cx - 66 * s, cy - 30 * s, 14 * s, 42 * s, -0.1, 0, Math.PI * 2);
+    ctx.ellipse(cx - 66 * s, cy - 38 * s, 10 * s, 30 * s, -0.05, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(cx + 66 * s, cy - 30 * s, 14 * s, 42 * s, 0.1, 0, Math.PI * 2);
+    ctx.ellipse(cx + 66 * s, cy - 38 * s, 10 * s, 30 * s, 0.05, 0, Math.PI * 2);
     ctx.fill();
 
-    // Forehead fringe — short bangs
+    // Forehead fringe — short, sits at hairline
     ctx.beginPath();
-    ctx.ellipse(cx, cy - 75 * s, 50 * s, 18 * s, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy - 64 * s, 46 * s, 16 * s, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Eyes — smaller, narrower
