@@ -1,0 +1,20 @@
+/* ADK Digital Human - Frontend styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Live2D canvas container */
+#live2d-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Conversation scroll */
+.conversation-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.conversation-scroll::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
