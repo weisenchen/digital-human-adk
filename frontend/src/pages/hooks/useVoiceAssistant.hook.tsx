@@ -10,7 +10,6 @@ interface Message {
 
 const useVoiceAssistant = ()=>{
     const [isWaitingAIOutput,setIsWaitingAIOutput] = useState<boolean>(false)
-    const [lastAIReplyURL,setLastAIReplyURL] = useState<string|undefined>(undefined)
     const [selectedLanguage, setSelectedLanguage] = useState<string>("en-GB");
     const [chatData, setChatData] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
@@ -21,7 +20,9 @@ const useVoiceAssistant = ()=>{
     const isPlayingRef = useRef(false);
     const audioContextRef = useRef<AudioContext | null>(null);
     const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
-    const generationRef = useRef(0); // increment on each new input to discard stale TTS
+    const generationRef = useRef(0);
+    /** Stores the cancel function for the current SSE stream */
+    const cancelSSERef = useRef<(() => void) | null>(null);
 
   // ─────────────────────────────────────────────
   // Path 1: Text chat (POST /chat, non-streaming)
@@ -29,6 +30,8 @@ const useVoiceAssistant = ()=>{
   const handleTextSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
+
+    cancelAll(); // Cancel any ongoing SSE + audio
 
     const text = inputText;
     setInputText('');
@@ -50,20 +53,17 @@ const useVoiceAssistant = ()=>{
   // ─────────────────────────────────────────────
   // Path 2: Voice chat (POST /run_sse, streaming)
   // ─────────────────────────────────────────────
-  const startVoiceChat = async (transcript: string) => {
-    // Cancel any in-progress audio playback
-    cancelPlayback();
+  const startVoiceChat = (transcript: string) => {
+    cancelAll(); // Cancel previous SSE + audio
     const gen = ++generationRef.current;
 
     setChatData((prev) => [...prev, { text: transcript, isUser: true }]);
-
-    // Placeholder for streaming text
     setChatData((prev) => [...prev, { text: '', isUser: false }]);
     setIsWaitingAIOutput(true);
 
-    sendChatStream(
+    const cancel = sendChatStream(
       transcript,
-      // onToken: update the streaming message in chat
+      // onToken
       (chunk) => {
         setChatData((prev) => {
           const updated = [...prev];
@@ -74,7 +74,7 @@ const useVoiceAssistant = ()=>{
           return updated;
         });
       },
-      // onSentence: enqueue TTS for each completed sentence
+      // onSentence
       async (sentence) => {
         try {
           const blob = await getAIAudioFromText(sentence, selectedLanguage);
@@ -82,7 +82,7 @@ const useVoiceAssistant = ()=>{
           audioQueueRef.current.push(blob);
           playNextInQueue();
         } catch (err) {
-          console.error("TTS error for sentence:", sentence, err);
+          console.error("TTS error:", err);
         }
       },
       // onComplete
@@ -95,17 +95,29 @@ const useVoiceAssistant = ()=>{
         setIsWaitingAIOutput(false);
       },
     );
+
+    cancelSSERef.current = cancel;
   };
 
-  /** Called when browser Web Speech API returns a transcript */
   const handleSpeechRecognized = (transcript: string) => {
     if (!transcript.trim()) return;
     startVoiceChat(transcript);
   };
 
   // ─────────────────────────────────────────────
-  // Audio playback (shared)
+  // Cancel helpers
   // ─────────────────────────────────────────────
+  /** Cancel both SSE stream and audio playback */
+  const cancelAll = useCallback(() => {
+    // Abort SSE request
+    if (cancelSSERef.current) {
+      cancelSSERef.current();
+      cancelSSERef.current = null;
+    }
+    // Stop audio
+    cancelPlayback();
+  }, []);
+
   const cancelPlayback = useCallback(() => {
     if (currentSourceRef.current) {
       try { currentSourceRef.current.stop(); } catch {}
@@ -185,10 +197,6 @@ const useVoiceAssistant = ()=>{
   // ─────────────────────────────────────────────
   // Other handlers
   // ─────────────────────────────────────────────
-  const handleOnAudioPlayEnd = () => {
-    setLastAIReplyURL(undefined);
-  };
-
   const handleLanguageChange = (language: string) => {
     setSelectedLanguage(language);
   };
@@ -196,8 +204,6 @@ const useVoiceAssistant = ()=>{
   return {
     handleSpeechRecognized,
     isWaitingAIOutput,
-    lastAIReplyURL,
-    handleOnAudioPlayEnd,
     selectedLanguage,
     handleLanguageChange,
     chatData,

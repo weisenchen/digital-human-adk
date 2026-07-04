@@ -1,10 +1,7 @@
 # ADK Digital Human — Live2D Avatar Chatbot
 
-A digital human application built on **Google ADK 1.x** with a Live2D avatar frontend.
-
-A digital human application built on **Google ADK 1.x** with a Live2D avatar frontend.
-
 Start the backend, then open the Live2D frontend to chat with a cute animated digital human.
+Powered by **Google ADK 1.x** + **Gemini 2.5 Flash**.
 
 ## ⚡ Quickest Start (5 minutes)
 
@@ -75,9 +72,9 @@ Open `http://localhost:3000` — the Live2D avatar appears and you can chat via 
 
 ```text
 ┌─ Frontend (Next.js + Live2D) ────────────────────────┐
-│  Browser:     Web Speech API → transcription → /chat  │
-│  Custom:       POST /chat          → conversation    │
-│  Custom:       POST /audio/tts     → text-to-speech  │
+│  Text input:    POST /chat    → non-streaming reply  │
+│  Mic input:     Web Speech → POST /run_sse → SSE TTS │
+│  Custom:        POST /audio/tts     → text-to-speech │
 └──────────────────┬────────────────────────────────────┘
                    │
 ┌─ Backend (ADK built-in FastAPI server) ──────────────┐
@@ -85,7 +82,7 @@ Open `http://localhost:3000` — the Live2D avatar appears and you can chat via 
 │    → /run, /run_sse, /run_live (WebSocket)            │
 │    → Session management, tool calling, streaming      │
 │    → ADK Web debug UI (Angular)                       │
-│  + Custom /chat, /audio/stt, /audio/tts endpoints     │
+│  + Custom /chat, /audio/tts endpoints              │
 │  + .env for API keys / provider config                │
 └───────────────────────────────────────────────────────┘
 ```

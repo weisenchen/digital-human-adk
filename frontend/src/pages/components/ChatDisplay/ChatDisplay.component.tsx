@@ -51,7 +51,7 @@ const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
                   : 'bg-orange-100 bg-opacity-50 text-orange-800 mr-4'
               }`}
             >
-              <strong>{message.isUser ? 'You: ' : 'Campus AI: '}</strong>
+              <strong>{message.isUser ? 'You: ' : 'Xiao Wei: '}</strong>
               <p>{message.text}</p>
             </motion.div>
           ))}

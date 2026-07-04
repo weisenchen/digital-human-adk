@@ -21,7 +21,7 @@ const HeaderContainer = () => {
             /> */}
             <span className="flex items-center text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-red-500">
               <GraduationCap className="w-8 h-8 mr-2 text-orange-400" />
-              ChatCAMPUS
+              Xiao Wei
             </span>
           </div>
           <LanguageSelector

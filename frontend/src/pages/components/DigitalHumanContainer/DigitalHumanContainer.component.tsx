@@ -23,7 +23,7 @@ declare global {
 
 const DigitalHumanContainer =() => {
   const {
-  mouthOpen, lastAIReplyURL
+  mouthOpen,
 } = useContext(VoiceAssistantContext);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null); // Initialize with null
@@ -112,13 +112,6 @@ const DigitalHumanContainer =() => {
     }, 5000);
 
   }, [mouthOpen]); // trigger when there is an update of mouthOpen
-
-  // useEffect(() => {
-  //   if (modelRef.current) {
-  //     modelRef.current.internalModel.motionManager.expressionManager.resetExpression()
-  //     modelRef.current.internalModel.motionManager.state.reset()
-  //   }
-  // }, [lastAIReplyURL]);
 
   return (
     <div className="md:col-span-2 flex flex-col items-center justify-center bg-white bg-opacity-60 backdrop-blur-sm rounded-2xl shadow-lg border border-white border-opacity-20 p-6 h-[calc(100vh-7rem)] overflow-hidden">

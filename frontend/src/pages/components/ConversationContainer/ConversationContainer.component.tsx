@@ -10,7 +10,6 @@ import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 
 import ChatDisplay from '../ChatDisplay/ChatDisplay.component';
 import VoiceRecorder from '../VoiceRecorder/VoiceRecorder.component';
-import AudioPlayer from '../AudioPlayer/AudioPlayer.component';
 import Loading from '../Loading/Loading.component'
 
 export default function ConversationContainer() {
@@ -28,8 +27,6 @@ export default function ConversationContainer() {
     setInputText,
     handleSpeechRecognized,
     isWaitingAIOutput,
-    lastAIReplyURL,
-    handleOnAudioPlayEnd,
     selectedLanguage,
   } = context;
 
@@ -70,10 +67,6 @@ export default function ConversationContainer() {
         </div>
         <VoiceRecorder onSpeechRecognized={handleSpeechRecognized} language={speechRecognitionLang}/>
       </form>
-      <AudioPlayer
-        audioFileUrl={lastAIReplyURL}
-        onAudioPlayEnd={handleOnAudioPlayEnd}
-      />
     </div>
   );
 }

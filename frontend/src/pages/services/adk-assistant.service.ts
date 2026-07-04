@@ -40,11 +40,14 @@ export const getAIAudioFromText = async (text: string, language: string) => {
  * Voice chat - streaming via POST /run_sse.
  * Used when the user speaks into the microphone.
  *
+ * Returns a cancel function to abort the request.
+ *
  * @param text - User input text (from browser speech recognition)
  * @param onToken - Called with each text chunk as it streams in
  * @param onSentence - Called with each complete sentence for TTS
  * @param onComplete - Called when streaming finishes
  * @param onError - Called on error
+ * @returns cancel - Call to abort the SSE request
  */
 export const sendChatStream = (
   text: string,
@@ -52,7 +55,8 @@ export const sendChatStream = (
   onSentence: (sentence: string) => void,
   onComplete: (fullText: string) => void,
   onError?: (error: unknown) => void,
-) => {
+): (() => void) => {
+  const abortController = new AbortController();
   let accumulatedText = '';
   let fullResponse = '';
 
@@ -71,6 +75,7 @@ export const sendChatStream = (
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body,
+    signal: abortController.signal,
   })
     .then(async (response) => {
       if (!response.ok) {
@@ -139,12 +144,20 @@ export const sendChatStream = (
       }
     })
     .catch((err) => {
+      // Ignore abort errors
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       console.error('SSE stream error:', err);
       onError?.(err);
     });
 
+  /**
+   * Detect sentence boundaries for both English and Chinese.
+   * Splits on: . ! ? newline 。！？
+   * When a boundary is found, the completed sentence is sent to TTS.
+   */
   function flushSentences() {
-    const boundaryRegex = /[.!?\n]/;
+    // Matches both English and Chinese sentence-ending punctuation
+    const boundaryRegex = /[.!?\n。！？]/;
     let match: RegExpExecArray | null;
 
     while ((match = boundaryRegex.exec(accumulatedText)) !== null) {
@@ -156,4 +169,9 @@ export const sendChatStream = (
       accumulatedText = accumulatedText.slice(endIdx);
     }
   }
+
+  // Return cancel function
+  return () => {
+    abortController.abort();
+  };
 };
