@@ -61,6 +61,16 @@ def create_app() -> FastAPI:
     ):
         """POST form: text=hello → {"reply": "Hi! I'm Xiao Wei~"}"""
         try:
+            # Ensure session exists before running
+            try:
+                await _session_service.create_session(
+                    app_name="digital_human",
+                    user_id="default_user",
+                    session_id=session_id,
+                )
+            except Exception:
+                pass  # session may already exist
+
             if session_id not in _configured_sessions:
                 _configured_sessions.add(session_id)
                 name_msg = f'[System: Your name is "{character_name}". Introduce yourself as {character_name} if asked.]'
@@ -146,6 +156,15 @@ def create_app() -> FastAPI:
             )
 
             new_msg = types.Content(role="user", parts=[types.Part(text=prompt)])
+            # Ensure session exists for slide generation
+            try:
+                await _session_service.create_session(
+                    app_name="digital_human",
+                    user_id="default_user",
+                    session_id="slide_generation_session",
+                )
+            except Exception:
+                pass
             events = []
             async for event in _runner.run_async(
                 user_id="default_user",
