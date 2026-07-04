@@ -35,13 +35,12 @@ export default function ConversationContainer() {
     : 'en-US';
 
   return (
-    <div className="bg-white rounded-xl shadow-card border border-[#E2E8F0] p-4 flex flex-col h-full">
-      <h2 className="text-xl font-bold text-[#1A202C] mb-4 flex items-center gap-2">
-        <MessageCircle className="w-5 h-5 text-[#6B46C1]" />
+    <div className="bg-white rounded-[var(--shape-md)] shadow-elevation-1 border border-[var(--md-outline)] p-4 flex flex-col h-full">
+      <h2 className="text-title-lg text-[var(--md-on-surface)] mb-4 flex items-center gap-2">
+        <MessageCircle className="w-5 h-5 text-[var(--md-primary)]" />
         Conversation
       </h2>
 
-      {/* Character selector */}
       <CharacterSelector />
 
       <ChatDisplay chatData={chatData} />
@@ -55,12 +54,12 @@ export default function ConversationContainer() {
             placeholder="Type a message..."
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            className="w-full text-base bg-[#F7FAFC] text-[#1A202C] placeholder-[#A0AEC0] rounded-full px-5 py-2.5 pr-12 border-2 border-[#E2E8F0] focus:border-[#6B46C1] focus:ring-0 transition-colors"
+            className="w-full text-body-lg bg-[var(--md-surface-variant)] text-[var(--md-on-surface)] placeholder:text-[var(--md-on-surface-variant)]/60 rounded-[var(--shape-full)] px-5 py-2.5 pr-12 border-2 border-[var(--md-outline)] focus:border-[var(--md-primary)] focus:ring-0 transition-colors duration-[var(--motion-sm)] ease-standard"
             aria-label="Message input"
           />
           <Button
             type="submit"
-            className="absolute inset-y-1 right-1 w-8 h-8 bg-[#6B46C1] hover:bg-[#667EEA] text-white rounded-full p-1.5 flex items-center justify-center transition-colors"
+            className="absolute inset-y-1 right-1 w-8 h-8 bg-[var(--md-primary)] text-white rounded-[var(--shape-full)] p-1.5 flex items-center justify-center transition-all duration-[var(--motion-sm)] ease-emphasized state-layer"
             aria-label="Send message"
             variant="ghost"
           >

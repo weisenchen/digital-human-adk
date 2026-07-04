@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 
 interface ChatMessage {
   text: string;
@@ -15,6 +16,9 @@ interface ChatDisplayProps {
 
 const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
+  const context = useContext(VoiceAssistantContext);
+  const characterName = context?.characterName || 'Xiao Wei';
+  const aiInitial = characterName.charAt(0).toUpperCase();
 
   const scrollToBottom = () => {
     if (chatContainerRef.current) {
@@ -22,15 +26,9 @@ const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
     }
   };
 
-  // Scroll whenever new messages are added
   useEffect(() => {
     scrollToBottom();
   }, [chatData]);
-
-  // Check if the last AI message is still streaming (empty text placeholder)
-  const isStreaming = chatData.length > 0 &&
-    !chatData[chatData.length - 1].isUser &&
-    chatData[chatData.length - 1].text === '';
 
   return (
     <ScrollArea className="flex-grow mb-4 pr-2 custom-scrollbar">
@@ -38,28 +36,27 @@ const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
         {chatData.map((message, index) => (
           <motion.div
             key={index}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.25, ease: [0.2, 0, 0, 1.0] }}
             className={`mb-3 flex items-start gap-2.5 ${
               message.isUser ? 'justify-end' : 'justify-start'
             }`}
           >
-            {/* Xiao Wei avatar (AI messages only) */}
+            {/* AI avatar (tonal surface with initial) */}
             {!message.isUser && (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6B46C1] to-[#667EEA] flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
-                XW
+              <div className="w-8 h-8 rounded-[var(--shape-full)] flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-sm tonal-surface">
+                {aiInitial}
               </div>
             )}
 
             {/* Message bubble */}
             <div
-              className={`max-w-[85%] px-4 py-2.5 leading-relaxed ${
+              className={`max-w-[85%] px-4 py-2.5 leading-relaxed text-sm md:text-base ${
                 message.isUser
-                  ? 'bg-[#EDF2F7] text-[#1A202C] rounded-2xl rounded-br-md'
-                  : 'bg-[#EBF4FF] text-[#1A202C] rounded-2xl rounded-bl-md'
+                  ? 'bg-[var(--md-bubble-user)] text-[var(--md-on-surface)] rounded-[var(--shape-lg)] rounded-br-[var(--shape-sm)]'
+                  : 'bg-[var(--md-bubble-ai)] text-[var(--md-on-surface)] rounded-[var(--shape-lg)] rounded-bl-[var(--shape-sm)]'
               } ${
-                // Show streaming cursor on the last AI message if it's empty (still loading)
                 index === chatData.length - 1 && !message.isUser && message.text === ''
                   ? 'streaming-cursor'
                   : ''
@@ -70,9 +67,9 @@ const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
               </p>
             </div>
 
-            {/* User avatar placeholder */}
+            {/* User avatar (tonal surface with initial) */}
             {message.isUser && (
-              <div className="w-8 h-8 rounded-full bg-[#A0AEC0] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              <div className="w-8 h-8 rounded-[var(--shape-full)] flex items-center justify-center text-xs font-bold flex-shrink-0 tonal-surface">
                 U
               </div>
             )}

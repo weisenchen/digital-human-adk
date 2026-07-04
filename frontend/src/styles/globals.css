@@ -1,33 +1,161 @@
-/* ADK Digital Human - Frontend styles */
+/* ADK Digital Human - Frontend styles (MD3-based) */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* Inter font from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
 
-/* DESIGN.md CSS custom properties */
+/* ── MD3 CSS Custom Properties ────────────────────────────────────── */
 :root {
-  --color-primary: #1A202C;
-  --color-secondary: #4A5568;
-  --color-tertiary: #6B46C1;
-  --color-tertiary-light: #E9D8FD;
-  --color-accent: #667EEA;
-  --color-surface: #FFFFFF;
-  --color-background: #F7FAFC;
-  --color-bubble-user: #EDF2F7;
-  --color-bubble-ai: #EBF4FF;
-  --color-muted: #A0AEC0;
-  --color-border-light: #E2E8F0;
+  /* Colors */
+  --md-primary: #6B46C1;
+  --md-on-primary: #FFFFFF;
+  --md-primary-container: #E9D8FD;
+  --md-on-primary-container: #1A202C;
+  --md-secondary: #4A5568;
+  --md-on-secondary: #FFFFFF;
+  --md-secondary-container: #EDF2F7;
+  --md-on-secondary-container: #1A202C;
+  --md-tertiary: #667EEA;
+  --md-on-tertiary: #FFFFFF;
+  --md-tertiary-container: #EBF4FF;
+  --md-on-tertiary-container: #1A202C;
+  --md-error: #E53E3E;
+  --md-on-error: #FFFFFF;
+  --md-error-container: #FED7D7;
+  --md-on-error-container: #1A202C;
+  --md-surface: #FFFFFF;
+  --md-on-surface: #1A202C;
+  --md-surface-variant: #F7FAFC;
+  --md-on-surface-variant: #4A5568;
+  --md-outline: #E2E8F0;
+  --md-outline-variant: #CBD5E0;
+  --md-background: #F7FAFC;
+  --md-on-background: #1A202C;
+  --md-surface-tint: #6B46C1;
+
+  /* Font */
   --font-sans: 'Inter', system-ui, sans-serif;
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-elevated: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+
+  /* Shape */
+  --shape-none: 0px;
+  --shape-xs: 4px;
+  --shape-sm: 8px;
+  --shape-md: 12px;
+  --shape-lg: 16px;
+  --shape-xl: 28px;
+  --shape-full: 9999px;
+
+  /* Elevation */
+  --elevation-1-shadow: 0 1px 3px 1px rgba(0,0,0,0.15), 0 1px 2px 0 rgba(0,0,0,0.30);
+  --elevation-2-shadow: 0 2px 6px 2px rgba(0,0,0,0.15), 0 1px 2px 0 rgba(0,0,0,0.30);
+  --elevation-3-shadow: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px 0 rgba(0,0,0,0.30);
+
+  /* Motion */
+  --motion-xs: 50ms;
+  --motion-sm: 100ms;
+  --motion-md: 200ms;
+  --motion-lg: 300ms;
+  --motion-xl: 400ms;
+  --easing-emphasized: cubic-bezier(0.2, 0, 0, 1.0);
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1.0);
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-background);
-  color: var(--color-primary);
+  background-color: var(--md-background);
+  color: var(--md-on-background);
+}
+
+/* ── MD3 State Layers ───────────────────────────────────────────── */
+/* Usage: add class="state-layer relative overflow-hidden" to a clickable element.
+   The ::after pseudo-element renders the MD3 state overlay (hover/focus/press). */
+
+.state-layer {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.state-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: currentColor;
+  opacity: 0;
+  transition: opacity var(--motion-sm) var(--easing-standard);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.state-layer:hover::after {
+  opacity: 0.08;
+}
+
+.state-layer:focus-visible::after {
+  opacity: 0.12;
+}
+
+.state-layer:active::after {
+  opacity: 0.12;
+}
+
+/* ── MD3 Surface Tint for elevated surfaces ─────────────────────── */
+/* Usage: combine with elevation, e.g. class="surface-elevation-1" */
+
+.surface-elevation-1 {
+  background-color: var(--md-surface);
+  box-shadow: var(--elevation-1-shadow);
+  /* Surface tint overlay via pseudo-element */
+  position: relative;
+}
+.surface-elevation-1::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--md-surface-tint);
+  opacity: 0.03;
+  pointer-events: none;
+}
+
+.surface-elevation-2 {
+  background-color: var(--md-surface);
+  box-shadow: var(--elevation-2-shadow);
+  position: relative;
+}
+.surface-elevation-2::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--md-surface-tint);
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+.surface-elevation-3 {
+  background-color: var(--md-surface);
+  box-shadow: var(--elevation-3-shadow);
+  position: relative;
+}
+.surface-elevation-3::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--md-surface-tint);
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+/* ── MD3 Component Styles ───────────────────────────────────────── */
+
+/* Tonal surface — for user avatar, chips */
+.tonal-surface {
+  background-color: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
 }
 
 /* Live2D canvas container */
@@ -45,11 +173,11 @@ body {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color-muted);
+  background: var(--md-outline);
   border-radius: 3px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--color-secondary);
+  background: var(--md-on-surface-variant);
 }
 
 /* Streaming cursor animation */
@@ -60,6 +188,6 @@ body {
 .streaming-cursor::after {
   content: '▍';
   animation: blink 1s step-end infinite;
-  color: var(--color-tertiary);
+  color: var(--md-primary);
   margin-left: 2px;
 }

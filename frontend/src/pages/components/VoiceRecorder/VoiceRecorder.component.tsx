@@ -87,10 +87,10 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       <button
         type="button"
         onClick={handleRecordToggle}
-        className={`rounded-full p-2.5 transition-all duration-200 shadow-sm ${
+        className={`state-layer rounded-[var(--shape-full)] p-2.5 transition-all duration-[var(--motion-md)] ease-emphasized shadow-elevation-1 ${
           isRecording
-            ? "bg-[#E53E3E] hover:bg-red-600 text-white animate-pulse shadow-md"
-            : "bg-[#6B46C1] hover:bg-[#667EEA] text-white"
+            ? "bg-[var(--md-error)] text-white animate-pulse"
+            : "bg-[var(--md-primary)] text-white hover:bg-[var(--md-primary)]"
         }`}
         aria-label={isRecording ? "Stop Listening" : "Start Listening"}
       >
@@ -98,7 +98,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       </button>
 
       {isRecording && interimText && (
-        <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-white bg-opacity-95 backdrop-blur-sm text-[#4A5568] text-xs px-3 py-1.5 rounded-xl shadow-elevated border border-[#E2E8F0] whitespace-nowrap max-w-[180px] overflow-hidden text-ellipsis z-10">
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-white bg-opacity-95 backdrop-blur-sm text-[var(--md-on-surface-variant)] text-body-sm px-3 py-1.5 rounded-[var(--shape-lg)] shadow-elevation-3 border border-[var(--md-outline)] whitespace-nowrap max-w-[180px] overflow-hidden text-ellipsis z-10">
           🎤 {interimText}
         </div>
       )}

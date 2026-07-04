@@ -22,7 +22,7 @@ const DigitalHumanContainer = () => {
   const resumeMotionTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    let appRef: any = null; // keep reference for cleanup
+    let appRef: any = null;
 
     const initializePixi = async () => {
       try {
@@ -42,7 +42,7 @@ const DigitalHumanContainer = () => {
           resolution: window.devicePixelRatio,
           transparent: true,
         });
-        appRef = app; // keep for cleanup
+        appRef = app;
 
         const url = `${window.location.origin}/shizuku_model/shizuku.model.json`;
         const model = await Live2DModel.from(url);
@@ -60,7 +60,6 @@ const DigitalHumanContainer = () => {
 
     initializePixi();
 
-    // Cleanup: destroy PIXI app and model on unmount
     return () => {
       if (resumeMotionTimeout.current) {
         clearTimeout(resumeMotionTimeout.current);
@@ -106,9 +105,9 @@ const DigitalHumanContainer = () => {
   }, [mouthOpen]);
 
   return (
-    <div className="flex flex-col items-center justify-center bg-white rounded-xl shadow-card border border-[#E2E8F0] p-4 h-full overflow-hidden">
-      <div className="flex items-center gap-2 mb-2 text-sm text-[#4A5568]">
-        <span className="w-2 h-2 rounded-full bg-[#48BB78] animate-pulse" />
+    <div className="flex flex-col items-center justify-center bg-white rounded-[var(--shape-md)] shadow-elevation-1 border border-[var(--md-outline)] p-4 h-full overflow-hidden">
+      <div className="flex items-center gap-2 mb-2 text-body-md text-[var(--md-on-surface-variant)]">
+        <span className="w-2 h-2 rounded-[var(--shape-full)] bg-[#48BB78] animate-pulse" />
         {characterName || 'Character'} is here
       </div>
       <canvas ref={canvasRef} className="max-w-full max-h-full" />

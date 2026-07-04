@@ -4,7 +4,6 @@ import React, { useContext, useMemo } from 'react';
 import { User, Sparkles, Volume2, Mic } from 'lucide-react';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 
-/** Map language codes to flags/labels for display */
 const LOCALE_LABELS: Record<string, string> = {
   'en-US': '🇺🇸 English (US)',
   'en-GB': '🇬🇧 English (UK)',
@@ -40,7 +39,6 @@ const CharacterSelector: React.FC = () => {
     handleCharacterNameChange,
   } = context;
 
-  // Filter voices for the current locale and gender
   const locale = LOCALE_MAP[selectedLanguage] || 'en-US';
   const filteredVoices = useMemo(
     () => voices.filter((v: any) => v.locale === locale && v.gender === selectedGender),
@@ -51,63 +49,63 @@ const CharacterSelector: React.FC = () => {
   const popularNames = currentVoice?.popular_names || [];
 
   return (
-    <div className="bg-[#F7FAFC] rounded-xl border border-[#E2E8F0] p-3 space-y-3">
+    <div className="bg-[var(--md-surface-variant)] rounded-[var(--shape-md)] border border-[var(--md-outline)] p-3 space-y-3">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Mic className="w-4 h-4 text-[#6B46C1]" />
-        <span className="text-sm font-semibold text-[#1A202C]">Voice Character</span>
-        <span className="text-[10px] text-[#A0AEC0] bg-white px-1.5 py-0.5 rounded-full border border-[#E2E8F0] ml-auto">
+        <Mic className="w-4 h-4 text-[var(--md-primary)]" />
+        <span className="text-title-sm text-[var(--md-on-surface)]">Voice Character</span>
+        <span className="text-label-sm text-[var(--md-on-surface-variant)] bg-white px-1.5 py-0.5 rounded-[var(--shape-full)] border border-[var(--md-outline)] ml-auto">
           {LOCALE_LABELS[locale] || locale}
         </span>
       </div>
 
       {/* Gender Toggle */}
-      <div className="flex gap-1 bg-white rounded-lg p-0.5 border border-[#E2E8F0]">
+      <div className="flex gap-1 bg-white rounded-[var(--shape-sm)] p-0.5 border border-[var(--md-outline)]">
         <button
           onClick={() => handleGenderChange('female')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
+          className={`state-layer flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-[var(--shape-xs)] text-label-md transition-all duration-[var(--motion-sm)] ${
             selectedGender === 'female'
-              ? 'bg-[#6B46C1] text-white shadow-sm'
-              : 'text-[#4A5568] hover:text-[#6B46C1]'
+              ? 'bg-[var(--md-primary)] text-white shadow-sm'
+              : 'text-[var(--md-on-surface-variant)] hover:text-[var(--md-primary)]'
           }`}
         >
-          <span className={selectedGender === 'female' ? '' : 'opacity-50'}>♀</span> Female
+          <span className={selectedGender === 'female' ? '' : 'opacity-40'}>♀</span> Female
         </button>
         <button
           onClick={() => handleGenderChange('male')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
+          className={`state-layer flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-[var(--shape-xs)] text-label-md transition-all duration-[var(--motion-sm)] ${
             selectedGender === 'male'
-              ? 'bg-[#6B46C1] text-white shadow-sm'
-              : 'text-[#4A5568] hover:text-[#6B46C1]'
+              ? 'bg-[var(--md-primary)] text-white shadow-sm'
+              : 'text-[var(--md-on-surface-variant)] hover:text-[var(--md-primary)]'
           }`}
         >
-          <span className={selectedGender === 'male' ? '' : 'opacity-50'}>♂</span> Male
+          <span className={selectedGender === 'male' ? '' : 'opacity-40'}>♂</span> Male
         </button>
       </div>
 
       {/* Character Name */}
       <div className="flex items-center gap-2">
-        <User className="w-3.5 h-3.5 text-[#A0AEC0]" />
+        <User className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" />
         <input
           type="text"
           value={characterName}
           onChange={(e) => handleCharacterNameChange(e.target.value)}
-          className="flex-1 bg-white text-sm text-[#1A202C] border border-[#E2E8F0] rounded-md px-2.5 py-1.5 focus:outline-none focus:border-[#6B46C1] transition-colors"
+          className="flex-1 bg-white text-body-md text-[var(--md-on-surface)] border border-[var(--md-outline)] rounded-[var(--shape-xs)] px-2.5 py-1.5 focus:outline-none focus:border-[var(--md-primary)] transition-colors duration-[var(--motion-sm)]"
           placeholder="Character name"
           maxLength={20}
         />
       </div>
 
-      {/* Voice Selection - radio card list */}
+      {/* Voice Selection */}
       {filteredVoices.length > 0 ? (
-        <div className="space-y-1 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
+        <div className="space-y-1 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
           {filteredVoices.map((v: any) => (
             <label
               key={v.voice_id}
-              className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all border ${
+              className={`state-layer flex items-center gap-2.5 p-2 rounded-[var(--shape-sm)] cursor-pointer transition-all duration-[var(--motion-sm)] border ${
                 selectedVoice === v.voice_id
-                  ? 'bg-white border-[#6B46C1] shadow-sm'
-                  : 'bg-white border-transparent hover:border-[#CBD5E0]'
+                  ? 'bg-white border-[var(--md-primary)] shadow-sm'
+                  : 'bg-white border-transparent hover:border-[var(--md-outline-variant)]'
               }`}
             >
               <input
@@ -116,19 +114,19 @@ const CharacterSelector: React.FC = () => {
                 value={v.voice_id}
                 checked={selectedVoice === v.voice_id}
                 onChange={() => handleVoiceSelect(v.voice_id)}
-                className="accent-[#6B46C1] w-3.5 h-3.5"
+                className="accent-[var(--md-primary)] w-3.5 h-3.5"
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <Volume2 className="w-3 h-3 text-[#6B46C1]" />
-                  <span className="text-sm font-medium text-[#1A202C] truncate">
+                  <Volume2 className="w-3 h-3 text-[var(--md-primary)]" />
+                  <span className="text-body-md font-medium text-[var(--md-on-surface)] truncate">
                     {v.localized_name}
                   </span>
-                  <span className="text-[10px] text-[#A0AEC0] bg-[#EDF2F7] px-1 py-0.5 rounded ml-auto">
+                  <span className="text-label-sm text-[var(--md-on-surface-variant)] bg-[var(--md-secondary-container)] px-1 py-0.5 rounded ml-auto">
                     {v.gender === 'female' ? '♀' : '♂'}
                   </span>
                 </div>
-                <div className="text-xs text-[#A0AEC0] truncate mt-0.5">
+                <div className="text-body-sm text-[var(--md-on-surface-variant)] truncate mt-0.5">
                   {v.display_name} · {v.locale}
                 </div>
               </div>
@@ -136,27 +134,27 @@ const CharacterSelector: React.FC = () => {
           ))}
         </div>
       ) : (
-        <div className="text-xs text-[#A0AEC0] text-center py-2">
+        <div className="text-body-sm text-[var(--md-on-surface-variant)] text-center py-2">
           No voices available for this locale
         </div>
       )}
 
-      {/* Popular Names Suggestion */}
+      {/* Popular Names */}
       {popularNames.length > 0 && (
         <div>
           <div className="flex items-center gap-1.5 mb-1.5">
-            <Sparkles className="w-3 h-3 text-[#667EEA]" />
-            <span className="text-[11px] text-[#4A5568] font-medium">Popular names</span>
+            <Sparkles className="w-3 h-3 text-[var(--md-tertiary)]" />
+            <span className="text-label-md text-[var(--md-on-surface-variant)]">Popular names</span>
           </div>
           <div className="flex flex-wrap gap-1">
             {popularNames.slice(0, 6).map((name: string) => (
               <button
                 key={name}
                 onClick={() => handleCharacterNameChange(name)}
-                className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                className={`state-layer text-label-sm px-2 py-0.5 rounded-[var(--shape-full)] border transition-colors duration-[var(--motion-sm)] ${
                   characterName === name
-                    ? 'bg-[#6B46C1] text-white border-[#6B46C1]'
-                    : 'bg-white text-[#4A5568] border-[#E2E8F0] hover:border-[#6B46C1] hover:text-[#6B46C1]'
+                    ? 'bg-[var(--md-primary)] text-white border-[var(--md-primary)]'
+                    : 'bg-white text-[var(--md-on-surface-variant)] border-[var(--md-outline)] hover:border-[var(--md-primary)] hover:text-[var(--md-primary)]'
                 }`}
               >
                 {name}
