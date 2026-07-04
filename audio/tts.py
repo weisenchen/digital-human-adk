@@ -147,14 +147,16 @@ def list_voices() -> list[dict]:
     for locale, genders in VOICE_CATALOG.items():
         for gender, voices in genders.items():
             names = POPULAR_NAMES.get(locale, {}).get(gender, [])
-            for voice_id, display_name, localized_name in voices:
+            for idx, (voice_id, display_name, localized_name) in enumerate(voices):
+                # Assign one unique popular name per voice (cycle if more voices than names)
+                voice_name = names[idx % len(names)] if names else localized_name
                 result.append({
                     "voice_id": voice_id,
                     "display_name": display_name,
                     "localized_name": localized_name,
                     "locale": locale,
                     "gender": gender,
-                    "popular_names": names,
+                    "popular_names": [voice_name],
                 })
     _VOICES_CACHE = result
     return result

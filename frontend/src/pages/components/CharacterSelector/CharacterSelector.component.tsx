@@ -4,16 +4,6 @@ import React, { useContext, useMemo } from 'react';
 import { Mic } from 'lucide-react';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 
-const LOCALE_LABELS: Record<string, string> = {
-  'en-US': '🇺🇸 English (US)',
-  'en-GB': '🇬🇧 English (UK)',
-  'cmn-CN': '🇨🇳 普通话',
-  'Yue-HK': '🇭🇰 粵語',
-  'ja-JP': '🇯🇵 日本語',
-  'ko-KR': '🇰🇷 한국어',
-  'fr-FR': '🇫🇷 Français',
-};
-
 const LOCALE_MAP: Record<string, string> = {
   'en-GB': 'en-US',
   'cmn-CN': 'cmn-CN',
@@ -83,11 +73,12 @@ const CharacterSelector: React.FC = () => {
         <div className="space-y-1 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
           {filteredVoices.map((v: any) => {
             const charName = v.popular_names?.[0] || v.localized_name;
+            const isSelected = selectedVoice === v.voice_id;
             return (
               <label
                 key={v.voice_id}
                 className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all border ${
-                  selectedVoice === v.voice_id
+                  isSelected
                     ? 'bg-white border-gray-300 shadow-sm'
                     : 'border-transparent hover:bg-gray-50 hover:border-gray-200'
                 }`}
@@ -96,15 +87,13 @@ const CharacterSelector: React.FC = () => {
                   type="radio"
                   name="voice"
                   value={v.voice_id}
-                  checked={selectedVoice === v.voice_id}
+                  checked={isSelected}
                   onChange={() => handleVoiceSelect(v.voice_id)}
                   className="accent-gray-900 w-3.5 h-3.5 flex-shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-medium text-gray-900 truncate">
-                      {charName}
-                    </span>
+                  <div className="text-sm font-medium text-gray-900 truncate">
+                    {charName}
                   </div>
                   <div className="text-xs text-gray-400 truncate mt-0.5">
                     {v.localized_name} · {v.locale}
