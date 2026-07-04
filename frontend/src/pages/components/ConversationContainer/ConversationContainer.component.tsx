@@ -20,12 +20,6 @@ const SUGGESTIONS = [
   'Introduce yourself 🌟',
 ];
 
-const PERSONALITIES = [
-  { id: 'playful', label: 'Playful', icon: '✨' },
-  { id: 'professional', label: 'Professional', icon: '💼' },
-  { id: 'concise', label: 'Concise', icon: '⚡' },
-];
-
 export default function ConversationContainer() {
   const [showPresentation, setShowPresentation] = useState(false);
 
@@ -42,8 +36,6 @@ export default function ConversationContainer() {
     handleSpeechRecognized,
     isWaitingAIOutput,
     selectedLanguage,
-    personality,
-    handlePersonalityChange,
     toastMessage,
     clearChat,
     characterName,
@@ -89,24 +81,6 @@ export default function ConversationContainer() {
         </div>
       </div>
 
-      {/* Personality toggle */}
-      <div className="flex gap-1 mb-2">
-        {PERSONALITIES.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => handlePersonalityChange(p.id as any)}
-            className={`state-layer flex items-center gap-1 px-2.5 py-1 rounded-[var(--shape-full)] text-label-sm border transition-all duration-[var(--motion-sm)] ${
-              personality === p.id
-                ? 'bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] border-[var(--md-primary)]'
-                : 'bg-white text-[var(--md-on-surface-variant)] border-[var(--md-outline)] hover:border-[var(--md-primary)]'
-            }`}
-          >
-            <span>{p.icon}</span>
-            <span>{p.label}</span>
-          </button>
-        ))}
-      </div>
-
       <CharacterSelector />
 
       <ChatDisplay chatData={chatData} />
@@ -118,57 +92,62 @@ export default function ConversationContainer() {
         </div>
       )}
 
-      {/* Welcome message for empty state */}
-      {isFirstMessage && !isWaitingAIOutput && (
-        <div className="flex flex-col items-center py-4 text-center animate-[md-fade-in_300ms_ease-out]">
-          <Bot className="w-10 h-10 text-[var(--md-primary)] mb-2 opacity-60" />
-          <p className="text-body-md text-[var(--md-on-surface-variant)] mb-3">
+      {isWaitingAIOutput && <Loading />}
+
+      {/* Suggestions for new conversation */}
+      {isFirstMessage && (
+        <div className="flex-1 flex flex-col items-center justify-center min-h-0 py-4">
+          <p className="text-title-md text-[var(--md-on-surface-variant)] mb-3">
             Start a conversation!
           </p>
-          <div className="flex flex-wrap gap-2 justify-center max-w-xs">
-            {SUGGESTIONS.map((s, i) => (
+          <div className="flex flex-wrap justify-center gap-2">
+            {SUGGESTIONS.map((s) => (
               <button
-                key={i}
+                key={s}
                 onClick={() => {
+                  // Set the text and submit
+                  handleTextSubmit({ preventDefault: () => {} } as React.FormEvent);
                   setInputText(s);
                 }}
-                className="text-label-sm bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] px-3 py-1.5 rounded-[var(--shape-full)] border border-[var(--md-primary)]/20 hover:bg-[var(--md-primary)] hover:text-white transition-all duration-[var(--motion-sm)] state-layer"
+                className="state-layer px-3 py-1.5 rounded-[var(--shape-full)] text-label-sm text-[var(--md-primary)] bg-[var(--md-primary-container)] hover:opacity-80 transition-opacity"
               >
                 {s}
               </button>
             ))}
           </div>
-          <p className="text-label-sm text-[var(--md-on-surface-variant)]/50 mt-3">
+          <p className="text-label-sm text-[var(--md-on-surface-variant)] mt-3">
             or type below ✏️
           </p>
         </div>
       )}
 
-      {isWaitingAIOutput && <Loading />}
-
-      <form onSubmit={handleTextSubmit} className="flex items-center gap-2 mt-auto">
-        <div className="relative flex-1">
+      {/* Input area */}
+      <form onSubmit={handleTextSubmit} className="flex items-center gap-2 mt-2 pt-2 border-t border-[var(--md-outline)]">
+        <div className="flex-1 relative">
           <Input
             type="text"
-            placeholder="Type a message..."
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            className="w-full text-body-lg bg-[var(--md-surface-variant)] text-[var(--md-on-surface)] placeholder:text-[var(--md-on-surface-variant)]/60 rounded-[var(--shape-full)] px-5 py-2.5 pr-12 border-2 border-[var(--md-outline)] focus:border-[var(--md-primary)] focus:ring-0 transition-colors duration-[var(--motion-sm)]"
-            aria-label="Message input"
+            placeholder="Message input"
+            className="w-full pr-10"
+            disabled={isWaitingAIOutput}
           />
-          <Button
-            type="submit"
-            className="absolute inset-y-1 right-1 w-8 h-8 bg-[var(--md-primary)] text-white rounded-[var(--shape-full)] p-1.5 flex items-center justify-center transition-all duration-[var(--motion-sm)] state-layer"
-            aria-label="Send message"
-            variant="ghost"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
         </div>
-        <VoiceRecorder onSpeechRecognized={handleSpeechRecognized} language={speechRecognitionLang} />
+        <Button
+          type="submit"
+          size="icon"
+          disabled={isWaitingAIOutput || !inputText.trim()}
+          aria-label="Send message"
+        >
+          <Send className="w-4 h-4" />
+        </Button>
+        <VoiceRecorder
+          lang={speechRecognitionLang}
+          onSpeechRecognized={handleSpeechRecognized}
+        />
       </form>
 
-      {/* Presentation Mode Overlay */}
+      {/* Presentation mode */}
       {showPresentation && (
         <PresentationMode
           characterName={characterName || 'Xiao Wei'}

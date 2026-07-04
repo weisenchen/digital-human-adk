@@ -20,8 +20,6 @@ const VoiceAssistantContext = createContext({
   characterName: "Xiao Wei",
   handleCharacterNameChange: () => {},
   // UX enhancements
-  personality: "playful",
-  handlePersonalityChange: () => {},
   isSpeaking: false,
   toastMessage: null,
   clearChat: () => {},

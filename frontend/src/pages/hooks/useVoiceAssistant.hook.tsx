@@ -28,13 +28,7 @@ const FALLBACK_VOICES: Record<string, { female: string; male: string }> = {
   'fr-FR': { female: 'fr-FR-DeniseNeural', male: 'fr-FR-HenriNeural' },
 };
 
-const PERSONALITY_PROMPTS: Record<string, string> = {
-  playful: "Speak playfully with lots of emojis. Be warm, cute, and engaging. Short responses. Use ~ casually.",
-  professional: "Be professional, clear, and concise. No emojis. Focus on accuracy and helpful information.",
-  concise: "Answer in 1-2 sentences maximum. Direct and to the point. No pleasantries.",
-};
-
-export type Personality = 'playful' | 'professional' | 'concise';
+const PROFESSIONAL_PROMPT = "Be professional, clear, and concise. No emojis. Focus on accuracy and helpful information.";
 
 const useVoiceAssistant = ()=>{
     const [isWaitingAIOutput,setIsWaitingAIOutput] = useState<boolean>(false)
@@ -50,7 +44,6 @@ const useVoiceAssistant = ()=>{
     const [characterName, setCharacterName] = useState<string>('Xiao Wei');
 
     // UX enhancements
-    const [personality, setPersonality] = useState<Personality>('playful');
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [hasUsedVoice, setHasUsedVoice] = useState(false);
@@ -116,8 +109,8 @@ const useVoiceAssistant = ()=>{
 
   // ── Personality system prompt ─────────────────────────
   const getPersonalityPrompt = useCallback((): string => {
-    return PERSONALITY_PROMPTS[personality] || PERSONALITY_PROMPTS.playful;
-  }, [personality]);
+    return PROFESSIONAL_PROMPT;
+  }, []);
 
   // ── Clear chat ────────────────────────────────────────
   const clearChat = useCallback(() => {
@@ -364,11 +357,6 @@ const useVoiceAssistant = ()=>{
     setCharacterName(name);
   };
 
-  const handlePersonalityChange = (p: Personality) => {
-    setPersonality(p);
-    setToastMessage(`Switched to ${p} mode ✨`);
-  };
-
   return {
     handleSpeechRecognized,
     isWaitingAIOutput,
@@ -387,8 +375,6 @@ const useVoiceAssistant = ()=>{
     characterName,
     handleCharacterNameChange,
     // UX additions
-    personality,
-    handlePersonalityChange,
     isSpeaking,
     toastMessage,
     clearChat,
