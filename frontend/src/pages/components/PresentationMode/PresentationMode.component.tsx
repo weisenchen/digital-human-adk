@@ -286,7 +286,8 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   // ── Render: Script Input ───────────────────────
   if (stage === 'input') {
     return (
-      <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+        {/* Input stage: fully opaque white background — no transparency, no backdrop blur */}
+        <div className="fixed inset-0 z-50 bg-white flex items-center justify-center p-4">
         <div className="bg-white rounded-[var(--shape-lg)] shadow-elevation-5 w-full max-w-2xl max-h-[90vh] flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--md-outline)]">
@@ -409,7 +410,8 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   // ── Render: Slide Editor (after AI generation) ──
   if (stage === 'editor') {
     return (
-      <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+        {/* Editor stage: fully opaque white background */}
+        <div className="fixed inset-0 z-50 bg-white flex items-center justify-center p-4">
         <div className="bg-white rounded-[var(--shape-lg)] shadow-elevation-5 w-full max-w-3xl max-h-[95vh] flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--md-outline)]">
@@ -564,7 +566,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-[var(--md-background)] to-[var(--md-surface-variant)] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-white bg-gradient-to-br from-[#F7FAFC] to-[#EDF2F7] flex flex-col">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--md-outline)] bg-white/80 backdrop-blur-sm">
         <div className="flex items-center gap-3">
