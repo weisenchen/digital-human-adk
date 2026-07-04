@@ -49,8 +49,8 @@ def create_app() -> FastAPI:
     )
 
     # Track which sessions have already received the character name injection
-    # to avoid running a full agent cycle for it on every message.
-    _configured_sessions: set[str] = set()
+    # Maps session_id -> last injected character_name
+    _configured_sessions: dict[str, str] = {}
 
     @app.post("/chat")
     async def chat(
@@ -71,9 +71,9 @@ def create_app() -> FastAPI:
             except Exception:
                 pass  # session may already exist
 
-            if session_id not in _configured_sessions:
-                _configured_sessions.add(session_id)
-                name_msg = f'[System: Your name is "{character_name}". Introduce yourself as {character_name} if asked.]'
+            if session_id not in _configured_sessions or _configured_sessions[session_id] != character_name:
+                _configured_sessions[session_id] = character_name
+                name_msg = f'[System: Your name is now "{character_name}". From now on, always introduce yourself as {character_name}. Forget any previous name.]'
                 if personality:
                     name_msg += f"\n[Personality: {personality}]"
                 char_msg = types.Content(
