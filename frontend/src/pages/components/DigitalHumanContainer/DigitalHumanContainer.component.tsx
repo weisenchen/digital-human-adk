@@ -209,6 +209,22 @@ const DigitalHumanContainer = () => {
     ctx.ellipse(cx, cy - 64 * s, 46 * s, 16 * s, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    // ── Baseball cap (professional traveler style) ──
+    // Cap dome — sits on top of hair
+    ctx.fillStyle = '#3D4F2F'; // olive green
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 80 * s, 62 * s, 30 * s, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    // Cap brim — projects forward
+    ctx.beginPath();
+    ctx.ellipse(cx - 10 * s, cy - 68 * s, 16 * s, 42 * s, -0.25, -Math.PI * 0.55, Math.PI * 0.55);
+    ctx.fill();
+    // Cap button on top
+    ctx.fillStyle = '#2C3E1F';
+    ctx.beginPath();
+    ctx.arc(cx, cy - 108 * s, 3.5 * s, 0, Math.PI * 2);
+    ctx.fill();
+
     // Eyes — smaller, narrower
     const eyeY = cy - 12 * s;
     const blink = blinkRef.current > 0 ? Math.min(1, blinkRef.current / 0.08) : 0;
@@ -249,6 +265,40 @@ const DigitalHumanContainer = () => {
       ctx.stroke();
     }
 
+    // ── Wireframe glasses (professional style) ──
+    ctx.strokeStyle = '#C4A35A'; // gold/brass
+    ctx.lineWidth = 2 * s;
+    // Left lens
+    ctx.beginPath();
+    ctx.roundRect(cx - 34 * s, eyeY - 6 * s, 18 * s, 14 * s, 3 * s);
+    ctx.stroke();
+    // Right lens
+    ctx.beginPath();
+    ctx.roundRect(cx + 16 * s, eyeY - 6 * s, 18 * s, 14 * s, 3 * s);
+    ctx.stroke();
+    // Bridge
+    ctx.beginPath();
+    ctx.moveTo(cx - 16 * s, eyeY + 1 * s);
+    ctx.quadraticCurveTo(cx, eyeY - 4 * s, cx + 16 * s, eyeY + 1 * s);
+    ctx.stroke();
+    // Temple arms
+    ctx.beginPath();
+    ctx.moveTo(cx - 34 * s, eyeY - 1 * s);
+    ctx.lineTo(cx - 44 * s, eyeY - 5 * s);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 34 * s, eyeY - 1 * s);
+    ctx.lineTo(cx + 44 * s, eyeY - 5 * s);
+    ctx.stroke();
+    // Subtle lens reflection (left)
+    ctx.fillStyle = 'rgba(196, 163, 90, 0.06)';
+    ctx.beginPath();
+    ctx.roundRect(cx - 33 * s, eyeY - 5 * s, 16 * s, 12 * s, 2 * s);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(cx + 17 * s, eyeY - 5 * s, 16 * s, 12 * s, 2 * s);
+    ctx.fill();
+
     // Nose — slightly more prominent
     ctx.fillStyle = '#E0C0A0';
     ctx.beginPath();
@@ -281,17 +331,47 @@ const DigitalHumanContainer = () => {
     ctx.fillStyle = '#E8CCB0';
     ctx.fillRect(cx - 12 * s, cy + 65 * s, 24 * s, 25 * s);
 
-    // Collar — shirt
-    ctx.fillStyle = '#5A7A8A';
+    // Collar — travel jacket (layered outdoor style)
+    // Outer jacket
+    ctx.fillStyle = '#4A5D3E'; // olive green
     ctx.beginPath();
     ctx.moveTo(cx - 95 * s, cy + 100 * s);
-    ctx.quadraticCurveTo(cx - 65 * s, cy + 70 * s, cx - 25 * s, cy + 80 * s);
-    ctx.lineTo(cx + 25 * s, cy + 80 * s);
-    ctx.quadraticCurveTo(cx + 65 * s, cy + 70 * s, cx + 95 * s, cy + 100 * s);
-    ctx.lineTo(cx + 95 * s, cy + 120 * s);
-    ctx.lineTo(cx - 95 * s, cy + 120 * s);
+    ctx.quadraticCurveTo(cx - 65 * s, cy + 72 * s, cx - 24 * s, cy + 82 * s);
+    ctx.lineTo(cx + 24 * s, cy + 82 * s);
+    ctx.quadraticCurveTo(cx + 65 * s, cy + 72 * s, cx + 95 * s, cy + 100 * s);
+    ctx.lineTo(cx + 95 * s, cy + 125 * s);
+    ctx.lineTo(cx - 95 * s, cy + 125 * s);
     ctx.closePath();
     ctx.fill();
+    // Zipper line
+    ctx.strokeStyle = '#3A4A2F';
+    ctx.lineWidth = 1.5 * s;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 84 * s);
+    ctx.lineTo(cx, cy + 125 * s);
+    ctx.stroke();
+    // Collar flap — V-neck fold
+    ctx.fillStyle = '#5C7350';
+    ctx.beginPath();
+    ctx.moveTo(cx - 24 * s, cy + 82 * s);
+    ctx.lineTo(cx - 12 * s, cy + 88 * s);
+    ctx.lineTo(cx, cy + 82 * s);
+    ctx.lineTo(cx + 12 * s, cy + 88 * s);
+    ctx.lineTo(cx + 24 * s, cy + 82 * s);
+    ctx.lineTo(cx, cy + 78 * s);
+    ctx.closePath();
+    ctx.fill();
+    // Jacket seam lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.lineWidth = 1 * s;
+    ctx.beginPath();
+    ctx.moveTo(cx - 30 * s, cy + 95 * s);
+    ctx.lineTo(cx - 60 * s, cy + 105 * s);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 30 * s, cy + 95 * s);
+    ctx.lineTo(cx + 60 * s, cy + 105 * s);
+    ctx.stroke();
   }, []);
 
   // ── Main draw function ──
