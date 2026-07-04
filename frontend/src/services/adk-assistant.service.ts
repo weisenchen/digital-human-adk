@@ -29,6 +29,15 @@ export interface VoiceOption {
   popular_names: string[];
 }
 
+/** Model option type returned by GET /api/models */
+export interface ModelOption {
+  id: string;
+  name: string;
+  provider: string;
+  backend: string;
+  available: boolean;
+}
+
 /** A single slide with separate display content and speech script */
 export interface SlideData {
   display: string;
@@ -74,6 +83,25 @@ export const fetchVoices = async (): Promise<VoiceOption[]> => {
   const res = await fetch(`${BASE_URL}/api/voices`);
   if (!res.ok) throw new Error(`Failed to fetch voices: ${res.status}`);
   return res.json();
+};
+
+/**
+ * Fetch available models from backend.
+ */
+export const fetchModels = async (): Promise<ModelOption[]> => {
+  const res = await fetch(`${BASE_URL}/api/models`);
+  if (!res.ok) throw new Error(`Failed to fetch models: ${res.status}`);
+  return res.json();
+};
+
+/**
+ * Select a model for a session.
+ */
+export const selectModel = async (modelId: string): Promise<void> => {
+  const formData = new FormData();
+  formData.append('model_id', modelId);
+  formData.append('session_id', PERSISTENT_SESSION_ID);
+  await fetch(`${BASE_URL}/api/select-model`, { method: 'POST', body: formData });
 };
 
 /** Send AI response text -> get audio file (full sentence) */

@@ -1,6 +1,6 @@
 "use client";
 
-import { sendChatMessage, sendChatStream, injectName, getAIAudioFromText, fetchVoices, VoiceOption } from "@/services/adk-assistant.service"
+import { sendChatMessage, sendChatStream, injectName, getAIAudioFromText, fetchVoices, VoiceOption, fetchModels, selectModel, ModelOption } from "@/services/adk-assistant.service"
 import { useRef, useState, useCallback, useEffect } from "react"
 
 interface Message {
@@ -43,6 +43,10 @@ const useVoiceAssistant = ()=>{
     const [selectedGender, setSelectedGender] = useState<string>('female');
     const [characterName, setCharacterName] = useState<string>('Xiao Wei');
 
+    // Model selection
+    const [models, setModels] = useState<ModelOption[]>([]);
+    const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash');
+
     // UX enhancements
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -72,6 +76,13 @@ const useVoiceAssistant = ()=>{
     fetchVoices()
       .then(setVoices)
       .catch((err) => console.error('Failed to load voices:', err));
+  }, []);
+
+  // Load available models
+  useEffect(() => {
+    fetchModels()
+      .then(setModels)
+      .catch((err) => console.error('Failed to load models:', err));
   }, []);
 
   // Auto-select voice
@@ -365,6 +376,16 @@ const useVoiceAssistant = ()=>{
     setCharacterName(name);
   };
 
+  const handleModelSelect = async (modelId: string) => {
+    setSelectedModel(modelId);
+    try {
+      await selectModel(modelId);
+      setToastMessage(`Switched to ${modelId}`);
+    } catch (err) {
+      console.error('Failed to select model:', err);
+    }
+  };
+
   return {
     handleSpeechRecognized,
     isWaitingAIOutput,
@@ -387,6 +408,10 @@ const useVoiceAssistant = ()=>{
     toastMessage,
     clearChat,
     hasUsedVoice,
+    // Model selection
+    models,
+    selectedModel,
+    handleModelSelect,
   };
 };
 

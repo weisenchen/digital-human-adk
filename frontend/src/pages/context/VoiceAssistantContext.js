@@ -24,6 +24,10 @@ const VoiceAssistantContext = createContext({
   toastMessage: null,
   clearChat: () => {},
   hasUsedVoice: false,
+  // Model selection
+  models: [],
+  selectedModel: "gemini-2.5-flash",
+  handleModelSelect: (m) => {},
 });
 
 export default VoiceAssistantContext;
