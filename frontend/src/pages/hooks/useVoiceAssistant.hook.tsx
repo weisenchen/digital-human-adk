@@ -1,6 +1,6 @@
 "use client";
 
-import { sendChatStream, getAIAudioFromText } from "@/pages/services/adk-assistant.service"
+import { sendChatMessage, sendChatStream, getAIAudioFromText } from "@/pages/services/adk-assistant.service"
 import { useRef, useState, useCallback } from "react"
 
 interface Message {
@@ -16,27 +16,54 @@ const useVoiceAssistant = ()=>{
     const [inputText, setInputText] = useState('');
     const [mouthOpen, setMouthOpen] = useState(0);
 
-    // Audio playback queue (refs so they survive re-renders)
+    // Audio playback queue
     const audioQueueRef = useRef<Blob[]>([]);
     const isPlayingRef = useRef(false);
     const audioContextRef = useRef<AudioContext | null>(null);
     const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
     const generationRef = useRef(0); // increment on each new input to discard stale TTS
 
-  const handleUserInput = async (input: string) => {
-    // Cancel any in-progress playback
+  // ─────────────────────────────────────────────
+  // Path 1: Text chat (POST /chat, non-streaming)
+  // ─────────────────────────────────────────────
+  const handleTextSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim()) return;
+
+    const text = inputText;
+    setInputText('');
+
+    setChatData((prev) => [...prev, { text, isUser: true }]);
+    setIsWaitingAIOutput(true);
+
+    try {
+      const { reply } = await sendChatMessage(text);
+      setChatData((prev) => [...prev, { text: reply, isUser: false }]);
+    } catch (err) {
+      console.error("Text chat error:", err);
+      setChatData((prev) => [...prev, { text: "(Error getting reply)", isUser: false }]);
+    } finally {
+      setIsWaitingAIOutput(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────
+  // Path 2: Voice chat (POST /run_sse, streaming)
+  // ─────────────────────────────────────────────
+  const startVoiceChat = async (transcript: string) => {
+    // Cancel any in-progress audio playback
     cancelPlayback();
     const gen = ++generationRef.current;
 
-    setChatData((prev) => [...prev, { text: input, isUser: true }]);
+    setChatData((prev) => [...prev, { text: transcript, isUser: true }]);
 
-    // Add a placeholder AI message for streaming
+    // Placeholder for streaming text
     setChatData((prev) => [...prev, { text: '', isUser: false }]);
     setIsWaitingAIOutput(true);
 
     sendChatStream(
-      input,
-      // onToken: append to the streaming message
+      transcript,
+      // onToken: update the streaming message in chat
       (chunk) => {
         setChatData((prev) => {
           const updated = [...prev];
@@ -51,7 +78,6 @@ const useVoiceAssistant = ()=>{
       async (sentence) => {
         try {
           const blob = await getAIAudioFromText(sentence, selectedLanguage);
-          // Discard if a newer generation has started (user sent a new message)
           if (generationRef.current !== gen) return;
           audioQueueRef.current.push(blob);
           playNextInQueue();
@@ -59,22 +85,28 @@ const useVoiceAssistant = ()=>{
           console.error("TTS error for sentence:", sentence, err);
         }
       },
-      // onComplete: streaming finished
-      (fullText) => {
+      // onComplete
+      () => {
         setIsWaitingAIOutput(false);
-        // No additional TTS needed — all sentences were already flushed
       },
       // onError
       (err) => {
-        console.error("Stream error:", err);
+        console.error("Voice chat error:", err);
         setIsWaitingAIOutput(false);
       },
     );
   };
 
-  /** Cancel current playback and clear the queue */
+  /** Called when browser Web Speech API returns a transcript */
+  const handleSpeechRecognized = (transcript: string) => {
+    if (!transcript.trim()) return;
+    startVoiceChat(transcript);
+  };
+
+  // ─────────────────────────────────────────────
+  // Audio playback (shared)
+  // ─────────────────────────────────────────────
   const cancelPlayback = useCallback(() => {
-    // Stop current audio
     if (currentSourceRef.current) {
       try { currentSourceRef.current.stop(); } catch {}
       currentSourceRef.current = null;
@@ -83,13 +115,11 @@ const useVoiceAssistant = ()=>{
       try { audioContextRef.current.close(); } catch {}
       audioContextRef.current = null;
     }
-    // Clear the queue
     audioQueueRef.current = [];
     isPlayingRef.current = false;
     setMouthOpen(0);
   }, []);
 
-  /** Play the next item in the audio queue */
   const playNextInQueue = useCallback(() => {
     if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
     isPlayingRef.current = true;
@@ -97,17 +127,14 @@ const useVoiceAssistant = ()=>{
     const blob = audioQueueRef.current.shift()!;
     const url = URL.createObjectURL(blob);
 
-    // Use the existing speaking function, then chain to next
     speakFromBlob(url).then(() => {
       isPlayingRef.current = false;
       playNextInQueue();
     });
   }, []);
 
-  /** Play an audio blob and return when done */
   const speakFromBlob = async (audioUrl: string): Promise<void> => {
     return new Promise((resolve) => {
-      // Close previous context if still around
       if (audioContextRef.current) {
         try { audioContextRef.current.close(); } catch {}
       }
@@ -129,7 +156,6 @@ const useVoiceAssistant = ()=>{
 
           source.start(0);
 
-          // Lip-sync loop
           const updateMouth = () => {
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
             analyser.getByteFrequencyData(dataArray);
@@ -151,25 +177,14 @@ const useVoiceAssistant = ()=>{
         .catch((err) => {
           console.error("speakFromBlob error:", err);
           setMouthOpen(0);
-          resolve(); // Don't block the queue on error
+          resolve();
         });
     });
   };
 
-  const handleTextSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputText.trim()) {
-      handleUserInput(inputText);
-      setInputText('');
-    }
-  };
-
-  /** Called when browser Web Speech API returns a transcript */
-  const handleSpeechRecognized = (transcript: string) => {
-    if (!transcript.trim()) return;
-    handleUserInput(transcript);
-  };
-
+  // ─────────────────────────────────────────────
+  // Other handlers
+  // ─────────────────────────────────────────────
   const handleOnAudioPlayEnd = () => {
     setLastAIReplyURL(undefined);
   };

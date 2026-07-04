@@ -1,13 +1,31 @@
 /**
  * ADK Digital Human - Service Layer
  *
- * Uses ADK's /run_sse endpoint for streaming responses.
- * Speech-to-text is handled by the browser's Web Speech API (frontend only).
+ * Two modes:
+ *   sendChatMessage - text chat via POST /chat (fast, no TTS)
+ *   sendChatStream  - voice chat via POST /run_sse (streaming + sentence TTS)
+ *
+ * Both share the same session_id for conversation memory.
  */
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:8000';
 
-let sessionCounter = 0;
+/** Persistent session so the agent remembers our conversation across messages */
+const PERSISTENT_SESSION_ID = 'persistent_chat_session';
+
+/**
+ * Text chat - simple POST /chat (non-streaming, text in / text out).
+ * Used when the user types and hits Enter.
+ */
+export const sendChatMessage = async (text: string) => {
+  const formData = new FormData();
+  formData.append('text', text);
+  formData.append('session_id', PERSISTENT_SESSION_ID);
+  const res = await fetch(`${BASE_URL}/chat`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`Chat request failed: ${res.status}`);
+  const data = await res.json();
+  return { reply: data.reply as string };
+};
 
 /** Send AI response text -> get audio file (full sentence) */
 export const getAIAudioFromText = async (text: string, language: string) => {
@@ -19,16 +37,13 @@ export const getAIAudioFromText = async (text: string, language: string) => {
 };
 
 /**
- * Send user text -> get AI reply via SSE streaming.
+ * Voice chat - streaming via POST /run_sse.
+ * Used when the user speaks into the microphone.
  *
- * Calls ADK's /run_sse endpoint and yields text tokens as they arrive.
- * Automatically detects sentence boundaries and calls onSentence for
- * streaming text-to-speech.
- *
- * @param text - User input text
+ * @param text - User input text (from browser speech recognition)
  * @param onToken - Called with each text chunk as it streams in
  * @param onSentence - Called with each complete sentence for TTS
- * @param onComplete - Called when streaming finishes (all sentences flushed)
+ * @param onComplete - Called when streaming finishes
  * @param onError - Called on error
  */
 export const sendChatStream = (
@@ -38,14 +53,13 @@ export const sendChatStream = (
   onComplete: (fullText: string) => void,
   onError?: (error: unknown) => void,
 ) => {
-  const sessionId = `web_${++sessionCounter}`;
   let accumulatedText = '';
   let fullResponse = '';
 
   const body = JSON.stringify({
     app_name: 'digital_human',
     user_id: 'default_user',
-    session_id: sessionId,
+    session_id: PERSISTENT_SESSION_ID,
     new_message: {
       role: 'user',
       parts: [{ text }],
@@ -96,15 +110,11 @@ export const sendChatStream = (
             if (!textPart) continue;
 
             if (isPartial) {
-              // Partial events: incremental token delta
               accumulatedText += textPart;
               onToken(textPart);
               fullResponse += textPart;
-
-              // Detect sentence boundaries
               flushSentences();
             } else {
-              // Non-partial event: flush everything remaining
               const remaining = accumulatedText.trim();
               if (remaining) {
                 onSentence(remaining);
@@ -119,7 +129,7 @@ export const sendChatStream = (
         }
       }
 
-      // Flush any remaining text (stream ended without a terminal event)
+      // Flush any remaining text
       const remaining = accumulatedText.trim();
       if (remaining) {
         onSentence(remaining);
@@ -133,14 +143,12 @@ export const sendChatStream = (
       onError?.(err);
     });
 
-  /** Extract complete sentences from accumulatedText and call onSentence */
   function flushSentences() {
-    // Split on . ! ? or newline (keeping the delimiter)
     const boundaryRegex = /[.!?\n]/;
     let match: RegExpExecArray | null;
 
     while ((match = boundaryRegex.exec(accumulatedText)) !== null) {
-      const endIdx = match.index + 1; // include the delimiter
+      const endIdx = match.index + 1;
       const sentence = accumulatedText.slice(0, endIdx).trim();
       if (sentence) {
         onSentence(sentence);
