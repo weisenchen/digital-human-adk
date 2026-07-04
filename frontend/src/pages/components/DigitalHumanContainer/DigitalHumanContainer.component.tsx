@@ -604,7 +604,7 @@ const DigitalHumanContainer = ({ compact = false }: { compact?: boolean }) => {
       cancelAnimationFrame(animRef.current);
       ro.disconnect();
     };
-  }, [drawFace, mouthOpen, customAvatar]);
+  }, [drawFace, mouthOpen, customAvatar, characterName]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
