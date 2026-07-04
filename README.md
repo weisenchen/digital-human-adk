@@ -68,33 +68,86 @@ npm run dev        # → http://localhost:3000
 
 Open `http://localhost:3000` — the Live2D avatar appears and you can chat via text or voice!
 
+## 🎙 Voice Character Selection
+
+A built-in **Voice Character Selector** lets you customize your digital human's voice and persona:
+
+| Feature | Description |
+|---|---|
+| **♂/♀ Gender toggle** | Switch between female and male voice actors |
+| **Voice list** | Pick from 10+ Edge TTS voices per locale, with localized names |
+| **Character name** | Edit the avatar's name displayed in the UI |
+| **Popular names** | One-click suggestions based on locale and gender |
+| **7 locales** | English (US/UK), Chinese (Mandarin/Cantonese), Japanese, Korean, French |
+
+**How it works:** The character name is used in the UI and can be referenced in the agent's system prompt. The voice ID is sent to the backend's `/audio/tts` endpoint for speech synthesis. When you switch language (e.g. from EN to 中文), the voice list automatically filters to matching locale voices.
+
 ## Architecture
 
 ```text
-┌─ Frontend (Next.js + Live2D) ────────────────────────┐
-│  Text input:    POST /chat    → non-streaming reply  │
-│  Mic input:     Web Speech → POST /run_sse → SSE TTS │
-│  Custom:        POST /audio/tts     → text-to-speech │
-└──────────────────┬────────────────────────────────────┘
+┌─ Frontend (Next.js + Live2D) ────────────────────────────┐
+│  Character Selector                                       │
+│    ├─ Gender toggle (♂/♀)                                │
+│    ├─ Voice radio list (localized names)                  │
+│    ├─ Character name editor                               │
+│    └─ Popular names (locale-appropriate)                  │
+│                                                           │
+│  Text input:    POST /chat          → non-streaming reply │
+│  Mic input:     Web Speech → POST /run_sse → SSE + TTS   │
+│  TTS:           POST /audio/tts      → text + voice → mp3│
+└──────────────────┬────────────────────────────────────────┘
                    │
-┌─ Backend (ADK built-in FastAPI server) ──────────────┐
-│  ADK Web Server (google.adk.cli.fast_api)             │
-│    → /run, /run_sse, /run_live (WebSocket)            │
-│    → Session management, tool calling, streaming      │
-│    → ADK Web debug UI (Angular)                       │
-│  + Custom /chat, /audio/tts endpoints              │
-│  + .env for API keys / provider config                │
-└───────────────────────────────────────────────────────┘
+┌─ Backend (ADK built-in FastAPI server) ──────────────────┐
+│  ADK Web Server (google.adk.cli.fast_api)                 │
+│    → /run, /run_sse, /run_live (WebSocket)                │
+│    → Session management, tool calling, streaming          │
+│    → ADK Web debug UI (Angular)                           │
+│  + Custom /chat, /audio/tts, /api/voices endpoints      │
+│  + Voice catalog (locale, gender, popular names)          │
+│  + .env for API keys / provider config                    │
+└───────────────────────────────────────────────────────────┘
 ```
 
 ## API Endpoints
 
 | Method | Path | Description |
 |---|---|---|
+| GET  | `/api/voices` | Voice catalog (locale, gender, names) |
 | POST | `/chat` | Send text, get AI reply (form: text=...) |
-| POST | `/audio/tts` | Send text, get audio file (form: text+language) |
+| POST | `/audio/tts` | Send text+voice, get audio file (form: text+language+voice) |
 | POST | `/run` | ADK native agent execution API |
 | GET  | `/` | ADK Web debug UI |
+
+### `/api/voices` Response Example
+
+```json
+[
+  {
+    "voice_id": "en-US-JennyNeural",
+    "display_name": "Jenny",
+    "localized_name": "Jenny",
+    "locale": "en-US",
+    "gender": "female",
+    "popular_names": ["Olivia", "Emma", "Charlotte", "Amelia", "Sophia", ...]
+  },
+  {
+    "voice_id": "zh-CN-XiaoxiaoNeural",
+    "display_name": "Xiaoxiao",
+    "localized_name": "小笑",
+    "locale": "cmn-CN",
+    "gender": "female",
+    "popular_names": ["小薇", "小美", "小雨", "小琳", "小娜", ...]
+  },
+  {
+    "voice_id": "zh-CN-YunxiNeural",
+    "display_name": "Yunxi",
+    "localized_name": "云希",
+    "locale": "cmn-CN",
+    "gender": "male",
+    "popular_names": ["小明", "小刚", "志强", "云浩", "伟杰", ...]
+  }
+]
+```
 
 ## TTS Provider (Voice Output)
 
@@ -102,7 +155,7 @@ Speech is handled server-side. Set `TTS_PROVIDER` in `.env`:
 
 | Provider | API Key Needed | Notes |
 |---|---|---|
-| `edge` | ❌ Free | **Default.** Fast, zero config. Requires `pip install edge-tts` (uncomment in requirements.txt) |
+| `edge` | ❌ Free | **Default.** Fast, zero config. Supports 7 locales + male/female voices. Requires `pip install edge-tts` (uncomment in requirements.txt) |
 | `google` | ✅ GCP credentials | Natural voices, needs `GOOGLE_APPLICATION_CREDENTIALS` env var |
 | `openai` | ✅ OPENAI_API_KEY | `TTS_PROVIDER=openai` |
 
@@ -116,14 +169,15 @@ digital-human-adk/
 │   ├── digital_human.py      ← ADK Agent ("Xiao Wei", Gemini 2.5 Flash)
 │   └── tools.py              ← Custom tools (in-memory memory, etc.)
 ├── audio/
-│   └── tts.py                ← Text-to-speech (Edge / Google / OpenAI)
-├── server.py                 ← ADK server + custom /chat, /audio/* endpoints
+│   └── tts.py                ← Text-to-speech + voice catalog (Edge / Google / OpenAI)
+├── server.py                 ← ADK server + custom /chat, /audio/tts, /api/voices
 ├── frontend/                 ← Next.js + Live2D frontend
 │   ├── src/pages/
 │   │   ├── index.tsx
 │   │   ├── services/adk-assistant.service.ts
 │   │   ├── hooks/useVoiceAssistant.hook.tsx
-│   │   └── context/VoiceAssistantProvider.js
+│   │   ├── context/VoiceAssistantProvider.js
+│   │   └── components/CharacterSelector/ ← Voice character picker
 │   ├── public/
 │   │   ├── library/          ← Live2D SDK
 │   │   └── shizuku_model/    ← Live2D character model

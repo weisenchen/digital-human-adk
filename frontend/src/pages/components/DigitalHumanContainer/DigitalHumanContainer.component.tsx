@@ -19,6 +19,7 @@ declare global {
 const DigitalHumanContainer = () => {
   const {
     mouthOpen,
+    characterName = 'Xiao Wei',
   } = useContext(VoiceAssistantContext);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -92,7 +93,7 @@ const DigitalHumanContainer = () => {
     <div className="flex flex-col items-center justify-center bg-white rounded-xl shadow-card border border-[#E2E8F0] p-4 h-full overflow-hidden">
       <div className="flex items-center gap-2 mb-2 text-sm text-[#4A5568]">
         <span className="w-2 h-2 rounded-full bg-[#48BB78] animate-pulse" />
-        Xiao Wei is here
+        {characterName || 'Character'} is here
       </div>
       <canvas ref={canvasRef} className="max-w-full max-h-full" />
     </div>

@@ -6,12 +6,23 @@
  *   sendChatStream  - voice chat via POST /run_sse (streaming + sentence TTS)
  *
  * Both share the same session_id for conversation memory.
+ * Voice character selection is passed to /audio/tts for speech synthesis.
  */
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:8000';
 
 /** Persistent session so the agent remembers our conversation across messages */
 const PERSISTENT_SESSION_ID = 'persistent_chat_session';
+
+/** Voice list type returned by GET /api/voices */
+export interface VoiceOption {
+  voice_id: string;
+  display_name: string;
+  localized_name: string;
+  locale: string;
+  gender: string;
+  popular_names: string[];
+}
 
 /**
  * Text chat - simple POST /chat (non-streaming, text in / text out).
@@ -27,11 +38,21 @@ export const sendChatMessage = async (text: string) => {
   return { reply: data.reply as string };
 };
 
+/**
+ * Fetch voice catalog from backend.
+ */
+export const fetchVoices = async (): Promise<VoiceOption[]> => {
+  const res = await fetch(`${BASE_URL}/api/voices`);
+  if (!res.ok) throw new Error(`Failed to fetch voices: ${res.status}`);
+  return res.json();
+};
+
 /** Send AI response text -> get audio file (full sentence) */
-export const getAIAudioFromText = async (text: string, language: string) => {
+export const getAIAudioFromText = async (text: string, language: string, voice?: string) => {
   const formData = new FormData();
   formData.append('text', text);
   formData.append('language', language);
+  if (voice) formData.append('voice', voice);
   const res = await fetch(`${BASE_URL}/audio/tts`, { method: 'POST', body: formData });
   return await res.blob();
 };

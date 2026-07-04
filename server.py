@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from google.adk.cli.fast_api import get_fast_api_app
 from google.adk.runners import Runner
@@ -23,11 +23,11 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from agents.digital_human import root_agent
-from audio.tts import synthesize
+from audio.tts import synthesize, list_voices
 
 
 def create_app() -> FastAPI:
-    """Create ADK web server with custom TTS and chat endpoints."""
+    """Create ADK web server with custom TTS, voice catalog, and chat endpoints."""
 
     # 1. ADK built-in server (Web UI, /run, /run_sse, WebSocket, session mgmt)
     app = get_fast_api_app(
@@ -64,10 +64,20 @@ def create_app() -> FastAPI:
                 break
         return {"reply": reply}
 
-    # 3. Text-to-Speech
+    # 3. Voice catalog API
+    @app.get("/api/voices")
+    async def get_voices():
+        """Return available TTS voices with locale, gender, and popular names."""
+        return JSONResponse(list_voices())
+
+    # 4. Text-to-Speech with voice character selection
     @app.post("/audio/tts")
-    async def text_to_speech(text: str = Form(...), language: str = Form("en")):
-        path = await synthesize(text, language)
+    async def text_to_speech(
+        text: str = Form(...),
+        language: str = Form("en"),
+        voice: str = Form(""),  # edge-tts voice name; empty = default
+    ):
+        path = await synthesize(text, language, voice or None)
         return FileResponse(path, media_type="audio/mpeg", filename="speech.mp3")
 
     return app
@@ -79,7 +89,8 @@ if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")
     app = create_app()
     print(f"🚀 ADK Digital Human: http://{host}:{port}")
-    print(f"💬 Chat: POST /chat           (form: text=...)")
-    print(f"🔊 TTS:  POST /audio/tts      (form: text+language)")
-    print(f"🖥️  Web:  http://{host}:{port}            (ADK Web UI)")
+    print(f"💬 Chat:  POST /chat           (form: text=...)")
+    print(f"🔊 TTS:   POST /audio/tts      (form: text+language+voice)")
+    print(f"🎙 Voice: GET  /api/voices       (voice catalog)")
+    print(f"🖥️  Web:  http://{host}:{port}             (ADK Web UI)")
     uvicorn.run(app, host=host, port=port)

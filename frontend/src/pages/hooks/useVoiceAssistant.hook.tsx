@@ -1,12 +1,32 @@
 "use client";
 
-import { sendChatMessage, sendChatStream, getAIAudioFromText } from "@/pages/services/adk-assistant.service"
-import { useRef, useState, useCallback } from "react"
+import { sendChatMessage, sendChatStream, getAIAudioFromText, fetchVoices, VoiceOption } from "@/pages/services/adk-assistant.service"
+import { useRef, useState, useCallback, useEffect } from "react"
 
 interface Message {
     text: string;
     isUser: boolean;
   }
+
+const LANGUAGE_LOCALE_MAP: Record<string, string> = {
+  'en-GB': 'en-US',
+  'cmn-CN': 'cmn-CN',
+  'Yue-HK': 'Yue-HK',
+  'en-US': 'en-US',
+  'ja-JP': 'ja-JP',
+  'ko-KR': 'ko-KR',
+  'fr-FR': 'fr-FR',
+};
+
+const FALLBACK_VOICES: Record<string, { female: string; male: string }> = {
+  'en-US': { female: 'en-US-JennyNeural', male: 'en-US-GuyNeural' },
+  'en-GB': { female: 'en-GB-SoniaNeural', male: 'en-GB-RyanNeural' },
+  'cmn-CN': { female: 'zh-CN-XiaoxiaoNeural', male: 'zh-CN-YunxiNeural' },
+  'Yue-HK': { female: 'zh-HK-HiuGaaiNeural', male: 'zh-HK-WanLungNeural' },
+  'ja-JP': { female: 'ja-JP-NanamiNeural', male: 'ja-JP-KeitaNeural' },
+  'ko-KR': { female: 'ko-KR-SunHiNeural', male: 'ko-KR-InJoonNeural' },
+  'fr-FR': { female: 'fr-FR-DeniseNeural', male: 'fr-FR-HenriNeural' },
+};
 
 const useVoiceAssistant = ()=>{
     const [isWaitingAIOutput,setIsWaitingAIOutput] = useState<boolean>(false)
@@ -14,6 +34,12 @@ const useVoiceAssistant = ()=>{
     const [chatData, setChatData] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [mouthOpen, setMouthOpen] = useState(0);
+
+    // Voice character selection
+    const [voices, setVoices] = useState<VoiceOption[]>([]);
+    const [selectedVoice, setSelectedVoice] = useState<string>('');    // voice_id
+    const [selectedGender, setSelectedGender] = useState<string>('female');
+    const [characterName, setCharacterName] = useState<string>('Xiao Wei');
 
     // Audio playback queue
     const audioQueueRef = useRef<Blob[]>([]);
@@ -23,6 +49,44 @@ const useVoiceAssistant = ()=>{
     const generationRef = useRef(0);
     /** Stores the cancel function for the current SSE stream */
     const cancelSSERef = useRef<(() => void) | null>(null);
+
+  // ─────────────────────────────────────────────
+  // Load voices from backend on mount
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    fetchVoices()
+      .then(setVoices)
+      .catch((err) => console.error('Failed to load voices:', err));
+  }, []);
+
+  // Auto-select a voice when language or gender changes
+  useEffect(() => {
+    const locale = LANGUAGE_LOCALE_MAP[selectedLanguage] || 'en-US';
+    // If we have voices from the server, pick the first matching voice for the locale+gender
+    const matching = voices.filter(
+      (v) => v.locale === locale && v.gender === selectedGender
+    );
+    if (matching.length > 0) {
+      setSelectedVoice(matching[0].voice_id);
+      // Also update character name from popular_names
+      const names = matching[0].popular_names;
+      if (names && names.length > 0) {
+        setCharacterName(names[0]);
+      }
+    } else {
+      // Fallback to hardcoded defaults
+      const fallback = FALLBACK_VOICES[selectedLanguage] || FALLBACK_VOICES['en-US'];
+      setSelectedVoice(fallback[selectedGender as 'female' | 'male'] || fallback.female);
+    }
+  }, [selectedLanguage, selectedGender, voices]);
+
+  // Derive the active voice_id for TTS calls
+  const getActiveVoice = useCallback(() => {
+    if (selectedVoice) return selectedVoice;
+    const locale = LANGUAGE_LOCALE_MAP[selectedLanguage] || 'en-US';
+    const fallback = FALLBACK_VOICES[selectedLanguage] || FALLBACK_VOICES['en-US'];
+    return fallback[selectedGender as 'female' | 'male'] || fallback.female;
+  }, [selectedVoice, selectedGender, selectedLanguage]);
 
   // ─────────────────────────────────────────────
   // Path 1: Text chat (POST /chat, non-streaming)
@@ -61,6 +125,8 @@ const useVoiceAssistant = ()=>{
     setChatData((prev) => [...prev, { text: '', isUser: false }]);
     setIsWaitingAIOutput(true);
 
+    const voice = getActiveVoice();
+
     const cancel = sendChatStream(
       transcript,
       // onToken
@@ -77,7 +143,7 @@ const useVoiceAssistant = ()=>{
       // onSentence
       async (sentence) => {
         try {
-          const blob = await getAIAudioFromText(sentence, selectedLanguage);
+          const blob = await getAIAudioFromText(sentence, selectedLanguage, voice);
           if (generationRef.current !== gen) return;
           audioQueueRef.current.push(blob);
           playNextInQueue();
@@ -201,6 +267,23 @@ const useVoiceAssistant = ()=>{
     setSelectedLanguage(language);
   };
 
+  const handleGenderChange = (gender: string) => {
+    setSelectedGender(gender);
+  };
+
+  const handleVoiceSelect = (voice_id: string) => {
+    setSelectedVoice(voice_id);
+    // Update character name from the matching voice
+    const match = voices.find((v) => v.voice_id === voice_id);
+    if (match && match.popular_names.length > 0) {
+      setCharacterName(match.popular_names[0]);
+    }
+  };
+
+  const handleCharacterNameChange = (name: string) => {
+    setCharacterName(name);
+  };
+
   return {
     handleSpeechRecognized,
     isWaitingAIOutput,
@@ -211,6 +294,14 @@ const useVoiceAssistant = ()=>{
     setInputText,
     handleTextSubmit,
     mouthOpen,
+    // Voice character
+    voices,
+    selectedVoice,
+    selectedGender,
+    handleGenderChange,
+    handleVoiceSelect,
+    characterName,
+    handleCharacterNameChange,
   };
 };
 

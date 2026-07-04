@@ -11,6 +11,7 @@ import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 import ChatDisplay from '../ChatDisplay/ChatDisplay.component';
 import VoiceRecorder from '../VoiceRecorder/VoiceRecorder.component';
 import Loading from '../Loading/Loading.component'
+import CharacterSelector from '../CharacterSelector/CharacterSelector.component';
 
 export default function ConversationContainer() {
   const context = useContext(VoiceAssistantContext);
@@ -39,6 +40,9 @@ export default function ConversationContainer() {
         <MessageCircle className="w-5 h-5 text-[#6B46C1]" />
         Conversation
       </h2>
+
+      {/* Character selector */}
+      <CharacterSelector />
 
       <ChatDisplay chatData={chatData} />
 
