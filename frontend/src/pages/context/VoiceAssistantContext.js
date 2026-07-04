@@ -26,7 +26,7 @@ const VoiceAssistantContext = createContext({
   hasUsedVoice: false,
   // Model selection
   models: [],
-  selectedModel: "gemini-2.5-flash",
+  selectedModel: "deepseek-chat",
   handleModelSelect: (m) => {},
 });
 

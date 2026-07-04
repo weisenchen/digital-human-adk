@@ -131,7 +131,7 @@ export const generateSlides = async (script: string, language: string, numSlides
 };
 
 /**
- * Voice chat - streaming via POST /run_sse.
+ * Voice chat - streaming via POST /chat/stream.
  * Used when the user speaks into the microphone.
  *
  * Returns a cancel function to abort the request.
@@ -141,6 +141,8 @@ export const generateSlides = async (script: string, language: string, numSlides
  * @param onSentence - Called with each complete sentence for TTS
  * @param onComplete - Called when streaming finishes with the full response text
  * @param onError - Called on error
+ * @param characterName - Character name for session injection
+ * @param personalityPrompt - Personality system prompt
  * @returns cancel - Call to abort the SSE request
  */
 export const sendChatStream = (
@@ -149,22 +151,19 @@ export const sendChatStream = (
   onSentence: (sentence: string) => void,
   onComplete: (fullText: string) => void,
   onError?: (error: unknown) => void,
+  characterName?: string,
+  personalityPrompt?: string,
 ): (() => void) => {
   const abortController = new AbortController();
   let accumulatedText = '';
   let fullResponse = '';
   let timedOut = false;
 
-  const body = JSON.stringify({
-    app_name: 'digital_human',
-    user_id: 'default_user',
-    session_id: PERSISTENT_SESSION_ID,
-    new_message: {
-      role: 'user',
-      parts: [{ text }],
-    },
-    streaming: true,
-  });
+  const formData = new FormData();
+  formData.append('text', text);
+  formData.append('session_id', PERSISTENT_SESSION_ID);
+  if (characterName) formData.append('character_name', characterName);
+  if (personalityPrompt) formData.append('personality', personalityPrompt);
 
   // Timeout: if no SSE data arrives within SSE_TIMEOUT_MS, abort
   const timeoutId = setTimeout(() => {
@@ -173,10 +172,9 @@ export const sendChatStream = (
     onError?.(new Error(`SSE request timed out after ${SSE_TIMEOUT_MS / 1000}s`));
   }, SSE_TIMEOUT_MS);
 
-  fetch(`${BASE_URL}/run_sse`, {
+  fetch(`${BASE_URL}/chat/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body,
+    body: formData,
     signal: abortController.signal,
   })
     .then(async (response) => {

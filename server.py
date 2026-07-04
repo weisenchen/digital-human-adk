@@ -38,7 +38,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("digital-human.server")
 
 # ── Default model ──────────────────────────────────────────────────────────
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "deepseek-chat"
 
 # ── Build runners for every Gemini (ADK) model ────────────────────────────
 def _build_adk_runners():
@@ -386,6 +386,134 @@ def create_app() -> FastAPI:
         except Exception as exc:
             logger.error("Chat error: %s", exc, exc_info=True)
             return {"reply": f"(Error: Sorry, something went wrong — {exc})"}
+
+    @app.post("/chat/stream")
+    async def chat_stream(
+        text: str = Form(...),
+        session_id: str = Form("default"),
+        character_name: str = Form(""),
+        personality: str = Form(""),
+    ):
+        """SSE streaming chat — same as /chat but streams tokens.
+        Returns ADK-compatible SSE events for frontend parsing."""
+        from fastapi.responses import StreamingResponse
+
+        async def _stream_adk(text: str, session_id: str, character_name: str, personality: str):
+            """Stream from ADK runner."""
+            model_id = _get_model_for_session(session_id)
+            runner = _get_adk_runner(model_id)
+            svc = _get_adk_session_service(model_id)
+            if not runner or not svc:
+                yield f"data: {_sse_event(False, 'Sorry, this model is not available')}\n\n"
+                return
+
+            try:
+                await svc.create_session(
+                    app_name="digital_human",
+                    user_id="default_user",
+                    session_id=session_id,
+                )
+            except Exception:
+                pass
+
+            await _inject_name_adk(session_id, character_name, personality)
+
+            new_msg = types.Content(role="user", parts=[types.Part(text=text)])
+            async for event in runner.run_async(
+                user_id="default_user",
+                session_id=session_id,
+                new_message=new_msg,
+            ):
+                if event.author == "user":
+                    continue
+                if event.content and event.content.parts:
+                    text_part = event.content.parts[0].text or ""
+                    yield f"data: {_sse_event(event.partial, text_part)}\n\n"
+
+        async def _stream_openai(text: str, session_id: str, character_name: str, personality: str):
+            """Stream from OpenAI-compatible API (DeepSeek, Claude, etc.)."""
+            model_id = _get_model_for_session(session_id)
+            info = MODEL_CATALOG.get(model_id)
+            if not info:
+                yield f"data: {_sse_event(False, f'Unknown model: {model_id}')}\n\n"
+                return
+
+            client = get_openai_client(model_id)
+            if not client:
+                name = info.get("name", model_id)
+                yield f"data: {_sse_event(False, f'{name} is not configured')}\n\n"
+                return
+
+            # Build messages
+            if session_id not in _openai_histories:
+                sys_prompt = _get_system_prompt(character_name, personality)
+                _openai_histories[session_id] = [
+                    {"role": "system", "content": sys_prompt},
+                ]
+                _configured_sessions[session_id] = character_name
+            elif session_id not in _configured_sessions or _configured_sessions[session_id] != character_name:
+                _configured_sessions[session_id] = character_name
+                sys_prompt = _get_system_prompt(character_name, personality)
+                history = _openai_histories[session_id]
+                if history and history[0]["role"] == "system":
+                    history[0] = {"role": "system", "content": sys_prompt}
+                else:
+                    history.insert(0, {"role": "system", "content": sys_prompt})
+
+            _openai_histories[session_id].append({"role": "user", "content": text})
+
+            try:
+                stream = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        lambda: client.chat.completions.create(
+                            model=info["model"],
+                            messages=_openai_histories[session_id],
+                            stream=True,
+                        )
+                    ),
+                    timeout=60,
+                )
+                full_reply = ""
+                for chunk in stream:
+                    delta = chunk.choices[0].delta if chunk.choices else None
+                    if delta and delta.content:
+                        full_reply += delta.content
+                        yield f"data: {_sse_event(True, delta.content)}\n\n"
+                _openai_histories[session_id].append({"role": "assistant", "content": full_reply})
+                yield f"data: {_sse_event(False, full_reply)}\n\n"
+            except Exception as exc:
+                logger.error("Stream error: %s", exc)
+                yield f"data: {_sse_event(False, f'(Error: {exc})')}\n\n"
+
+        def _sse_event(partial: bool, text: str):
+            """Build ADK-compatible SSE event dict."""
+            return __import__('json').dumps({
+                "author": "digital_human",
+                "partial": partial,
+                "content": {
+                    "parts": [{"text": text}],
+                },
+            })
+
+        async def _stream_gen():
+            model_id = _get_model_for_session(session_id)
+            info = MODEL_CATALOG.get(model_id, {})
+            if info.get("backend") == "openai":
+                async for event in _stream_openai(text, session_id, character_name, personality):
+                    yield event
+            else:
+                async for event in _stream_adk(text, session_id, character_name, personality):
+                    yield event
+
+        return StreamingResponse(
+            _stream_gen(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     @app.post("/inject-name")
     async def inject_name(

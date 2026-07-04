@@ -24,7 +24,7 @@ MODEL_CATALOG: dict[str, dict] = {
     # DeepSeek (OpenAI-compatible)
     "deepseek-chat": {
         "id": "deepseek-chat",
-        "name": "DeepSeek V4",
+        "name": "DeepSeek V4 Flash",
         "provider": "DeepSeek",
         "backend": "openai",
         "api_base": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),

@@ -45,7 +45,7 @@ const useVoiceAssistant = ()=>{
 
     // Model selection
     const [models, setModels] = useState<ModelOption[]>([]);
-    const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash');
+    const [selectedModel, setSelectedModel] = useState<string>('deepseek-chat');
 
     // UX enhancements
     const [isSpeaking, setIsSpeaking] = useState(false);
@@ -206,6 +206,8 @@ const useVoiceAssistant = ()=>{
         setIsWaitingAIOutput(false);
         setToastMessage("Voice chat error. Try typing instead.");
       },
+      characterName,
+      getPersonalityPrompt(),
     );
 
     cancelSSERef.current = cancel;
