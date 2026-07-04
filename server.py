@@ -46,8 +46,24 @@ def create_app() -> FastAPI:
     )
 
     @app.post("/chat")
-    async def chat(text: str = Form(...), session_id: str = Form("default")):
+    async def chat(
+        text: str = Form(...),
+        session_id: str = Form("default"),
+        character_name: str = Form("Xiao Wei"),
+    ):
         """POST form: text=hello → {"reply": "Hi! I'm Xiao Wei~"}"""
+        # Inject character name into the session for the agent to use
+        character_msg = types.Content(
+            role="user",
+            parts=[types.Part(text=f"[System: Your name is \"{character_name}\". Introduce yourself as {character_name} if asked.]")]
+        )
+        async for _ in _runner.run_async(
+            user_id="default_user",
+            session_id=session_id,
+            new_message=character_msg,
+        ):
+            pass
+
         new_msg = types.Content(role="user", parts=[types.Part(text=text)])
         events = []
         async for event in _runner.run_async(
