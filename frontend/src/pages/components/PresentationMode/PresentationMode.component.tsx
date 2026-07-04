@@ -83,11 +83,20 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   // Track if component is mounted
   const mountedRef = useRef(true);
   useEffect(() => {
-    // Hide body scrollbar so fixed overlay fills entire viewport
-    const prevOverflow = document.body.style.overflow;
+    // Hide body/html scrollbar so fixed overlay fills entire viewport
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyBg = document.body.style.backgroundColor;
+    const prevHtmlBg = document.documentElement.style.backgroundColor;
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.backgroundColor = '#ffffff';
+    document.documentElement.style.backgroundColor = '#ffffff';
     return () => {
-      document.body.style.overflow = prevOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.backgroundColor = prevBodyBg;
+      document.documentElement.style.backgroundColor = prevHtmlBg;
       mountedRef.current = false;
       stopReading();
       stopTimer();
