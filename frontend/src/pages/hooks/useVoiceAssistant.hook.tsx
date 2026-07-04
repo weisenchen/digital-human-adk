@@ -104,7 +104,7 @@ const useVoiceAssistant = ()=>{
     setIsWaitingAIOutput(true);
 
     try {
-      const { reply } = await sendChatMessage(text);
+      const { reply } = await sendChatMessage(text, characterName);
       setChatData((prev) => [...prev, { text: reply, isUser: false }]);
     } catch (err) {
       console.error("Text chat error:", err);

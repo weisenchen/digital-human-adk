@@ -28,10 +28,11 @@ export interface VoiceOption {
  * Text chat - simple POST /chat (non-streaming, text in / text out).
  * Used when the user types and hits Enter.
  */
-export const sendChatMessage = async (text: string) => {
+export const sendChatMessage = async (text: string, characterName?: string) => {
   const formData = new FormData();
   formData.append('text', text);
   formData.append('session_id', PERSISTENT_SESSION_ID);
+  if (characterName) formData.append('character_name', characterName);
   const res = await fetch(`${BASE_URL}/chat`, { method: 'POST', body: formData });
   if (!res.ok) throw new Error(`Chat request failed: ${res.status}`);
   const data = await res.json();
