@@ -92,6 +92,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
     document.documentElement.style.overflow = 'hidden';
     document.body.style.backgroundColor = '#ffffff';
     document.documentElement.style.backgroundColor = '#ffffff';
+
     return () => {
       document.body.style.overflow = prevBodyOverflow;
       document.documentElement.style.overflow = prevHtmlOverflow;
@@ -299,9 +300,8 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   // ── Render: Script Input ───────────────────────
   if (stage === 'input') {
     return (
-      // Input stage: fully opaque white background — no transparency, no backdrop blur
-      <div style={{ position: "fixed", inset: 0, zIndex: 50, width: "100vw", height: "100dvh", maxWidth: "100vw", maxHeight: "100dvh", overflow: "hidden", margin: 0, padding: 0, backgroundColor: "#ffffff" }} className="flex items-center justify-center">
-        <div className="bg-white rounded-[var(--shape-lg)] shadow-elevation-5 w-full max-w-2xl max-h-[90vh] flex flex-col" style={{ maxHeight: "calc(100dvh - 32px)" }}>
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: -5000, zIndex: 50, overflow: "hidden", backgroundColor: "#ffffff" }} className="flex items-center justify-center">
+        <div className="bg-white rounded-[var(--shape-lg)] shadow-elevation-5 w-full max-w-2xl max-h-[90vh] flex flex-col" style={{ maxHeight: "calc(100vh - 32px)" }}>
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--md-outline)]">
             <div className="flex items-center gap-2">
@@ -423,9 +423,8 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   // ── Render: Slide Editor (after AI generation) ──
   if (stage === 'editor') {
     return (
-      // Editor stage: fully opaque white background
-      <div style={{ position: "fixed", inset: 0, zIndex: 50, width: "100vw", height: "100dvh", maxWidth: "100vw", maxHeight: "100dvh", overflow: "hidden", margin: 0, padding: 0, backgroundColor: "#ffffff" }} className="flex items-center justify-center">
-        <div className="bg-white rounded-[var(--shape-lg)] shadow-elevation-5 w-full max-w-3xl max-h-[95vh] flex flex-col" style={{ maxHeight: "calc(100dvh - 32px)" }}>
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: -5000, zIndex: 50, overflow: "hidden", backgroundColor: "#ffffff" }} className="flex items-center justify-center">
+        <div className="bg-white rounded-[var(--shape-lg)] shadow-elevation-5 w-full max-w-3xl max-h-[95vh] flex flex-col" style={{ maxHeight: "calc(100vh - 32px)" }}>
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--md-outline)]">
             <div className="flex items-center gap-2">
@@ -579,7 +578,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 50, width: "100vw", height: "100dvh", maxWidth: "100vw", maxHeight: "100dvh", overflow: "hidden", margin: 0, padding: 0, backgroundColor: "#ffffff" }} className="flex flex-col">
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: -5000, zIndex: 50, overflow: "hidden", backgroundColor: "#ffffff" }} className="flex flex-col">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--md-outline)] bg-white">
         <div className="flex items-center gap-3">

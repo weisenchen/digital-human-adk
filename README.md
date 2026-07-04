@@ -82,6 +82,23 @@ A built-in **Voice Character Selector** lets you customize your digital human's 
 
 **How it works:** The character name is used in the UI and can be referenced in the agent's system prompt. The voice ID is sent to the backend's `/audio/tts` endpoint for speech synthesis. When you switch language (e.g. from EN to 中文), the voice list automatically filters to matching locale voices.
 
+## 📽 Presentation Mode
+
+Read scripts aloud in a full-screen slide presentation with AI-generated slides:
+
+1. **Input** — Paste your script, set slide count & total duration, click **AI Generate**
+2. **Editor** — Review/edit generated slides (display content + speech narration per slide)
+3. **Present** — Full-screen with auto-advance timer, TTS narration, and navigation controls
+
+| Feature | Description |
+|---|---|
+| **AI Generate** | Smartly splits script into N slides with display content + speech narration |
+| **Auto-advance** | Timer counts down per-slide, auto-advances when time expires |
+| **TTS narration** | Each slide read aloud using the selected voice character |
+| **Keyboard shortcuts** | `←` `→` navigate, `Space` read aloud |
+| **Slide editor** | Edit display text and speech script individually after generation |
+| **Background overlay** | Opaque white overlay covers entire viewport to hide underlying UI |
+
 ## Architecture
 
 ```text
@@ -111,11 +128,12 @@ A built-in **Voice Character Selector** lets you customize your digital human's 
 ## API Endpoints
 
 | Method | Path | Description |
-|---|---|---|
+|---|---|---|---|
 | GET  | `/api/voices` | Voice catalog (locale, gender, names) |
 | POST | `/chat` | Send text, get AI reply (form: text=...) |
 | POST | `/audio/tts` | Send text+voice, get audio file (form: text+language+voice) |
 | POST | `/run` | ADK native agent execution API |
+| POST | `/generate-slides` | AI slide generation from script (form: topic+language+num_slides) |
 | GET  | `/` | ADK Web debug UI |
 
 ### `/api/voices` Response Example
