@@ -96,7 +96,7 @@ const CharacterSelector: React.FC = () => {
                     {charName}
                   </div>
                   <div className="text-xs text-gray-400 truncate mt-0.5">
-                    {v.localized_name} · {v.locale}
+                    {v.locale}
                   </div>
                 </div>
               </label>
