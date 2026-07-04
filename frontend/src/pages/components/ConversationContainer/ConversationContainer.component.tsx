@@ -13,13 +13,6 @@ import CharacterSelector from '../CharacterSelector/CharacterSelector.component'
 import PresentationMode from '../PresentationMode/PresentationMode.component';
 import DigitalHumanContainer from '../DigitalHumanContainer/DigitalHumanContainer.component';
 
-const SUGGESTIONS = [
-  'Hello! 👋',
-  'Tell me a joke 😄',
-  'What can you do? ✨',
-  'Introduce yourself 🌟',
-];
-
 export default function ConversationContainer() {
   const [showPresentation, setShowPresentation] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -79,30 +72,9 @@ export default function ConversationContainer() {
           <div className="w-20 h-20 rounded-full overflow-hidden mb-4 border-2 border-[var(--md-outline)] shadow-elevation-1">
             <DigitalHumanContainer compact />
           </div>
-          <h1 className="text-title-lg text-[var(--md-on-surface)] font-medium mb-1">
+          <h1 className="text-title-lg text-[var(--md-on-surface)] font-medium">
             {characterName}
           </h1>
-          <p className="text-body-md text-[var(--md-on-surface-variant)] mb-6">
-            How can I help you today?
-          </p>
-
-          {/* Suggestion chips */}
-          <div className="flex flex-wrap justify-center gap-2 max-w-md">
-            {SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                onClick={() => {
-                  setInputText(s);
-                  setTimeout(() => {
-                    handleTextSubmit({ preventDefault: () => {} } as React.FormEvent);
-                  }, 0);
-                }}
-                className="px-4 py-2 rounded-full border border-[var(--md-outline)] text-label-sm text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] hover:border-[var(--md-primary)] transition-colors"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
         </div>
       ) : (
         /* ── Conversation mode ── */
@@ -191,10 +163,6 @@ export default function ConversationContainer() {
             <Send className="w-4 h-4" />
           </button>
         </div>
-        {/* Disclaimer */}
-        <p className="text-label-xs text-[var(--md-on-surface-variant)]/40 text-center mt-2">
-          This is an AI assistant. Responses may not always be accurate.
-        </p>
       </form>
 
       {/* Presentation mode overlay */}
