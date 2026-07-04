@@ -1,10 +1,34 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Node
 node_modules/
 .next/
-venv/
-.env
-*.pyc
-__pycache__/
+.nuxt/
+.temp/
+.tmp/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
 .DS_Store
+
+# Environment
+.env
+.env.*.local
+
+# Temp / Cache
 tmp/
 *.mp3
 *.wav
+*.log
+logs/
