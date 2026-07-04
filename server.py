@@ -117,7 +117,75 @@ def create_app() -> FastAPI:
             background_tasks.add_task(os.remove, path)
         return FileResponse(path, media_type="audio/mpeg", filename="speech.mp3")
 
-    # 5. Startup: clean stale files + start periodic cleanup
+    # 5. Slide generation endpoint - AI-powered script-to-slides
+    @app.post("/generate-slides")
+    async def generate_slides(
+        script: str = Form(...),
+        num_slides: int = Form(5),
+        language: str = Form("en"),
+    ):
+        """Send a raw script to the ADK agent for AI slide generation."""
+        try:
+            prompt = (
+                f"You are a professional presentation designer. Convert the following "
+                f"raw script into exactly {num_slides} well-structured slides.\n\n"
+                f"Each slide has TWO parts separated by '===SPEECH===':\n"
+                f"  1. DISPLAY content — what appears on screen (headings, bullet points, short text)\n"
+                f"  2. SPEECH script — what the narrator reads aloud (full sentences, explanatory, can differ)\n\n"
+                f"RULES:\n"
+                f"- DISPLAY: concise, scannable, presentation-ready. Use ## headings, bullet points, short paragraphs.\n"
+                f"- SPEECH: conversational narration that covers the same key points in more detail.\n"
+                f"- Speech can rephrase, expand, or explain — it does NOT need to match display verbatim.\n"
+                f"- But speech MUST cover all KEY POINTS from the display.\n"
+                f"- Use `---` to separate slides.\n"
+                f"- Use {'English' if language == 'en' else 'Chinese'} for all content.\n\n"
+                f"RAW SCRIPT:\n{script}\n\n"
+                f"OUTPUT FORMAT (exactly):\n"
+                f"## Slide 1 Title\nDisplay content here...\n\n===SPEECH===\nFull speech narration for slide 1...\n\n---\n\n"
+                f"## Slide 2 Title\nDisplay content...\n\n===SPEECH===\nSpeech for slide 2...\n"
+            )
+
+            new_msg = types.Content(role="user", parts=[types.Part(text=prompt)])
+            events = []
+            async for event in _runner.run_async(
+                user_id="default_user",
+                session_id="slide_generation_session",
+                new_message=new_msg,
+            ):
+                events.append(event)
+
+            reply = ""
+            for e in reversed(events):
+                if e.author != "user" and e.content and e.content.parts and not e.partial:
+                    reply = e.content.parts[0].text or ""
+                    break
+
+            if not reply.strip():
+                return {"slides": [{"display": script, "speech": script}]}
+
+            # Parse slides from the markdown reply
+            raw_slides = [s.strip() for s in reply.split("---") if s.strip()]
+            slides = []
+            for slide_text in raw_slides:
+                if "===SPEECH===" in slide_text:
+                    parts = slide_text.split("===SPEECH===", 1)
+                    display = parts[0].strip()
+                    speech = parts[1].strip()
+                else:
+                    display = slide_text
+                    speech = slide_text  # fallback
+                slides.append({"display": display, "speech": speech})
+
+            if not slides:
+                slides = [{"display": reply.strip(), "speech": reply.strip()}]
+
+            return {"slides": slides}
+
+        except Exception as exc:
+            logger.error("Slide generation error: %s", exc, exc_info=True)
+            return {"slides": [{"display": script, "speech": script}], "error": str(exc)}
+
+    # 6. Startup: clean stale files + start periodic cleanup
     @app.on_event("startup")
     async def startup():
         clear_old_cache(max_age_seconds=3600)
@@ -132,8 +200,9 @@ if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")
     app = create_app()
     print(f"🚀 ADK Digital Human: http://{host}:{port}")
-    print(f"💬 Chat:  POST /chat           (form: text=...)")
-    print(f"🔊 TTS:   POST /audio/tts      (form: text+language+voice)")
-    print(f"🎙 Voice: GET  /api/voices       (voice catalog)")
-    print(f"🖥️  Web:  http://{host}:{port}             (ADK Web UI)")
+    print(f"💬 Chat:        POST /chat              (form: text=...)")
+    print(f"🔊 TTS:         POST /audio/tts         (form: text+language+voice)")
+    print(f"🎙 Voice:       GET  /api/voices         (voice catalog)")
+    print(f"📊 Slides:      POST /generate-slides    (form: script+language+num_slides)")
+    print(f"🖥️  Web UI:     http://{host}:{port}     (ADK Web UI)")
     uvicorn.run(app, host=host, port=port)

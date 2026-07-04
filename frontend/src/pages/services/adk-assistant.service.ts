@@ -29,6 +29,12 @@ export interface VoiceOption {
   popular_names: string[];
 }
 
+/** A single slide with separate display content and speech script */
+export interface SlideData {
+  display: string;
+  speech: string;
+}
+
 /**
  * Text chat - simple POST /chat (non-streaming, text in / text out).
  * Used when the user types and hits Enter.
@@ -62,6 +68,22 @@ export const getAIAudioFromText = async (text: string, language: string, voice?:
   if (voice) formData.append('voice', voice);
   const res = await fetch(`${BASE_URL}/audio/tts`, { method: 'POST', body: formData });
   return await res.blob();
+};
+
+/**
+ * AI-powered slide generation from a raw script.
+ * Sends the script to the ADK agent which summarizes/rewrites it into slides.
+ * Each slide has display content (shown on screen) and speech text (read aloud).
+ */
+export const generateSlides = async (script: string, language: string, numSlides: number = 5): Promise<SlideData[]> => {
+  const formData = new FormData();
+  formData.append('script', script);
+  formData.append('language', language);
+  formData.append('num_slides', String(numSlides));
+  const res = await fetch(`${BASE_URL}/generate-slides`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`Slide generation failed: ${res.status}`);
+  const data = await res.json();
+  return data.slides as SlideData[];
 };
 
 /**

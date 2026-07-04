@@ -1,8 +1,13 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Play, Square, StepForward, FileText, ToggleLeft, ToggleRight, SkipBack } from 'lucide-react';
-import { getAIAudioFromText } from '@/pages/services/adk-assistant.service';
+import {
+  X, ChevronLeft, ChevronRight, Play, Square, FileText,
+  ToggleLeft, ToggleRight, Sparkles, Loader2, Plus, Minus,
+  Timer as TimerIcon, Hourglass, ChevronDown, ChevronUp,
+  MessageSquareText,
+} from 'lucide-react';
+import { getAIAudioFromText, generateSlides, SlideData } from '@/pages/services/adk-assistant.service';
 
 interface PresentationModeProps {
   /** Current voice character name (for display) */
@@ -16,14 +21,31 @@ interface PresentationModeProps {
 }
 
 /**
- * Parse a script into slides. Supports:
+ * Parse a script into SlideData[]. Supports:
  *   - `---` as slide separator
  *   - `\n\n\n` (3+ newlines) as slide separator
- *   - Trims whitespace, drops empty slides
+ *   - Within each slide, `===SPEECH===` separates display from speech
+ *   - If no `===SPEECH===`, speech = display (manual entry)
  */
-function parseSlides(script: string): string[] {
+function parseSlides(script: string): SlideData[] {
   const raw = script.split(/\n---\n|\n{3,}/);
-  return raw.map(s => s.trim()).filter(Boolean);
+  return raw
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(s => {
+      if (s.includes('===SPEECH===')) {
+        const [display, speech] = s.split('===SPEECH===', 2);
+        return { display: display.trim(), speech: speech.trim() };
+      }
+      return { display: s, speech: s };
+    });
+}
+
+/** Format seconds into MM:SS */
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 const PresentationMode: React.FC<PresentationModeProps> = ({
@@ -33,30 +55,81 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   onClose,
 }) => {
   // ── State ─────────────────────────────────────────
-  const [stage, setStage] = useState<'input' | 'present'>('input');
+  const [stage, setStage] = useState<'input' | 'editor' | 'present'>('input');
   const [script, setScript] = useState('');
-  const [slides, setSlides] = useState<string[]>([]);
+  const [slides, setSlides] = useState<SlideData[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isReading, setIsReading] = useState(false);
   const [autoAdvance, setAutoAdvance] = useState(true);
   const [readingSlide, setReadingSlide] = useState<number | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [numSlides, setNumSlides] = useState(5);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [expandedSpeech, setExpandedSpeech] = useState<number | null>(null);
+
+  // Timer state
+  const [totalMinutes, setTotalMinutes] = useState(10);
+  const [slideTimeRemaining, setSlideTimeRemaining] = useState(0);
 
   // Audio playback
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
-  // Track if component is mounted (prevent state updates after unmount)
+  // Timer refs
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const slideTimeRef = useRef(0);
+  const remainingRef = useRef(0);
+
+  // Track if component is mounted
   const mountedRef = useRef(true);
   useEffect(() => {
     return () => {
       mountedRef.current = false;
       stopReading();
+      stopTimer();
       if (audioContextRef.current) {
         try { audioContextRef.current.close(); } catch {}
         audioContextRef.current = null;
       }
     };
   }, []);
+
+  const stopTimer = useCallback(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+  }, []);
+
+  const startTimer = useCallback((durationSeconds: number) => {
+    stopTimer();
+    slideTimeRef.current = durationSeconds;
+    remainingRef.current = durationSeconds;
+    setSlideTimeRemaining(durationSeconds);
+
+    timerIntervalRef.current = setInterval(() => {
+      remainingRef.current = Math.max(0, remainingRef.current - 1);
+      setSlideTimeRemaining(remainingRef.current);
+
+      if (remainingRef.current <= 0) {
+        stopTimer();
+        if (mountedRef.current) {
+          setCurrentSlide((prev) => {
+            if (prev < slides.length - 1) return prev + 1;
+            return prev;
+          });
+        }
+      }
+    }, 1000);
+  }, [stopTimer, slides.length]);
+
+  // Re-start timer when currentSlide changes
+  useEffect(() => {
+    if (stage === 'present' && autoAdvance && slides.length > 0) {
+      const perSlideSec = Math.floor((totalMinutes * 60) / slides.length);
+      startTimer(perSlideSec);
+    }
+  }, [currentSlide, stage, autoAdvance, slides.length, totalMinutes, startTimer]);
 
   const stopReading = useCallback(() => {
     if (currentSourceRef.current) {
@@ -99,7 +172,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
         setIsReading(false);
         setReadingSlide(null);
 
-        // Auto-advance to next slide
+        // Auto-advance to next slide after reading finishes
         if (autoAdvance && slideIndex < slides.length - 1) {
           setCurrentSlide(slideIndex + 1);
         }
@@ -113,34 +186,79 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
     }
   }, [language, voiceId, stopReading, autoAdvance, slides.length]);
 
+  const handleAIGenerate = async () => {
+    if (!script.trim()) return;
+    setIsGenerating(true);
+    setGenerationError(null);
+    try {
+      const result = await generateSlides(script, language, numSlides);
+      if (result.length > 0) {
+        setSlides(result);
+        setStage('editor');
+      }
+    } catch (err) {
+      console.error('AI slide generation failed:', err);
+      setGenerationError('Failed to generate slides. Make sure the backend is running.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleStart = () => {
-    const parsed = parseSlides(script);
-    if (parsed.length === 0) return;
-    setSlides(parsed);
+    if (stage === 'input') {
+      const parsed = parseSlides(script);
+      if (parsed.length === 0) return;
+      setSlides(parsed);
+    }
     setCurrentSlide(0);
     setStage('present');
   };
 
+  const goBackToInput = () => {
+    setStage('input');
+    setSlides([]);
+  };
+
+  const adjustNumSlides = (delta: number) => {
+    setNumSlides(Math.max(2, Math.min(20, numSlides + delta)));
+  };
+
+  // Slide editor handlers
+  const updateSlideDisplay = (idx: number, val: string) => {
+    setSlides(prev => prev.map((s, i) => i === idx ? { ...s, display: val } : s));
+  };
+  const updateSlideSpeech = (idx: number, val: string) => {
+    setSlides(prev => prev.map((s, i) => i === idx ? { ...s, speech: val } : s));
+  };
+  const addSlide = () => {
+    setSlides(prev => [...prev, { display: '## New Slide\n\nContent here...', speech: 'Content for this slide.' }]);
+  };
+  const removeSlide = (idx: number) => {
+    setSlides(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const goNext = useCallback(() => {
     if (currentSlide < slides.length - 1) {
+      stopTimer();
       stopReading();
       setCurrentSlide(currentSlide + 1);
     }
-  }, [currentSlide, slides.length, stopReading]);
+  }, [currentSlide, slides.length, stopTimer, stopReading]);
 
   const goPrev = useCallback(() => {
     if (currentSlide > 0) {
+      stopTimer();
       stopReading();
       setCurrentSlide(currentSlide - 1);
     }
-  }, [currentSlide, stopReading]);
+  }, [currentSlide, stopTimer, stopReading]);
 
   const toggleReadCurrent = () => {
     if (isReading) {
       stopReading();
     } else {
       const slide = slides[currentSlide];
-      if (slide) speakText(slide, currentSlide);
+      if (slide) speakText(slide.speech, currentSlide);
     }
   };
 
@@ -153,14 +271,19 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
       else if (e.key === ' ' && !isReading) {
         e.preventDefault();
         const slide = slides[currentSlide];
-        if (slide) speakText(slide, currentSlide);
+        if (slide) speakText(slide.speech, currentSlide);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [stage, goNext, goPrev, isReading, slides, currentSlide, speakText]);
 
-  // ── Render: Script Input ───────────────────────────
+  // ── Per-slide time ────────────────────────────
+  const perSlideSeconds = slides.length > 0 && totalMinutes > 0
+    ? Math.floor((totalMinutes * 60) / slides.length)
+    : 0;
+
+  // ── Render: Script Input ───────────────────────
   if (stage === 'input') {
     return (
       <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
@@ -182,33 +305,99 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
           {/* Body */}
           <div className="flex-1 p-6 overflow-y-auto">
             <p className="text-body-md text-[var(--md-on-surface-variant)] mb-4">
-              Paste your script below. Use <code className="bg-[var(--md-primary-container)] px-1.5 rounded text-label-sm">---</code> or <strong>3 blank lines</strong> to separate slides.
+              Paste your script below, then click <strong>AI Generate</strong> to create structured slides with separate display content and speech narration.
             </p>
             <textarea
               value={script}
               onChange={(e) => setScript(e.target.value)}
-              placeholder={`Welcome to My Presentation\n\nThis is slide 1 content...\n\n---\n\n## Slide 2 Title\n\n- Bullet point 1\n- Bullet point 2\n\n---\n\n### Slide 3\n\nThank you!`}
+              placeholder={`Welcome to My Presentation\n\nThis is my presentation about...\n\nWe'll cover three main topics:\n1. First topic\n2. Second topic\n3. Third topic\n\nLet me explain each in detail...`}
               className="w-full h-64 p-4 text-body-md text-[var(--md-on-surface)] bg-[var(--md-surface-variant)] border border-[var(--md-outline)] rounded-[var(--shape-md)] resize-y focus:outline-none focus:border-[var(--md-primary)] transition-colors font-mono leading-relaxed"
               spellCheck={false}
             />
             <div className="flex items-center justify-between mt-2">
               <span className="text-label-sm text-[var(--md-on-surface-variant)]">
-                {script ? `${parseSlides(script).length} slides detected` : 'Paste your script to begin'}
+                {script ? `${script.split(/\n{3,}/).length} paragraphs` : 'Paste your script to begin'}
               </span>
               <div className="flex items-center gap-2">
+                {/* Slide count selector */}
+                <div className="flex items-center gap-1 mr-1">
+                  <button
+                    onClick={() => adjustNumSlides(-1)}
+                    disabled={isGenerating}
+                    className="state-layer p-1 rounded-[var(--shape-sm)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] disabled:opacity-30 transition-colors"
+                    aria-label="Fewer slides"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-label-sm text-[var(--md-on-surface-variant)] min-w-[1.5rem] text-center">
+                    {numSlides}
+                  </span>
+                  <button
+                    onClick={() => adjustNumSlides(1)}
+                    disabled={isGenerating}
+                    className="state-layer p-1 rounded-[var(--shape-sm)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] disabled:opacity-30 transition-colors"
+                    aria-label="More slides"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {/* AI Generate button */}
+                <button
+                  onClick={handleAIGenerate}
+                  disabled={isGenerating || !script.trim()}
+                  className="state-layer flex items-center gap-1.5 text-label-md px-4 py-2 rounded-[var(--shape-full)] bg-gradient-to-r from-violet-500 to-indigo-500 text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  {isGenerating ? 'Generating...' : 'AI Generate'}
+                </button>
                 <button
                   onClick={onClose}
                   className="text-label-md px-4 py-2 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] transition-colors"
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={handleStart}
-                  disabled={parseSlides(script).length === 0}
-                  className="text-label-md px-5 py-2 rounded-[var(--shape-full)] bg-[var(--md-primary)] text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Start Presentation
-                </button>
+              </div>
+            </div>
+            {/* Error message */}
+            {generationError && (
+              <div className="mt-2 text-label-sm text-[var(--md-error)] flex items-center gap-1.5">
+                <X className="w-3.5 h-3.5" />
+                {generationError}
+              </div>
+            )}
+
+            {/* Timer settings */}
+            <div className="mt-4 pt-4 border-t border-[var(--md-outline)]">
+              <div className="flex items-center gap-3">
+                <TimerIcon className="w-4 h-4 text-[var(--md-primary)]" />
+                <span className="text-label-sm text-[var(--md-on-surface-variant)]">Total presentation time:</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setTotalMinutes(Math.max(1, totalMinutes - 1))}
+                    className="state-layer p-1 rounded-[var(--shape-sm)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] transition-colors"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={totalMinutes}
+                    onChange={(e) => setTotalMinutes(Math.max(1, Math.min(120, parseInt(e.target.value) || 1)))}
+                    className="w-14 text-center text-label-md text-[var(--md-on-surface)] bg-[var(--md-surface-variant)] border border-[var(--md-outline)] rounded-[var(--shape-sm)] py-1 px-2 focus:outline-none focus:border-[var(--md-primary)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <button
+                    onClick={() => setTotalMinutes(Math.min(120, totalMinutes + 1))}
+                    className="state-layer p-1 rounded-[var(--shape-sm)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-label-sm text-[var(--md-on-surface-variant)] ml-1">min</span>
+                </div>
               </div>
             </div>
           </div>
@@ -217,10 +406,143 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
     );
   }
 
+  // ── Render: Slide Editor (after AI generation) ──
+  if (stage === 'editor') {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-white rounded-[var(--shape-lg)] shadow-elevation-5 w-full max-w-3xl max-h-[95vh] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--md-outline)]">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-[var(--md-primary)]" />
+              <h2 className="text-title-md text-[var(--md-on-surface)]">
+                Slide Editor
+                <span className="text-body-md text-[var(--md-on-surface-variant)] font-normal ml-2">
+                  ({slides.length} slides)
+                </span>
+              </h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={goBackToInput}
+                className="text-label-md px-3 py-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onClick={onClose}
+                className="state-layer rounded-[var(--shape-full)] p-1.5 text-[var(--md-on-surface-variant)] hover:text-[var(--md-on-surface)]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Slides */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {slides.map((slide, idx) => (
+              <div
+                key={idx}
+                className="border border-[var(--md-outline)] rounded-[var(--shape-md)] overflow-hidden"
+              >
+                {/* Slide header */}
+                <div className="flex items-center justify-between px-4 py-2 bg-[var(--md-surface-variant)]/50 border-b border-[var(--md-outline)]">
+                  <span className="text-label-sm font-semibold text-[var(--md-primary)]">
+                    Slide {idx + 1}
+                  </span>
+                  <button
+                    onClick={() => removeSlide(idx)}
+                    disabled={slides.length <= 1}
+                    className="state-layer p-1 rounded-[var(--shape-sm)] text-[var(--md-error)] hover:bg-[var(--md-error-container)] disabled:opacity-30 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Display content */}
+                <div className="px-4 py-3">
+                  <label className="text-label-sm text-[var(--md-on-surface-variant)] mb-1 block">
+                    Display content (shown on screen)
+                  </label>
+                  <textarea
+                    value={slide.display}
+                    onChange={(e) => updateSlideDisplay(idx, e.target.value)}
+                    rows={4}
+                    className="w-full p-3 text-body-sm text-[var(--md-on-surface)] bg-[var(--md-surface)] border border-[var(--md-outline)] rounded-[var(--shape-sm)] resize-y focus:outline-none focus:border-[var(--md-primary)] font-mono leading-relaxed"
+                  />
+                </div>
+
+                {/* Speech script (collapsible) */}
+                <div
+                  className="border-t border-[var(--md-outline)] cursor-pointer"
+                  onClick={() => setExpandedSpeech(expandedSpeech === idx ? null : idx)}
+                >
+                  <div className="flex items-center justify-between px-4 py-2 hover:bg-[var(--md-surface-variant)]/30">
+                    <div className="flex items-center gap-2">
+                      <MessageSquareText className="w-3.5 h-3.5 text-[var(--md-primary)]" />
+                      <span className="text-label-sm text-[var(--md-on-surface-variant)]">
+                        Speech narration
+                      </span>
+                      {slide.speech !== slide.display && (
+                        <span className="text-label-xs text-[var(--md-primary)] bg-[var(--md-primary-container)] px-1.5 rounded-full">
+                          Custom
+                        </span>
+                      )}
+                    </div>
+                    {expandedSpeech === idx ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </div>
+                  {expandedSpeech === idx && (
+                    <div className="px-4 py-3 border-t border-[var(--md-outline)]" onClick={(e) => e.stopPropagation()}>
+                      <textarea
+                        value={slide.speech}
+                        onChange={(e) => updateSlideSpeech(idx, e.target.value)}
+                        rows={4}
+                        className="w-full p-3 text-body-sm text-[var(--md-on-surface)] bg-[var(--md-surface)] border border-[var(--md-outline)] rounded-[var(--shape-sm)] resize-y focus:outline-none focus:border-[var(--md-primary)] font-mono leading-relaxed"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Add slide button */}
+            <button
+              onClick={addSlide}
+              className="w-full py-2 border-2 border-dashed border-[var(--md-outline)] rounded-[var(--shape-md)] text-label-md text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)]/50 hover:border-[var(--md-primary)] transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              Add Slide
+            </button>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-[var(--md-outline)] flex items-center justify-between">
+            <span className="text-label-sm text-[var(--md-on-surface-variant)]">
+              ~{formatTime(perSlideSeconds)} per slide
+            </span>
+            <button
+              onClick={handleStart}
+              disabled={slides.length === 0}
+              className="text-label-md px-6 py-2 rounded-[var(--shape-full)] bg-[var(--md-primary)] text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Start Presentation
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Render: Presentation ───────────────────────────
-  const slide = slides[currentSlide] || '';
+  const slide = slides[currentSlide] || { display: '', speech: '' };
   const total = slides.length;
   const pct = total > 1 ? ((currentSlide + 1) / total) * 100 : 100;
+
+  // Timer visuals
+  const timerPct = perSlideSeconds > 0
+    ? Math.round((slideTimeRemaining / perSlideSeconds) * 100)
+    : 0;
+  const timerUrgent = slideTimeRemaining <= 30;
 
   // Convert markdown-like syntax to basic HTML for display
   const renderSlideContent = (text: string): string => {
@@ -259,13 +581,21 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setAutoAdvance(!autoAdvance)}
+            onClick={() => {
+              setAutoAdvance(!autoAdvance);
+              if (!autoAdvance) {
+                const perSlideSec = Math.floor((totalMinutes * 60) / slides.length);
+                startTimer(perSlideSec);
+              } else {
+                stopTimer();
+              }
+            }}
             className={`state-layer flex items-center gap-1 text-label-sm px-3 py-1.5 rounded-[var(--shape-full)] transition-colors ${
               autoAdvance ? 'text-[var(--md-primary)] bg-[var(--md-primary-container)]' : 'text-[var(--md-on-surface-variant)]'
             }`}
           >
             {autoAdvance ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-            Auto
+            {autoAdvance ? `Auto ${formatTime(slideTimeRemaining)}` : 'Auto'}
           </button>
         </div>
       </div>
@@ -276,11 +606,18 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
         <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 lg:p-16 overflow-y-auto">
           <div
             className="w-full max-w-3xl prose-headings:text-[var(--md-on-surface)] prose-p:text-[var(--md-on-surface)] prose-li:text-[var(--md-on-surface)]"
-            dangerouslySetInnerHTML={{ __html: renderSlideContent(slide) }}
+            dangerouslySetInnerHTML={{ __html: renderSlideContent(slide.display) }}
           />
+          {/* Speech indicator: show that narrator is reading different text */}
+          {slide.speech !== slide.display && isReading && readingSlide === currentSlide && (
+            <div className="mt-4 flex items-center gap-1.5 text-label-sm text-[var(--md-primary)] bg-[var(--md-primary-container)] px-3 py-1 rounded-[var(--shape-full)]">
+              <MessageSquareText className="w-3.5 h-3.5" />
+              Narration differs from display
+            </div>
+          )}
         </div>
 
-        {/* Controls sidebar (bottom on mobile, right on desktop) */}
+        {/* Controls sidebar */}
         <div className="lg:w-48 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--md-outline)] bg-white/50 p-4 flex lg:flex-col items-center lg:items-stretch gap-3">
           {/* Slide counter */}
           <div className="text-center">
@@ -292,6 +629,26 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
               <div className="h-full bg-[var(--md-primary)] rounded-full transition-all duration-[var(--motion-md)]" style={{ width: `${pct}%` }} />
             </div>
           </div>
+
+          {/* Countdown timer */}
+          {autoAdvance && (
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-1.5 mb-1">
+                <Hourglass className={`w-3.5 h-3.5 ${timerUrgent ? 'text-[var(--md-error)]' : 'text-[var(--md-primary)]'}`} />
+                <span className={`text-headline-md font-bold ${timerUrgent ? 'text-[var(--md-error)]' : 'text-[var(--md-on-surface)]'}`}>
+                  {formatTime(slideTimeRemaining)}
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-[var(--md-outline)] rounded-full mt-1 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-1000 ${
+                    timerUrgent ? 'bg-[var(--md-error)]' : 'bg-[var(--md-primary)]'
+                  }`}
+                  style={{ width: `${timerPct}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Navigation */}
           <div className="flex lg:flex-col items-center gap-2 flex-1 justify-center">
