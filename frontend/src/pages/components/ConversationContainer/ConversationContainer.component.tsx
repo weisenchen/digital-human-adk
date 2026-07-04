@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useContext, useRef, useEffect } from 'react';
-import { MessageCircle, Send, Trash2, Sparkles, Bot, FileText } from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import { Send, Trash2, FileText, Settings, X } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
@@ -12,6 +11,7 @@ import VoiceRecorder from '../VoiceRecorder/VoiceRecorder.component';
 import Loading from '../Loading/Loading.component'
 import CharacterSelector from '../CharacterSelector/CharacterSelector.component';
 import PresentationMode from '../PresentationMode/PresentationMode.component';
+import DigitalHumanContainer from '../DigitalHumanContainer/DigitalHumanContainer.component';
 
 const SUGGESTIONS = [
   'Hello! 👋',
@@ -22,6 +22,7 @@ const SUGGESTIONS = [
 
 export default function ConversationContainer() {
   const [showPresentation, setShowPresentation] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const context = useContext(VoiceAssistantContext);
   if (!context) {
@@ -49,42 +50,19 @@ export default function ConversationContainer() {
     : selectedLanguage === 'Yue-HK' ? 'zh-HK'
     : 'en-US';
 
+  // Close settings on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showSettings) {
+        setShowSettings(false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [showSettings]);
+
   return (
-    <div className="bg-white rounded-[var(--shape-md)] shadow-elevation-1 border border-[var(--md-outline)] p-4 flex flex-col h-full relative">
-      {/* Header row: title + actions */}
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-title-lg text-[var(--md-on-surface)] flex items-center gap-2">
-          <MessageCircle className="w-5 h-5 text-[var(--md-primary)]" />
-          Chat
-        </h2>
-        <div className="flex items-center gap-1">
-          {/* Read Script / Presentation */}
-          <button
-            onClick={() => setShowPresentation(true)}
-            className="state-layer rounded-[var(--shape-full)] p-1.5 text-[var(--md-on-surface-variant)] hover:text-[var(--md-primary)] transition-colors duration-[var(--motion-sm)]"
-            aria-label="Read a script in presentation mode"
-            title="Read Script"
-          >
-            <FileText className="w-4 h-4" />
-          </button>
-          {/* Clear chat */}
-          {chatData.length > 0 && (
-            <button
-              onClick={clearChat}
-              className="state-layer rounded-[var(--shape-full)] p-1.5 text-[var(--md-on-surface-variant)] hover:text-[var(--md-error)] transition-colors duration-[var(--motion-sm)]"
-              aria-label="Clear conversation"
-              title="New conversation"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      <CharacterSelector />
-
-      <ChatDisplay chatData={chatData} />
-
+    <div className="flex flex-col h-full relative">
       {/* Toast notification */}
       {toastMessage && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-[var(--md-primary)] text-white text-body-sm px-4 py-1.5 rounded-[var(--shape-full)] shadow-elevation-3 animate-[md-fade-in_200ms_ease-out] pointer-events-none">
@@ -94,60 +72,132 @@ export default function ConversationContainer() {
 
       {isWaitingAIOutput && <Loading />}
 
-      {/* Suggestions for new conversation */}
-      {isFirstMessage && (
-        <div className="flex-1 flex flex-col items-center justify-center min-h-0 py-4">
-          <p className="text-title-md text-[var(--md-on-surface-variant)] mb-3">
-            Start a conversation!
+      {/* ── First message: centered welcome ── */}
+      {isFirstMessage ? (
+        <div className="flex-1 flex flex-col items-center justify-center min-h-0 py-8">
+          {/* Avatar circle */}
+          <div className="w-20 h-20 rounded-full overflow-hidden mb-4 border-2 border-[var(--md-outline)] shadow-elevation-1">
+            <DigitalHumanContainer compact />
+          </div>
+          <h1 className="text-title-lg text-[var(--md-on-surface)] font-medium mb-1">
+            {characterName}
+          </h1>
+          <p className="text-body-md text-[var(--md-on-surface-variant)] mb-6">
+            How can I help you today?
           </p>
-          <div className="flex flex-wrap justify-center gap-2">
+
+          {/* Suggestion chips */}
+          <div className="flex flex-wrap justify-center gap-2 max-w-md">
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => {
-                  // Set the text and submit
-                  handleTextSubmit({ preventDefault: () => {} } as React.FormEvent);
                   setInputText(s);
+                  setTimeout(() => {
+                    handleTextSubmit({ preventDefault: () => {} } as React.FormEvent);
+                  }, 0);
                 }}
-                className="state-layer px-3 py-1.5 rounded-[var(--shape-full)] text-label-sm text-[var(--md-primary)] bg-[var(--md-primary-container)] hover:opacity-80 transition-opacity"
+                className="px-4 py-2 rounded-full border border-[var(--md-outline)] text-label-sm text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] hover:border-[var(--md-primary)] transition-colors"
               >
                 {s}
               </button>
             ))}
           </div>
-          <p className="text-label-sm text-[var(--md-on-surface-variant)] mt-3">
-            or type below ✏️
-          </p>
+        </div>
+      ) : (
+        /* ── Conversation mode ── */
+        <div className="flex-1 flex flex-col min-h-0">
+          {/* Compact header */}
+          <div className="flex items-center justify-between py-3 px-1 border-b border-[var(--md-outline)]/30 mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 border border-[var(--md-outline)]">
+                <DigitalHumanContainer compact />
+              </div>
+              <span className="text-label-sm text-[var(--md-on-surface)] font-medium">
+                {characterName}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className="state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:text-[var(--md-primary)] transition-colors"
+                aria-label="Character settings"
+                title="Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setShowPresentation(true)}
+                className="state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:text-[var(--md-primary)] transition-colors"
+                aria-label="Read a script in presentation mode"
+                title="Read Script"
+              >
+                <FileText className="w-4 h-4" />
+              </button>
+              {chatData.length > 0 && (
+                <button
+                  onClick={clearChat}
+                  className="state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:text-[var(--md-error)] transition-colors"
+                  aria-label="Clear conversation"
+                  title="New conversation"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Chat messages */}
+          <ChatDisplay chatData={chatData} />
+
+          {/* Settings panel (collapsible) */}
+          {showSettings && (
+            <div className="border border-[var(--md-outline)] rounded-[var(--shape-md)] mb-3 bg-[var(--md-surface)] shadow-elevation-2 relative">
+              <button
+                onClick={() => setShowSettings(false)}
+                className="absolute top-2 right-2 state-layer p-1 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:text-[var(--md-on-surface)]"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+              <div className="p-4">
+                <CharacterSelector />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Input area */}
-      <form onSubmit={handleTextSubmit} className="flex items-center gap-2 mt-2 pt-2 border-t border-[var(--md-outline)]">
-        <div className="flex-1 relative">
+      {/* ── Input area (Gemini-style) ── */}
+      <form onSubmit={handleTextSubmit} className="mt-2 mb-4">
+        <div className="flex items-center gap-2 border border-[var(--md-outline)] rounded-[var(--shape-lg)] px-4 py-2 bg-white focus-within:border-[var(--md-primary)] focus-within:shadow-[0_0_0_2px_var(--md-primary-container)] transition-all">
           <Input
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Message input"
-            className="w-full pr-10"
+            placeholder="Enter a prompt here"
+            className="border-0 p-0 shadow-none focus-visible:ring-0 text-body-md bg-transparent"
             disabled={isWaitingAIOutput}
           />
+          <VoiceRecorder
+            lang={speechRecognitionLang}
+            onSpeechRecognized={handleSpeechRecognized}
+          />
+          <button
+            type="submit"
+            disabled={isWaitingAIOutput || !inputText.trim()}
+            className="state-layer p-2 rounded-[var(--shape-full)] text-white bg-[var(--md-primary)] disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+            aria-label="Send message"
+          >
+            <Send className="w-4 h-4" />
+          </button>
         </div>
-        <Button
-          type="submit"
-          size="icon"
-          disabled={isWaitingAIOutput || !inputText.trim()}
-          aria-label="Send message"
-        >
-          <Send className="w-4 h-4" />
-        </Button>
-        <VoiceRecorder
-          lang={speechRecognitionLang}
-          onSpeechRecognized={handleSpeechRecognized}
-        />
+        {/* Disclaimer */}
+        <p className="text-label-xs text-[var(--md-on-surface-variant)]/40 text-center mt-2">
+          This is an AI assistant. Responses may not always be accurate.
+        </p>
       </form>
 
-      {/* Presentation mode */}
+      {/* Presentation mode overlay */}
       {showPresentation && (
         <PresentationMode
           characterName={characterName || 'Xiao Wei'}
@@ -156,16 +206,6 @@ export default function ConversationContainer() {
           onClose={() => setShowPresentation(false)}
         />
       )}
-
-      {/* Keyboard shortcut hint */}
-      <div className="flex justify-center mt-1.5 gap-3">
-        <span className="text-label-sm text-[var(--md-on-surface-variant)]/40">
-          <kbd className="bg-[var(--md-surface-variant)] px-1 rounded text-[10px] border border-[var(--md-outline)]">Space</kbd> voice
-        </span>
-        <span className="text-label-sm text-[var(--md-on-surface-variant)]/40">
-          <kbd className="bg-[var(--md-surface-variant)] px-1 rounded text-[10px] border border-[var(--md-outline)]">Esc</kbd> cancel
-        </span>
-      </div>
     </div>
   );
 }

@@ -72,7 +72,7 @@ function getAvatarConfig(name: string, gender: string): AvatarConfig {
   };
 }
 
-const DigitalHumanContainer = () => {
+const DigitalHumanContainer = ({ compact = false }: { compact?: boolean }) => {
   const {
     mouthOpen,
     characterName = 'Xiao Wei',
@@ -624,44 +624,47 @@ const DigitalHumanContainer = () => {
   return (
     <div
       ref={containerRef}
-      className="flex flex-col items-center justify-center bg-gradient-to-b from-[#F8F0E6] to-[#F0E8DC] rounded-[var(--shape-md)] shadow-elevation-1 border border-[var(--md-outline)] p-3 sm:p-4 overflow-hidden relative"
-      style={{ height: '100%', maxHeight: '65vh', minHeight: 0 }}
+      className={`${compact ? 'w-full h-full' : 'flex flex-col items-center justify-center bg-gradient-to-b from-[#F8F0E6] to-[#F0E8DC] rounded-[var(--shape-md)] shadow-elevation-1 border border-[var(--md-outline)] p-3 sm:p-4 overflow-hidden relative'}`}
+      style={{ height: compact ? '100%' : '100%', maxHeight: compact ? '100%' : '65vh', minHeight: 0 }}
     >
-      <div className="flex items-center gap-2 mb-1 sm:mb-2 text-label-sm sm:text-body-md text-[var(--md-on-surface-variant)] shrink-0">
-        <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-[var(--shape-full)] bg-[#48BB78] animate-pulse" />
-        {characterName || 'Character'} is here
-        {customAvatar && (
+      {!compact && (
+        <div className="flex items-center gap-2 mb-1 sm:mb-2 text-label-sm sm:text-body-md text-[var(--md-on-surface-variant)] shrink-0">
+          <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-[var(--shape-full)] bg-[#48BB78] animate-pulse" />
+          {characterName || 'Character'} is here
+          {customAvatar && (
+            <button
+              onClick={clearCustomAvatar}
+              className="ml-1 text-label-xs text-[var(--md-primary)] hover:underline cursor-pointer"
+              title="Reset to default avatar"
+            >
+              (reset)
+            </button>
+          )}
+        </div>
+      )}
+      <canvas ref={canvasRef} className={compact ? 'w-full h-full' : 'w-full flex-1'} style={{ maxHeight: compact ? '100%' : 'calc(65vh - 40px)' }} />
+
+      {!compact && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
           <button
-            onClick={clearCustomAvatar}
-            className="ml-1 text-label-xs text-[var(--md-primary)] hover:underline cursor-pointer"
-            title="Reset to default avatar"
+            onClick={() => fileInputRef.current?.click()}
+            className="absolute bottom-2 right-2 state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)]/70 transition-colors opacity-50 hover:opacity-100 text-lg leading-none"
+            title="Upload custom avatar"
           >
-            (reset)
+            📷
           </button>
-        )}
-      </div>
-      <canvas ref={canvasRef} className="w-full flex-1" style={{ maxHeight: 'calc(65vh - 40px)' }} />
-
-      {/* Upload button */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileUpload}
-        className="hidden"
-      />
-      <button
-        onClick={() => fileInputRef.current?.click()}
-        className="absolute bottom-2 right-2 state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)]/70 transition-colors opacity-50 hover:opacity-100 text-lg leading-none"
-        title="Upload custom avatar"
-      >
-        📷
-      </button>
-
-      {/* Gender indicator */}
-      <div className="absolute top-2 right-2 text-[10px] text-[var(--md-on-surface-variant)]/30 select-none">
-        {selectedGender === 'male' ? '♂' : '♀'}
-      </div>
+          <div className="absolute top-2 right-2 text-[10px] text-[var(--md-on-surface-variant)]/30 select-none">
+            {selectedGender === 'male' ? '♂' : '♀'}
+          </div>
+        </>
+      )}
     </div>
   );
 };
