@@ -7,9 +7,14 @@
  *
  * Both share the same session_id for conversation memory.
  * Voice character selection is passed to /audio/tts for speech synthesis.
+ *
+ * Stability features:
+ *  - SSE stream has a 30-second idle timeout (avoids permanent hang)
+ *  - onComplete returns non-partial textPart, NOT doubled text (fixed bug)
  */
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:8000';
+const SSE_TIMEOUT_MS = 30_000; // 30s max wait between SSE data events
 
 /** Persistent session so the agent remembers our conversation across messages */
 const PERSISTENT_SESSION_ID = 'persistent_chat_session';
@@ -67,7 +72,7 @@ export const getAIAudioFromText = async (text: string, language: string, voice?:
  * @param text - User input text (from browser speech recognition)
  * @param onToken - Called with each text chunk as it streams in
  * @param onSentence - Called with each complete sentence for TTS
- * @param onComplete - Called when streaming finishes
+ * @param onComplete - Called when streaming finishes with the full response text
  * @param onError - Called on error
  * @returns cancel - Call to abort the SSE request
  */
@@ -81,6 +86,7 @@ export const sendChatStream = (
   const abortController = new AbortController();
   let accumulatedText = '';
   let fullResponse = '';
+  let timedOut = false;
 
   const body = JSON.stringify({
     app_name: 'digital_human',
@@ -92,6 +98,13 @@ export const sendChatStream = (
     },
     streaming: true,
   });
+
+  // Timeout: if no SSE data arrives within SSE_TIMEOUT_MS, abort
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+    abortController.abort();
+    onError?.(new Error(`SSE request timed out after ${SSE_TIMEOUT_MS / 1000}s`));
+  }, SSE_TIMEOUT_MS);
 
   fetch(`${BASE_URL}/run_sse`, {
     method: 'POST',
@@ -112,6 +125,18 @@ export const sendChatStream = (
 
       while (true) {
         const { done, value } = await reader.read();
+        // Reset timeout on any data received
+        if (!done) {
+          clearTimeout(timeoutId);
+          setTimeout(() => {
+            if (!timedOut) {
+              timedOut = true;
+              abortController.abort();
+              onError?.(new Error(`SSE request timed out after ${SSE_TIMEOUT_MS / 1000}s`));
+            }
+          }, SSE_TIMEOUT_MS);
+        }
+
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
@@ -137,16 +162,20 @@ export const sendChatStream = (
             if (!textPart) continue;
 
             if (isPartial) {
+              // Partial: individual token — accumulate and check for sentences
               accumulatedText += textPart;
               onToken(textPart);
               fullResponse += textPart;
               flushSentences();
             } else {
+              // Non-partial: contains the COMPLETE response text.
+              // Flush any remaining partial text as a sentence, then complete.
               const remaining = accumulatedText.trim();
               if (remaining) {
                 onSentence(remaining);
               }
-              onComplete(fullResponse + textPart);
+              // textPart IS the complete text (not a delta) — use it directly
+              onComplete(textPart);
               accumulatedText = '';
               fullResponse = '';
             }
@@ -156,7 +185,7 @@ export const sendChatStream = (
         }
       }
 
-      // Flush any remaining text
+      // Flush any remaining text if stream ended without non-partial event
       const remaining = accumulatedText.trim();
       if (remaining) {
         onSentence(remaining);
@@ -166,10 +195,16 @@ export const sendChatStream = (
       }
     })
     .catch((err) => {
-      // Ignore abort errors
-      if (err instanceof DOMException && err.name === 'AbortError') return;
+      // Ignore abort errors (user cancelled OR timeout)
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        if (!timedOut) return; // user cancelled — silent
+        return;                 // timeout — error already sent via onError
+      }
       console.error('SSE stream error:', err);
       onError?.(err);
+    })
+    .finally(() => {
+      clearTimeout(timeoutId);
     });
 
   /**
@@ -178,7 +213,6 @@ export const sendChatStream = (
    * When a boundary is found, the completed sentence is sent to TTS.
    */
   function flushSentences() {
-    // Matches both English and Chinese sentence-ending punctuation
     const boundaryRegex = /[.!?\n。！？]/;
     let match: RegExpExecArray | null;
 
@@ -194,6 +228,7 @@ export const sendChatStream = (
 
   // Return cancel function
   return () => {
+    clearTimeout(timeoutId);
     abortController.abort();
   };
 };

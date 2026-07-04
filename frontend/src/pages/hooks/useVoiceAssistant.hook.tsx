@@ -41,14 +41,28 @@ const useVoiceAssistant = ()=>{
     const [selectedGender, setSelectedGender] = useState<string>('female');
     const [characterName, setCharacterName] = useState<string>('Xiao Wei');
 
+    // Audio playback: single AudioContext reused across all sentences
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+    const analyserRef = useRef<AnalyserNode | null>(null);
+    const rafIdRef = useRef<number | null>(null);
+
     // Audio playback queue
     const audioQueueRef = useRef<Blob[]>([]);
     const isPlayingRef = useRef(false);
-    const audioContextRef = useRef<AudioContext | null>(null);
-    const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
     const generationRef = useRef(0);
     /** Stores the cancel function for the current SSE stream */
     const cancelSSERef = useRef<(() => void) | null>(null);
+
+    /** Lazily init shared AudioContext (created once, never closed) */
+    const getAudioContext = useCallback((): AudioContext => {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext();
+        analyserRef.current = audioContextRef.current.createAnalyser();
+        analyserRef.current.connect(audioContextRef.current.destination);
+      }
+      return audioContextRef.current;
+    }, []);
 
   // ─────────────────────────────────────────────
   // Load voices from backend on mount
@@ -62,19 +76,16 @@ const useVoiceAssistant = ()=>{
   // Auto-select a voice when language or gender changes
   useEffect(() => {
     const locale = LANGUAGE_LOCALE_MAP[selectedLanguage] || 'en-US';
-    // If we have voices from the server, pick the first matching voice for the locale+gender
     const matching = voices.filter(
       (v) => v.locale === locale && v.gender === selectedGender
     );
     if (matching.length > 0) {
       setSelectedVoice(matching[0].voice_id);
-      // Also update character name from popular_names
       const names = matching[0].popular_names;
       if (names && names.length > 0) {
         setCharacterName(names[0]);
       }
     } else {
-      // Fallback to hardcoded defaults
       const fallback = FALLBACK_VOICES[selectedLanguage] || FALLBACK_VOICES['en-US'];
       setSelectedVoice(fallback[selectedGender as 'female' | 'male'] || fallback.female);
     }
@@ -95,7 +106,7 @@ const useVoiceAssistant = ()=>{
     e.preventDefault();
     if (!inputText.trim()) return;
 
-    cancelAll(); // Cancel any ongoing SSE + audio
+    cancelAll();
 
     const text = inputText;
     setInputText('');
@@ -118,7 +129,9 @@ const useVoiceAssistant = ()=>{
   // Path 2: Voice chat (POST /run_sse, streaming)
   // ─────────────────────────────────────────────
   const startVoiceChat = (transcript: string) => {
-    cancelAll(); // Cancel previous SSE + audio
+    if (!transcript.trim()) return;  // guard: reject empty input
+
+    cancelAll();
     const gen = ++generationRef.current;
 
     setChatData((prev) => [...prev, { text: transcript, isUser: true }]);
@@ -129,7 +142,6 @@ const useVoiceAssistant = ()=>{
 
     const cancel = sendChatStream(
       transcript,
-      // onToken
       (chunk) => {
         setChatData((prev) => {
           const updated = [...prev];
@@ -140,7 +152,6 @@ const useVoiceAssistant = ()=>{
           return updated;
         });
       },
-      // onSentence
       async (sentence) => {
         try {
           const blob = await getAIAudioFromText(sentence, selectedLanguage, voice);
@@ -151,11 +162,9 @@ const useVoiceAssistant = ()=>{
           console.error("TTS error:", err);
         }
       },
-      // onComplete
       () => {
         setIsWaitingAIOutput(false);
       },
-      // onError
       (err) => {
         console.error("Voice chat error:", err);
         setIsWaitingAIOutput(false);
@@ -173,25 +182,23 @@ const useVoiceAssistant = ()=>{
   // ─────────────────────────────────────────────
   // Cancel helpers
   // ─────────────────────────────────────────────
-  /** Cancel both SSE stream and audio playback */
   const cancelAll = useCallback(() => {
-    // Abort SSE request
     if (cancelSSERef.current) {
       cancelSSERef.current();
       cancelSSERef.current = null;
     }
-    // Stop audio
     cancelPlayback();
   }, []);
 
   const cancelPlayback = useCallback(() => {
+    // Stop current source (NOT the AudioContext — we reuse it)
     if (currentSourceRef.current) {
       try { currentSourceRef.current.stop(); } catch {}
       currentSourceRef.current = null;
     }
-    if (audioContextRef.current) {
-      try { audioContextRef.current.close(); } catch {}
-      audioContextRef.current = null;
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
     }
     audioQueueRef.current = [];
     isPlayingRef.current = false;
@@ -202,7 +209,13 @@ const useVoiceAssistant = ()=>{
     if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
     isPlayingRef.current = true;
 
-    const blob = audioQueueRef.current.shift()!;
+    const blob = audioQueueRef.current.shift();
+    // Guard: if cancelPlayback emptied the queue between length check and shift
+    if (!blob) {
+      isPlayingRef.current = false;
+      return;
+    }
+
     const url = URL.createObjectURL(blob);
 
     speakFromBlob(url).then(() => {
@@ -213,23 +226,28 @@ const useVoiceAssistant = ()=>{
 
   const speakFromBlob = async (audioUrl: string): Promise<void> => {
     return new Promise((resolve) => {
-      if (audioContextRef.current) {
-        try { audioContextRef.current.close(); } catch {}
-      }
+      const audioContext = getAudioContext();
 
-      const audioContext = new AudioContext();
-      audioContextRef.current = audioContext;
+      // Stop any currently playing source on the shared context
+      if (currentSourceRef.current) {
+        try { currentSourceRef.current.stop(); } catch {}
+        currentSourceRef.current = null;
+      }
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
 
       fetch(audioUrl)
         .then((res) => res.arrayBuffer())
         .then((audioData) => audioContext.decodeAudioData(audioData))
         .then((audioBuffer) => {
+          // Create source on the shared AudioContext
           const source = audioContext.createBufferSource();
           currentSourceRef.current = source;
-          const analyser = audioContext.createAnalyser();
 
+          const analyser = analyserRef.current!;
           source.buffer = audioBuffer;
-          analyser.connect(audioContext.destination);
           source.connect(analyser);
 
           source.start(0);
@@ -241,13 +259,14 @@ const useVoiceAssistant = ()=>{
             setMouthOpen(Math.min(1, volume / 50));
 
             if (audioContext.state !== "closed") {
-              requestAnimationFrame(updateMouth);
+              rafIdRef.current = requestAnimationFrame(updateMouth);
             }
           };
           updateMouth();
 
           source.onended = () => {
             URL.revokeObjectURL(audioUrl);
+            rafIdRef.current = null;
             setMouthOpen(0);
             resolve();
           };
@@ -259,6 +278,18 @@ const useVoiceAssistant = ()=>{
         });
     });
   };
+
+  // Cleanup AudioContext on unmount
+  useEffect(() => {
+    return () => {
+      cancelPlayback();
+      if (audioContextRef.current) {
+        try { audioContextRef.current.close(); } catch {}
+        audioContextRef.current = null;
+        analyserRef.current = null;
+      }
+    };
+  }, [cancelPlayback]);
 
   // ─────────────────────────────────────────────
   // Other handlers
@@ -273,7 +304,6 @@ const useVoiceAssistant = ()=>{
 
   const handleVoiceSelect = (voice_id: string) => {
     setSelectedVoice(voice_id);
-    // Update character name from the matching voice
     const match = voices.find((v) => v.voice_id === voice_id);
     if (match && match.popular_names.length > 0) {
       setCharacterName(match.popular_names[0]);
@@ -294,7 +324,6 @@ const useVoiceAssistant = ()=>{
     setInputText,
     handleTextSubmit,
     mouthOpen,
-    // Voice character
     voices,
     selectedVoice,
     selectedGender,

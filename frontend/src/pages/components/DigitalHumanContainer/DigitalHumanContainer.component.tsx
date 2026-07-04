@@ -10,12 +10,6 @@ const loadPixi = async () => {
   return { PIXI, Live2DModel };
 };
 
-declare global {
-  interface Window {
-    PIXI: typeof import('pixi.js');
-  }
-}
-
 const DigitalHumanContainer = () => {
   const {
     mouthOpen,
@@ -28,6 +22,8 @@ const DigitalHumanContainer = () => {
   const resumeMotionTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    let appRef: any = null; // keep reference for cleanup
+
     const initializePixi = async () => {
       try {
         const { PIXI, Live2DModel } = await loadPixi();
@@ -46,6 +42,7 @@ const DigitalHumanContainer = () => {
           resolution: window.devicePixelRatio,
           transparent: true,
         });
+        appRef = app; // keep for cleanup
 
         const url = `${window.location.origin}/shizuku_model/shizuku.model.json`;
         const model = await Live2DModel.from(url);
@@ -62,18 +59,35 @@ const DigitalHumanContainer = () => {
     };
 
     initializePixi();
+
+    // Cleanup: destroy PIXI app and model on unmount
+    return () => {
+      if (resumeMotionTimeout.current) {
+        clearTimeout(resumeMotionTimeout.current);
+      }
+      modelRef.current = null;
+      if (appRef) {
+        try { appRef.destroy(true, { children: true, texture: true }); } catch {}
+        appRef = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
-    if (modelRef.current) {
+    const model = modelRef.current;
+    if (!model) return;
+
+    try {
       if (!hasStoppedMotions.current) {
-        modelRef.current.internalModel.motionManager.stopAllMotions();
-        modelRef.current.internalModel.motionManager.state.reservedIdleGroup = "idle";
-        modelRef.current.internalModel.motionManager.expressionManager.restoreExpression();
+        model.internalModel.motionManager.stopAllMotions();
+        model.internalModel.motionManager.state.reservedIdleGroup = "idle";
+        model.internalModel.motionManager.expressionManager.restoreExpression();
         hasStoppedMotions.current = true;
       }
-      modelRef.current.expression('f00');
-      modelRef.current.internalModel.coreModel.setParamFloat("PARAM_MOUTH_OPEN_Y", mouthOpen);
+      model.expression('f00');
+      model.internalModel.coreModel.setParamFloat("PARAM_MOUTH_OPEN_Y", mouthOpen);
+    } catch (error) {
+      console.error("Live2D mouth animation error:", error);
     }
 
     if (resumeMotionTimeout.current) {
@@ -81,10 +95,12 @@ const DigitalHumanContainer = () => {
     }
 
     resumeMotionTimeout.current = setTimeout(() => {
-      if (modelRef.current) {
-        modelRef.current.internalModel.motionManager.expressionManager.resetExpression();
-        modelRef.current.internalModel.motionManager.state.reset();
-      }
+      try {
+        if (modelRef.current) {
+          modelRef.current.internalModel.motionManager.expressionManager.resetExpression();
+          modelRef.current.internalModel.motionManager.state.reset();
+        }
+      } catch {}
     }, 5000);
 
   }, [mouthOpen]);

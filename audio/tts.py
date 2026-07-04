@@ -3,17 +3,23 @@ Text-to-Speech — converts text to audio file.
 
 Supports multiple providers with voice character selection.
 Default: edge-tts (free, no API key).
+
+Stability features:
+  - asyncio timeout on all TTS providers (avoids hanging requests)
+  - Temp file cleanup via clear_old_cache() (call periodically)
+  - Voice list computed once and cached (not rebuilt per request)
 """
 
-import os, uuid
+import os, uuid, time, asyncio, logging
 from pathlib import Path
 
 TTS_PROVIDER = os.getenv("TTS_PROVIDER", "edge")
 CACHE_DIR = Path(os.getenv("TTS_CACHE_DIR", "/tmp/tts_cache"))
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+logger = logging.getLogger("digital-human.tts")
+
 # ── Voice Catalog ──────────────────────────────────────────────────────────
-# locale → { gender → [(voice_id, display_name, localized_name), ...] }
 VOICE_CATALOG: dict[str, dict[str, list[tuple[str, str, str]]]] = {
     "en-US": {
         "female": [
@@ -43,7 +49,7 @@ VOICE_CATALOG: dict[str, dict[str, list[tuple[str, str, str]]]] = {
             ("en-GB-AlfieNeural",    "Alfie",  "Alfie"),
         ],
     },
-    "cmn-CN": {  # Mandarin Chinese
+    "cmn-CN": {
         "female": [
             ("zh-CN-XiaoxiaoNeural", "Xiaoxiao",  "小笑"),
             ("zh-CN-XiaohanNeural",  "Xiaohan",   "晓涵"),
@@ -57,7 +63,7 @@ VOICE_CATALOG: dict[str, dict[str, list[tuple[str, str, str]]]] = {
             ("zh-CN-YunhaoNeural",   "Yunhao",    "云浩"),
         ],
     },
-    "Yue-HK": {  # Cantonese
+    "Yue-HK": {
         "female": [
             ("zh-HK-HiuGaaiNeural",  "HiuGaai",   "晓佳"),
             ("zh-HK-HiuMaanNeural",  "HiuMaan",   "晓敏"),
@@ -69,7 +75,6 @@ VOICE_CATALOG: dict[str, dict[str, list[tuple[str, str, str]]]] = {
     "ja-JP": {
         "female": [
             ("ja-JP-NanamiNeural",   "Nanami",    "七海"),
-            ("ja-JP-KeitaNeural",    "Keita",     "慶太"),
         ],
         "male": [
             ("ja-JP-KeitaNeural",    "Keita",     "慶太"),
@@ -96,7 +101,6 @@ VOICE_CATALOG: dict[str, dict[str, list[tuple[str, str, str]]]] = {
     },
 }
 
-# Locale-appropriate popular names (for agent persona naming)
 POPULAR_NAMES: dict[str, dict[str, list[str]]] = {
     "en-US": {
         "female": ["Olivia", "Emma", "Charlotte", "Amelia", "Sophia", "Ava", "Isabella", "Mia", "Evelyn", "Luna"],
@@ -128,14 +132,22 @@ POPULAR_NAMES: dict[str, dict[str, list[str]]] = {
     },
 }
 
+# TTS timeout — max seconds to wait for TTS synthesis
+TTS_TIMEOUT = int(os.getenv("TTS_TIMEOUT", "30"))
+
+# ── Cached flat voice list ─────────────────────────────────────────────────
+_VOICES_CACHE: list[dict] | None = None
 
 def list_voices() -> list[dict]:
-    """Return flat voice list with locale, gender, voice_id, display_name, localized_name."""
+    """Return flat voice list. Computed once and cached."""
+    global _VOICES_CACHE
+    if _VOICES_CACHE is not None:
+        return _VOICES_CACHE
     result = []
     for locale, genders in VOICE_CATALOG.items():
         for gender, voices in genders.items():
             names = POPULAR_NAMES.get(locale, {}).get(gender, [])
-            for i, (voice_id, display_name, localized_name) in enumerate(voices):
+            for voice_id, display_name, localized_name in voices:
                 result.append({
                     "voice_id": voice_id,
                     "display_name": display_name,
@@ -144,8 +156,38 @@ def list_voices() -> list[dict]:
                     "gender": gender,
                     "popular_names": names,
                 })
+    _VOICES_CACHE = result
     return result
 
+# ── Temp file cleanup ──────────────────────────────────────────────────────
+
+def clear_old_cache(max_age_seconds: int = 3600) -> int:
+    """Delete TTS cache files older than max_age_seconds. Returns count removed."""
+    now = time.time()
+    removed = 0
+    for f in CACHE_DIR.iterdir():
+        if f.is_file() and f.suffix in (".mp3", ".wav", ".ogg"):
+            if now - f.stat().st_mtime > max_age_seconds:
+                try:
+                    f.unlink()
+                    removed += 1
+                except OSError:
+                    pass
+    if removed:
+        logger.info("Cleaned %d stale TTS cache files", removed)
+    return removed
+
+
+async def periodic_cleanup(interval: int = 600):
+    """Background task: clean old cache every `interval` seconds."""
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            clear_old_cache()
+        except Exception as exc:
+            logger.warning("TTS cleanup error: %s", exc)
+
+# ── Helpers ────────────────────────────────────────────────────────────────
 
 def get_default_voice(language: str = "en", gender: str = "female") -> str:
     """Return default voice for a given language code and gender."""
@@ -158,13 +200,18 @@ def get_default_voice(language: str = "en", gender: str = "female") -> str:
     return voices[0][0] if voices else "en-US-JennyNeural"
 
 
+def _new_cache_path() -> Path:
+    """Return a unique cache file path."""
+    return CACHE_DIR / f"tts_{uuid.uuid4().hex}.mp3"
+
+# ── Synthesis ──────────────────────────────────────────────────────────────
+
 async def synthesize(text: str, language: str = "en", voice: str | None = None) -> str:
     """Convert text to an audio file. Returns the file path.
 
-    Args:
-        text: Text to synthesize.
-        language: Language code (en, zh, yue, ja, ko, fr).
-        voice: Edge TTS voice name. If None, defaults from VOICE_CATALOG.
+    All TTS calls are wrapped in asyncio.wait_for to prevent hanging.
+    The caller (FastAPI endpoint) should use BackgroundTasks to delete
+    the returned file after serving.
     """
     if TTS_PROVIDER == "edge":
         return await _edge_tts(text, voice or get_default_voice(language))
@@ -178,39 +225,40 @@ async def synthesize(text: str, language: str = "en", voice: str | None = None) 
 async def _edge_tts(text: str, voice: str) -> str:
     """Edge TTS (free, no API key)."""
     import edge_tts
-    out_path = CACHE_DIR / f"tts_{uuid.uuid4().hex}.mp3"
-    await edge_tts.Communicate(text, voice).save(str(out_path))
+    out_path = _new_cache_path()
+    await asyncio.wait_for(
+        edge_tts.Communicate(text, voice).save(str(out_path)),
+        timeout=TTS_TIMEOUT,
+    )
     return str(out_path)
 
 
 async def _google_tts(text: str, language: str, voice: str | None = None) -> str:
     """Google Cloud Text-to-Speech."""
-    from google.cloud import texttospeech
-    client = texttospeech.TextToSpeechClient()
+    import google.cloud.texttospeech as tts
+    client = tts.TextToSpeechClient()
     lang_code = "zh-CN" if language == "zh" else language
     voice_name = voice or ("zh-CN-Wavenet-A" if language == "zh" else "en-US-Neural2-D")
-    name_to_gender = {
-        "female": texttospeech.SsmlVoiceGender.FEMALE,
-        "male": texttospeech.SsmlVoiceGender.MALE,
-    }
-    # Try to guess gender from voice name keywords
-    gender = texttospeech.SsmlVoiceGender.FEMALE
-    for g_key, g_val in name_to_gender.items():
+    gender = tts.SsmlVoiceGender.FEMALE
+    for g_key, g_val in [("female", tts.SsmlVoiceGender.FEMALE), ("male", tts.SsmlVoiceGender.MALE)]:
         if g_key in voice_name.lower():
             gender = g_val
             break
-    response = client.synthesize_speech(
-        input=texttospeech.SynthesisInput(text=text),
-        voice=texttospeech.VoiceSelectionParams(
-            language_code=lang_code,
-            name=voice_name,
-            ssml_gender=gender,
+    response = await asyncio.wait_for(
+        client.synthesize_speech(
+            input=tts.SynthesisInput(text=text),
+            voice=tts.VoiceSelectionParams(
+                language_code=lang_code,
+                name=voice_name,
+                ssml_gender=gender,
+            ),
+            audio_config=tts.AudioConfig(
+                audio_encoding=tts.AudioEncoding.MP3,
+            ),
         ),
-        audio_config=texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3,
-        ),
+        timeout=TTS_TIMEOUT,
     )
-    out_path = CACHE_DIR / f"tts_{uuid.uuid4().hex}.mp3"
+    out_path = _new_cache_path()
     out_path.write_bytes(response.audio_content)
     return str(out_path)
 
@@ -220,9 +268,10 @@ async def _openai_tts(text: str, language: str) -> str:
     from openai import AsyncOpenAI
     client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     voice = "nova" if language == "zh" else "alloy"
-    response = await client.audio.speech.create(
-        model="tts-1", voice=voice, input=text,
+    response = await asyncio.wait_for(
+        client.audio.speech.create(model="tts-1", voice=voice, input=text),
+        timeout=TTS_TIMEOUT,
     )
-    out_path = CACHE_DIR / f"tts_{uuid.uuid4().hex}.mp3"
+    out_path = _new_cache_path()
     out_path.write_bytes(response.content)
     return str(out_path)
