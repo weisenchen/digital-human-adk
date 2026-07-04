@@ -38,6 +38,8 @@ export interface SlideData {
 /**
  * Text chat - simple POST /chat (non-streaming, text in / text out).
  * Used when the user types and hits Enter.
+ *
+ * NOTE: Injects character_name into the session via /chat endpoint.
  */
 export const sendChatMessage = async (text: string, characterName?: string, personalityPrompt?: string) => {
   const formData = new FormData();
@@ -49,6 +51,20 @@ export const sendChatMessage = async (text: string, characterName?: string, pers
   if (!res.ok) throw new Error(`Chat request failed: ${res.status}`);
   const data = await res.json();
   return { reply: data.reply as string };
+};
+
+/**
+ * Inject/update the character name into the session.
+ * Must be called before voice chat (sendChatStream) since /run_sse
+ * goes directly to ADK's built-in runner without name injection.
+ */
+export const injectName = async (characterName?: string, personalityPrompt?: string) => {
+  if (!characterName) return;
+  const formData = new FormData();
+  formData.append('session_id', PERSISTENT_SESSION_ID);
+  formData.append('character_name', characterName);
+  if (personalityPrompt) formData.append('personality', personalityPrompt);
+  await fetch(`${BASE_URL}/inject-name`, { method: 'POST', body: formData });
 };
 
 /**

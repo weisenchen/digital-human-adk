@@ -1,6 +1,6 @@
 "use client";
 
-import { sendChatMessage, sendChatStream, getAIAudioFromText, fetchVoices, VoiceOption } from "@/services/adk-assistant.service"
+import { sendChatMessage, sendChatStream, injectName, getAIAudioFromText, fetchVoices, VoiceOption } from "@/services/adk-assistant.service"
 import { useRef, useState, useCallback, useEffect } from "react"
 
 interface Message {
@@ -106,6 +106,14 @@ const useVoiceAssistant = ()=>{
       return () => clearTimeout(t);
     }
   }, [toastMessage]);
+
+  // Inject character name into the ADK session when it changes
+  // This ensures both text chat (/chat) and voice chat (/run_sse) use the right name
+  useEffect(() => {
+    if (characterName) {
+      injectName(characterName, getPersonalityPrompt());
+    }
+  }, [characterName]);
 
   // ── Personality system prompt ─────────────────────────
   const getPersonalityPrompt = useCallback((): string => {

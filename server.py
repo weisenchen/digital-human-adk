@@ -56,7 +56,7 @@ def create_app() -> FastAPI:
     async def chat(
         text: str = Form(...),
         session_id: str = Form("default"),
-        character_name: str = Form("Xiao Wei"),
+        character_name: str = Form(""),
         personality: str = Form(""),
     ):
         """POST form: text=hello → {"reply": "Hi! I'm Xiao Wei~"}"""
@@ -71,21 +71,8 @@ def create_app() -> FastAPI:
             except Exception:
                 pass  # session may already exist
 
-            if session_id not in _configured_sessions or _configured_sessions[session_id] != character_name:
-                _configured_sessions[session_id] = character_name
-                name_msg = f'[System: Your name is now "{character_name}". From now on, always introduce yourself as {character_name}. Forget any previous name.]'
-                if personality:
-                    name_msg += f"\n[Personality: {personality}]"
-                char_msg = types.Content(
-                    role="user",
-                    parts=[types.Part(text=name_msg)]
-                )
-                async for _ in _runner.run_async(
-                    user_id="default_user",
-                    session_id=session_id,
-                    new_message=char_msg,
-                ):
-                    pass
+            # Inject name before user message
+            await _inject_name(session_id, character_name, personality)
 
             new_msg = types.Content(role="user", parts=[types.Part(text=text)])
             events = []
@@ -106,6 +93,50 @@ def create_app() -> FastAPI:
         except Exception as exc:
             logger.error("Chat error: %s", exc, exc_info=True)
             return {"reply": f"(Error: Sorry, something went wrong — {exc})"}
+
+    # 3. Name injection endpoint (for voice mode which uses ADK's built-in /run_sse)
+    async def _inject_name(session_id: str, character_name: str, personality: str = "") -> None:
+        """Inject/update the character name into the session if it changed."""
+        if not character_name:
+            return
+        if session_id in _configured_sessions and _configured_sessions[session_id] == character_name:
+            return  # already configured with this name
+        _configured_sessions[session_id] = character_name
+        name_msg = f'[System: Your name is "{character_name}". Always introduce yourself as {character_name} and refer to yourself as {character_name}.]'
+        if personality:
+            name_msg += f"\n[Personality: {personality}]"
+        char_msg = types.Content(
+            role="user",
+            parts=[types.Part(text=name_msg)]
+        )
+        async for _ in _runner.run_async(
+            user_id="default_user",
+            session_id=session_id,
+            new_message=char_msg,
+        ):
+            pass
+
+    @app.post("/inject-name")
+    async def inject_name(
+        session_id: str = Form("default"),
+        character_name: str = Form(""),
+        personality: str = Form(""),
+    ):
+        """Inject character name into an existing session (for voice mode)."""
+        try:
+            try:
+                await _session_service.create_session(
+                    app_name="digital_human",
+                    user_id="default_user",
+                    session_id=session_id,
+                )
+            except Exception:
+                pass
+            await _inject_name(session_id, character_name, personality)
+            return {"status": "ok"}
+        except Exception as exc:
+            logger.error("inject-name error: %s", exc, exc_info=True)
+            return {"status": "error", "error": str(exc)}
 
     # 3. Voice catalog API (already cached in audio/tts.py module)
     @app.get("/api/voices")

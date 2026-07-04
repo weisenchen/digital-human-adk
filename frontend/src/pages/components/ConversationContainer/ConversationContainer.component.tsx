@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useContext, useRef, useEffect } from 'react';
-import { Send, Trash2, FileText, Settings, X } from 'lucide-react';
+import React, { useState, useContext } from 'react';
+import { Send, Trash2, FileText } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
@@ -9,13 +9,11 @@ import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 import ChatDisplay from '../ChatDisplay/ChatDisplay.component';
 import VoiceRecorder from '../VoiceRecorder/VoiceRecorder.component';
 import Loading from '../Loading/Loading.component'
-import CharacterSelector from '../CharacterSelector/CharacterSelector.component';
 import PresentationMode from '../PresentationMode/PresentationMode.component';
 import DigitalHumanContainer from '../DigitalHumanContainer/DigitalHumanContainer.component';
 
 export default function ConversationContainer() {
   const [showPresentation, setShowPresentation] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
 
   const context = useContext(VoiceAssistantContext);
   if (!context) {
@@ -42,17 +40,6 @@ export default function ConversationContainer() {
     : selectedLanguage === 'cmn-CN' ? 'zh-CN'
     : selectedLanguage === 'Yue-HK' ? 'zh-HK'
     : 'en-US';
-
-  // Close settings on Escape
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && showSettings) {
-        setShowSettings(false);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [showSettings]);
 
   return (
     <div className="flex flex-col h-full relative">
@@ -91,14 +78,6 @@ export default function ConversationContainer() {
             </div>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:text-[var(--md-primary)] transition-colors"
-                aria-label="Character settings"
-                title="Settings"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
-              <button
                 onClick={() => setShowPresentation(true)}
                 className="state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:text-[var(--md-primary)] transition-colors"
                 aria-label="Read a script in presentation mode"
@@ -121,21 +100,6 @@ export default function ConversationContainer() {
 
           {/* Chat messages */}
           <ChatDisplay chatData={chatData} />
-
-          {/* Settings panel (collapsible) */}
-          {showSettings && (
-            <div className="border border-[var(--md-outline)] rounded-[var(--shape-md)] mb-3 bg-[var(--md-surface)] shadow-elevation-2 relative">
-              <button
-                onClick={() => setShowSettings(false)}
-                className="absolute top-2 right-2 state-layer p-1 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:text-[var(--md-on-surface)]"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-              <div className="p-4">
-                <CharacterSelector />
-              </div>
-            </div>
-          )}
         </div>
       )}
 
