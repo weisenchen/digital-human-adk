@@ -2,9 +2,11 @@
 
 import React, { useRef, useEffect, useContext, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+// @ts-ignore - framer-motion 11 type incompatibility with old React types
+const SafeAnimatePresence = AnimatePresence as React.FC<{ children: React.ReactNode; initial?: boolean }>;
 import { FileText, FileDown } from 'lucide-react';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
-import { isDownloadableContent, downloadContentHTML, downloadContentPDF } from '../../services/content-export';
+import { isDownloadableContent, downloadContentHTML, downloadContentPDF } from '../../../services/content-export';
 
 interface ChatMessage {
   text: string;
@@ -70,7 +72,7 @@ const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
         onScroll={handleScroll}
         className="flex-grow overflow-y-auto mb-2 pr-1 custom-scrollbar space-y-3"
       >
-        <AnimatePresence initial={false}>
+        <SafeAnimatePresence initial={false}>
           {chatData.map((message, index) => (
             <motion.div
               key={index}
@@ -140,7 +142,7 @@ const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
               )}
             </motion.div>
           ))}
-        </AnimatePresence>
+        </SafeAnimatePresence>
         <div ref={bottomRef} />
       </div>
 

@@ -14,6 +14,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [interimText, setInterimText] = useState("");
+  // @ts-ignore - SpeechRecognition is a browser API not in TS types
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
@@ -57,7 +58,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: any) => {
       let finalTranscript = "";
       let interimTranscript = "";
 
@@ -77,7 +78,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       }
     };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    recognition.onerror = (event: any) => {
       console.error("Speech recognition error:", event.error);
       setIsRecording(false);
       setInterimText("");

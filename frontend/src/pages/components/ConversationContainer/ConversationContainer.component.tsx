@@ -151,7 +151,7 @@ export default function ConversationContainer() {
             disabled={isWaitingAIOutput}
           />
           <VoiceRecorder
-            lang={speechRecognitionLang}
+            language={speechRecognitionLang}
             onSpeechRecognized={handleSpeechRecognized}
           />
           <button

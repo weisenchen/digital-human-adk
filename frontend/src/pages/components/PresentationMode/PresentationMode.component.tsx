@@ -7,7 +7,7 @@ import {
   Timer as TimerIcon, Hourglass, ChevronDown, ChevronUp,
   MessageSquareText,
 } from 'lucide-react';
-import { getAIAudioFromText, generateSlides, SlideData } from '@/pages/services/adk-assistant.service';
+import { getAIAudioFromText, generateSlides, SlideData } from '@/services/adk-assistant.service';
 
 interface PresentationModeProps {
   /** Current voice character name (for display) */

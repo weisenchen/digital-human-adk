@@ -45,7 +45,7 @@ const CharacterSelector: React.FC = () => {
     [voices, locale, selectedGender]
   );
 
-  const currentVoice = voices.find((v: any) => v.voice_id === selectedVoice);
+  const currentVoice = (voices as any[]).find((v: any) => v.voice_id === selectedVoice);
   const popularNames = currentVoice?.popular_names || [];
 
   return (

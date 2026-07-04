@@ -1,6 +1,6 @@
 "use client";
 
-import { sendChatMessage, sendChatStream, getAIAudioFromText, fetchVoices, VoiceOption } from "@/pages/services/adk-assistant.service"
+import { sendChatMessage, sendChatStream, getAIAudioFromText, fetchVoices, VoiceOption } from "@/services/adk-assistant.service"
 import { useRef, useState, useCallback, useEffect } from "react"
 
 interface Message {
