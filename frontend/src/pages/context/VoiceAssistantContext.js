@@ -12,7 +12,6 @@ const VoiceAssistantContext = createContext({
   setInputText: (text: string) => {},
   handleTextSubmit: (e: React.FormEvent) => {},
   mouthOpen: 0,
-  // Voice character
   voices: [],
   selectedVoice: "",
   selectedGender: "female",
@@ -20,6 +19,13 @@ const VoiceAssistantContext = createContext({
   handleVoiceSelect: (voice_id: string) => {},
   characterName: "Xiao Wei",
   handleCharacterNameChange: (name: string) => {},
+  // UX enhancements
+  personality: "playful",
+  handlePersonalityChange: (p: string) => {},
+  isSpeaking: false,
+  toastMessage: null,
+  clearChat: () => {},
+  hasUsedVoice: false,
 });
 
 export default VoiceAssistantContext;

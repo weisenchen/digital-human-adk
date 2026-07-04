@@ -57,19 +57,18 @@ def create_app() -> FastAPI:
         text: str = Form(...),
         session_id: str = Form("default"),
         character_name: str = Form("Xiao Wei"),
+        personality: str = Form(""),
     ):
         """POST form: text=hello → {"reply": "Hi! I'm Xiao Wei~"}"""
         try:
-            # Only inject character name once per session (optimization:
-            # avoids running a full Gemini cycle on every single message)
             if session_id not in _configured_sessions:
                 _configured_sessions.add(session_id)
+                name_msg = f'[System: Your name is "{character_name}". Introduce yourself as {character_name} if asked.]'
+                if personality:
+                    name_msg += f"\n[Personality: {personality}]"
                 char_msg = types.Content(
                     role="user",
-                    parts=[types.Part(
-                        text=f'[System: Your name is "{character_name}". '
-                             f'Introduce yourself as {character_name} if asked.]'
-                    )]
+                    parts=[types.Part(text=name_msg)]
                 )
                 async for _ in _runner.run_async(
                     user_id="default_user",

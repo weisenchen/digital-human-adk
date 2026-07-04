@@ -78,13 +78,18 @@ const DigitalHumanContainer = () => {
 
     try {
       if (!hasStoppedMotions.current) {
-        model.internalModel.motionManager.stopAllMotions();
+        // Don't stop all motions — keep idle breathing
         model.internalModel.motionManager.state.reservedIdleGroup = "idle";
-        model.internalModel.motionManager.expressionManager.restoreExpression();
+        // Set idle expression
+        model.expression('f00');
         hasStoppedMotions.current = true;
       }
-      model.expression('f00');
-      model.internalModel.coreModel.setParamFloat("PARAM_MOUTH_OPEN_Y", mouthOpen);
+      // Subtle breathing when not speaking (mouthOpen ≈ 0)
+      const breathValue = mouthOpen < 0.05
+        ? 0.03 + Math.sin(Date.now() / 800) * 0.02
+        : mouthOpen;
+      model.internalModel.coreModel.setParamFloat("PARAM_MOUTH_OPEN_Y", Math.max(breathValue, mouthOpen));
+      model.internalModel.coreModel.setParamFloat("PARAM_BREATH", 0.5 + Math.sin(Date.now() / 1200) * 0.3);
     } catch (error) {
       console.error("Live2D mouth animation error:", error);
     }

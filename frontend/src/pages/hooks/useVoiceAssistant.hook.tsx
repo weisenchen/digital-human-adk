@@ -28,6 +28,14 @@ const FALLBACK_VOICES: Record<string, { female: string; male: string }> = {
   'fr-FR': { female: 'fr-FR-DeniseNeural', male: 'fr-FR-HenriNeural' },
 };
 
+const PERSONALITY_PROMPTS: Record<string, string> = {
+  playful: "Speak playfully with lots of emojis. Be warm, cute, and engaging. Short responses. Use ~ casually.",
+  professional: "Be professional, clear, and concise. No emojis. Focus on accuracy and helpful information.",
+  concise: "Answer in 1-2 sentences maximum. Direct and to the point. No pleasantries.",
+};
+
+export type Personality = 'playful' | 'professional' | 'concise';
+
 const useVoiceAssistant = ()=>{
     const [isWaitingAIOutput,setIsWaitingAIOutput] = useState<boolean>(false)
     const [selectedLanguage, setSelectedLanguage] = useState<string>("en-GB");
@@ -37,24 +45,26 @@ const useVoiceAssistant = ()=>{
 
     // Voice character selection
     const [voices, setVoices] = useState<VoiceOption[]>([]);
-    const [selectedVoice, setSelectedVoice] = useState<string>('');    // voice_id
+    const [selectedVoice, setSelectedVoice] = useState<string>('');
     const [selectedGender, setSelectedGender] = useState<string>('female');
     const [characterName, setCharacterName] = useState<string>('Xiao Wei');
 
-    // Audio playback: single AudioContext reused across all sentences
+    // UX enhancements
+    const [personality, setPersonality] = useState<Personality>('playful');
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [hasUsedVoice, setHasUsedVoice] = useState(false);
+
+    // Audio playback
     const audioContextRef = useRef<AudioContext | null>(null);
     const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const rafIdRef = useRef<number | null>(null);
-
-    // Audio playback queue
     const audioQueueRef = useRef<Blob[]>([]);
     const isPlayingRef = useRef(false);
     const generationRef = useRef(0);
-    /** Stores the cancel function for the current SSE stream */
     const cancelSSERef = useRef<(() => void) | null>(null);
 
-    /** Lazily init shared AudioContext (created once, never closed) */
     const getAudioContext = useCallback((): AudioContext => {
       if (!audioContextRef.current) {
         audioContextRef.current = new AudioContext();
@@ -64,16 +74,14 @@ const useVoiceAssistant = ()=>{
       return audioContextRef.current;
     }, []);
 
-  // ─────────────────────────────────────────────
-  // Load voices from backend on mount
-  // ─────────────────────────────────────────────
+  // Voice loading
   useEffect(() => {
     fetchVoices()
       .then(setVoices)
       .catch((err) => console.error('Failed to load voices:', err));
   }, []);
 
-  // Auto-select a voice when language or gender changes
+  // Auto-select voice
   useEffect(() => {
     const locale = LANGUAGE_LOCALE_MAP[selectedLanguage] || 'en-US';
     const matching = voices.filter(
@@ -91,7 +99,6 @@ const useVoiceAssistant = ()=>{
     }
   }, [selectedLanguage, selectedGender, voices]);
 
-  // Derive the active voice_id for TTS calls
   const getActiveVoice = useCallback(() => {
     if (selectedVoice) return selectedVoice;
     const locale = LANGUAGE_LOCALE_MAP[selectedLanguage] || 'en-US';
@@ -99,9 +106,27 @@ const useVoiceAssistant = ()=>{
     return fallback[selectedGender as 'female' | 'male'] || fallback.female;
   }, [selectedVoice, selectedGender, selectedLanguage]);
 
-  // ─────────────────────────────────────────────
-  // Path 1: Text chat (POST /chat, non-streaming)
-  // ─────────────────────────────────────────────
+  // Toast auto-dismiss
+  useEffect(() => {
+    if (toastMessage) {
+      const t = setTimeout(() => setToastMessage(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [toastMessage]);
+
+  // ── Personality system prompt ─────────────────────────
+  const getPersonalityPrompt = useCallback((): string => {
+    return PERSONALITY_PROMPTS[personality] || PERSONALITY_PROMPTS.playful;
+  }, [personality]);
+
+  // ── Clear chat ────────────────────────────────────────
+  const clearChat = useCallback(() => {
+    cancelAll();
+    setChatData([]);
+    setToastMessage('Conversation cleared');
+  }, []);
+
+  // ── Path 1: Text chat ─────────────────────────────────
   const handleTextSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
@@ -115,21 +140,20 @@ const useVoiceAssistant = ()=>{
     setIsWaitingAIOutput(true);
 
     try {
-      const { reply } = await sendChatMessage(text, characterName);
+      const { reply } = await sendChatMessage(text, characterName, getPersonalityPrompt());
       setChatData((prev) => [...prev, { text: reply, isUser: false }]);
     } catch (err) {
       console.error("Text chat error:", err);
       setChatData((prev) => [...prev, { text: "(Error getting reply)", isUser: false }]);
+      setToastMessage("Connection error. Please try again.");
     } finally {
       setIsWaitingAIOutput(false);
     }
   };
 
-  // ─────────────────────────────────────────────
-  // Path 2: Voice chat (POST /run_sse, streaming)
-  // ─────────────────────────────────────────────
+  // ── Path 2: Voice chat ────────────────────────────────
   const startVoiceChat = (transcript: string) => {
-    if (!transcript.trim()) return;  // guard: reject empty input
+    if (!transcript.trim()) return;
 
     cancelAll();
     const gen = ++generationRef.current;
@@ -168,6 +192,7 @@ const useVoiceAssistant = ()=>{
       (err) => {
         console.error("Voice chat error:", err);
         setIsWaitingAIOutput(false);
+        setToastMessage("Voice chat error. Try typing instead.");
       },
     );
 
@@ -176,12 +201,11 @@ const useVoiceAssistant = ()=>{
 
   const handleSpeechRecognized = (transcript: string) => {
     if (!transcript.trim()) return;
+    setHasUsedVoice(true);
     startVoiceChat(transcript);
   };
 
-  // ─────────────────────────────────────────────
-  // Cancel helpers
-  // ─────────────────────────────────────────────
+  // ── Cancel helpers ────────────────────────────────────
   const cancelAll = useCallback(() => {
     if (cancelSSERef.current) {
       cancelSSERef.current();
@@ -191,7 +215,6 @@ const useVoiceAssistant = ()=>{
   }, []);
 
   const cancelPlayback = useCallback(() => {
-    // Stop current source (NOT the AudioContext — we reuse it)
     if (currentSourceRef.current) {
       try { currentSourceRef.current.stop(); } catch {}
       currentSourceRef.current = null;
@@ -202,17 +225,19 @@ const useVoiceAssistant = ()=>{
     }
     audioQueueRef.current = [];
     isPlayingRef.current = false;
+    setIsSpeaking(false);
     setMouthOpen(0);
   }, []);
 
   const playNextInQueue = useCallback(() => {
     if (isPlayingRef.current || audioQueueRef.current.length === 0) return;
     isPlayingRef.current = true;
+    setIsSpeaking(true);
 
     const blob = audioQueueRef.current.shift();
-    // Guard: if cancelPlayback emptied the queue between length check and shift
     if (!blob) {
       isPlayingRef.current = false;
+      setIsSpeaking(false);
       return;
     }
 
@@ -220,6 +245,9 @@ const useVoiceAssistant = ()=>{
 
     speakFromBlob(url).then(() => {
       isPlayingRef.current = false;
+      if (audioQueueRef.current.length === 0) {
+        setIsSpeaking(false);
+      }
       playNextInQueue();
     });
   }, []);
@@ -228,7 +256,6 @@ const useVoiceAssistant = ()=>{
     return new Promise((resolve) => {
       const audioContext = getAudioContext();
 
-      // Stop any currently playing source on the shared context
       if (currentSourceRef.current) {
         try { currentSourceRef.current.stop(); } catch {}
         currentSourceRef.current = null;
@@ -242,7 +269,6 @@ const useVoiceAssistant = ()=>{
         .then((res) => res.arrayBuffer())
         .then((audioData) => audioContext.decodeAudioData(audioData))
         .then((audioBuffer) => {
-          // Create source on the shared AudioContext
           const source = audioContext.createBufferSource();
           currentSourceRef.current = source;
 
@@ -291,9 +317,33 @@ const useVoiceAssistant = ()=>{
     };
   }, [cancelPlayback]);
 
-  // ─────────────────────────────────────────────
-  // Other handlers
-  // ─────────────────────────────────────────────
+  // ── Keyboard shortcuts (global) ───────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't intercept if user is typing
+      const active = document.activeElement;
+      const isInput = active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA' || (active as HTMLElement)?.isContentEditable;
+
+      // Escape: cancel streaming / speaking
+      if (e.key === 'Escape' && !isInput) {
+        cancelAll();
+        if (isWaitingAIOutput) setIsWaitingAIOutput(false);
+        return;
+      }
+
+      // Space: toggle recording (only when NOT typing in an input)
+      if (e.key === ' ' && !isInput && !isWaitingAIOutput) {
+        e.preventDefault();
+        // Dispatch to VoiceRecorder — this is handled by the VoiceRecorder's own listener
+        window.dispatchEvent(new CustomEvent('toggle-recording'));
+        return;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [cancelAll, isWaitingAIOutput]);
+
+  // ── Other handlers ────────────────────────────────────
   const handleLanguageChange = (language: string) => {
     setSelectedLanguage(language);
   };
@@ -314,6 +364,11 @@ const useVoiceAssistant = ()=>{
     setCharacterName(name);
   };
 
+  const handlePersonalityChange = (p: Personality) => {
+    setPersonality(p);
+    setToastMessage(`Switched to ${p} mode ✨`);
+  };
+
   return {
     handleSpeechRecognized,
     isWaitingAIOutput,
@@ -331,6 +386,13 @@ const useVoiceAssistant = ()=>{
     handleVoiceSelect,
     characterName,
     handleCharacterNameChange,
+    // UX additions
+    personality,
+    handlePersonalityChange,
+    isSpeaking,
+    toastMessage,
+    clearChat,
+    hasUsedVoice,
   };
 };
 
