@@ -14,16 +14,16 @@ import CharacterSelector from '../CharacterSelector/CharacterSelector.component'
 import PresentationMode from '../PresentationMode/PresentationMode.component';
 
 const SUGGESTIONS = [
-  { text: 'Hello! 👋', en: 'Hello! 👋', zh: '你好！👋' },
-  { text: 'Tell me a joke', en: 'Tell me a joke 😄', zh: '讲个笑话 😄' },
-  { text: 'What can you do?', en: 'What can you do? ✨', zh: '你能做什么？✨' },
-  { text: 'Introduce yourself', en: 'Introduce yourself 🌟', zh: '介绍一下自己 🌟' },
+  'Hello! 👋',
+  'Tell me a joke 😄',
+  'What can you do? ✨',
+  'Introduce yourself 🌟',
 ];
 
 const PERSONALITIES = [
-  { id: 'playful', label_en: 'Playful', label_zh: '活泼', icon: '✨' },
-  { id: 'professional', label_en: 'Professional', label_zh: '专业', icon: '💼' },
-  { id: 'concise', label_en: 'Concise', label_zh: '简洁', icon: '⚡' },
+  { id: 'playful', label: 'Playful', icon: '✨' },
+  { id: 'professional', label: 'Professional', icon: '💼' },
+  { id: 'concise', label: 'Concise', icon: '⚡' },
 ];
 
 export default function ConversationContainer() {
@@ -50,7 +50,6 @@ export default function ConversationContainer() {
     selectedVoice,
   } = context;
 
-  const isEnglish = selectedLanguage === 'en-GB' || selectedLanguage === 'en-US';
   const isFirstMessage = chatData.length === 0;
 
   const speechRecognitionLang = selectedLanguage === 'en-GB' ? 'en-US'
@@ -64,7 +63,7 @@ export default function ConversationContainer() {
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-title-lg text-[var(--md-on-surface)] flex items-center gap-2">
           <MessageCircle className="w-5 h-5 text-[var(--md-primary)]" />
-          {isEnglish ? 'Chat' : '对话'}
+          Chat
         </h2>
         <div className="flex items-center gap-1">
           {/* Read Script / Presentation */}
@@ -103,7 +102,7 @@ export default function ConversationContainer() {
             }`}
           >
             <span>{p.icon}</span>
-            <span>{isEnglish ? p.label_en : p.label_zh}</span>
+            <span>{p.label}</span>
           </button>
         ))}
       </div>
@@ -124,23 +123,23 @@ export default function ConversationContainer() {
         <div className="flex flex-col items-center py-4 text-center animate-[md-fade-in_300ms_ease-out]">
           <Bot className="w-10 h-10 text-[var(--md-primary)] mb-2 opacity-60" />
           <p className="text-body-md text-[var(--md-on-surface-variant)] mb-3">
-            {isEnglish ? 'Start a conversation!' : '开始对话吧！'}
+            Start a conversation!
           </p>
           <div className="flex flex-wrap gap-2 justify-center max-w-xs">
             {SUGGESTIONS.map((s, i) => (
               <button
                 key={i}
                 onClick={() => {
-                  setInputText(isEnglish ? s.en : s.zh);
+                  setInputText(s);
                 }}
                 className="text-label-sm bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] px-3 py-1.5 rounded-[var(--shape-full)] border border-[var(--md-primary)]/20 hover:bg-[var(--md-primary)] hover:text-white transition-all duration-[var(--motion-sm)] state-layer"
               >
-                {isEnglish ? s.en : s.zh}
+                {s}
               </button>
             ))}
           </div>
           <p className="text-label-sm text-[var(--md-on-surface-variant)]/50 mt-3">
-            {isEnglish ? 'or type below ✏️' : '或在下方的输入框中打字 ✏️'}
+            or type below ✏️
           </p>
         </div>
       )}
@@ -151,7 +150,7 @@ export default function ConversationContainer() {
         <div className="relative flex-1">
           <Input
             type="text"
-            placeholder={isEnglish ? "Type a message..." : "输入消息..."}
+            placeholder="Type a message..."
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             className="w-full text-body-lg bg-[var(--md-surface-variant)] text-[var(--md-on-surface)] placeholder:text-[var(--md-on-surface-variant)]/60 rounded-[var(--shape-full)] px-5 py-2.5 pr-12 border-2 border-[var(--md-outline)] focus:border-[var(--md-primary)] focus:ring-0 transition-colors duration-[var(--motion-sm)]"
