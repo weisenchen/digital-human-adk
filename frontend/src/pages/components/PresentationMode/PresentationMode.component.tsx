@@ -566,9 +566,9 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-white bg-gradient-to-br from-[#F7FAFC] to-[#EDF2F7] flex flex-col">
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "#ffffff" }}>
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--md-outline)] bg-white/80 backdrop-blur-sm">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--md-outline)] bg-white">
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
@@ -620,7 +620,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
         </div>
 
         {/* Controls sidebar */}
-        <div className="lg:w-48 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--md-outline)] bg-white/50 p-4 flex lg:flex-col items-center lg:items-stretch gap-3">
+        <div className="lg:w-48 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[var(--md-outline)] bg-white p-4 flex lg:flex-col items-center lg:items-stretch gap-3">
           {/* Slide counter */}
           <div className="text-center">
             <div className="text-headline-md font-bold text-[var(--md-primary)]">
