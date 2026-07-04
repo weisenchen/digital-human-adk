@@ -1,52 +1,67 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import { Mic, MicOff } from "lucide-react";
 
 export interface VoiceRecorderProps {
-  onAudioRecordingComplete: (audioData: Blob) => void;
+  onSpeechRecognized: (text: string) => void;
 }
 
+/**
+ * VoiceRecorder - uses browser's Web Speech API (SpeechRecognition)
+ * to transcribe speech to text in real-time, then passes the text
+ * to the parent hook (no raw audio sent to the backend).
+ */
 const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
-  onAudioRecordingComplete,
+  onSpeechRecognized,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
-  const handleRecordToggle = async () => {
-    if (!isRecording) {
-      // Start recording
-      setIsRecording(true);
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorderRef.current = new MediaRecorder(stream);
-
-        mediaRecorderRef.current.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            chunksRef.current.push(event.data);
-          }
-        };
-
-        mediaRecorderRef.current.onstop = () => {
-          const audioBlob = new Blob(chunksRef.current, { type: "audio/ogg; codecs=opus" });
-          chunksRef.current = []; // Clear chunks for the next recording
-          onAudioRecordingComplete(audioBlob);
-        };
-
-        mediaRecorderRef.current.start();
-        console.log("Recording started");
-      } catch (error) {
-        console.error("Error accessing microphone:", error);
-        setIsRecording(false);
-      }
-    } else {
-      // Stop recording
+  const handleRecordToggle = useCallback(async () => {
+    if (isRecording) {
+      // Stop listening
+      recognitionRef.current?.stop();
       setIsRecording(false);
-      mediaRecorderRef.current?.stop();
-      console.log("Recording stopped");
+      return;
     }
-  };
+
+    // Check browser support
+    const SpeechRecognitionAPI =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognitionAPI) {
+      alert("Speech recognition is not supported in this browser. Please use Chrome.");
+      return;
+    }
+
+    const recognition = new SpeechRecognitionAPI();
+    recognition.lang = "zh-CN";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0][0].transcript;
+      if (transcript.trim()) {
+        onSpeechRecognized(transcript);
+      }
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error("Speech recognition error:", event.error);
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognitionRef.current = recognition;
+    setIsRecording(true);
+    recognition.start();
+  }, [isRecording, onSpeechRecognized]);
 
   return (
     <div>

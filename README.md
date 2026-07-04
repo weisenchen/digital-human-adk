@@ -45,19 +45,16 @@ Edit `.env` — **you only need `GOOGLE_API_KEY`** to get started:
 # Required: Gemini API key (get at https://aistudio.google.com)
 GOOGLE_API_KEY=your_gemini_api_key_here
 
-# Optional: TTS / STT provider
-#   edge       — Edge TTS (free, no API key) ← recommended for first run
-#   google     — Google Cloud TTS/STT (needs GCP service account)
-#   openai     — OpenAI TTS/API key
-#   whisper    — OpenAI Whisper STT (needs OPENAI_API_KEY)
+# Optional: TTS (voice output) provider
+#   edge   — Edge TTS (free, no API key) ← recommended
+#   google — Google Cloud TTS (needs GCP service account)
+#   openai — OpenAI TTS (needs OPENAI_API_KEY)
 TTS_PROVIDER=edge
-STT_PROVIDER=whisper
-OPENAI_API_KEY=sk-...   # only if using whisper/openai
 ```
 
-> **Need quick voice without API keys?** Set `TTS_PROVIDER=edge` (free, zero config) and uncomment `edge-tts` in `requirements.txt` then reinstall.
+> **Voice out of the box?** `TTS_PROVIDER=edge` is free and needs no API key. Just uncomment `edge-tts` in `requirements.txt`.
 >
-> **Google Cloud STT/TTS** need a GCP service account key (`GOOGLE_APPLICATION_CREDENTIALS`), which is separate from `GOOGLE_API_KEY` (Gemini).
+> **Speech input (mic → text)?** Handled by the browser's Web Speech API — no API key, no backend setup needed.
 
 ```bash
 pip install -r requirements.txt
@@ -78,8 +75,8 @@ Open `http://localhost:3000` — the Live2D avatar appears and you can chat via 
 
 ```text
 ┌─ Frontend (Next.js + Live2D) ────────────────────────┐
+│  Browser:     Web Speech API → transcription → /chat  │
 │  Custom:       POST /chat          → conversation    │
-│  Custom:       POST /audio/stt     → speech-to-text  │
 │  Custom:       POST /audio/tts     → text-to-speech  │
 └──────────────────┬────────────────────────────────────┘
                    │
@@ -98,25 +95,21 @@ Open `http://localhost:3000` — the Live2D avatar appears and you can chat via 
 | Method | Path | Description |
 |---|---|---|
 | POST | `/chat` | Send text, get AI reply (form: text=...) |
-| POST | `/audio/stt` | Upload audio, get transcript (form: file+language) |
 | POST | `/audio/tts` | Send text, get audio file (form: text+language) |
 | POST | `/run` | ADK native agent execution API |
 | GET  | `/` | ADK Web debug UI |
 
-## TTS Providers
+## TTS Provider (Voice Output)
 
-| Provider | API Key Needed | Config |
+Speech is handled server-side. Set `TTS_PROVIDER` in `.env`:
+
+| Provider | API Key Needed | Notes |
 |---|---|---|
-| `edge` | ❌ Free | `TTS_PROVIDER=edge` (fastest to start) |
-| `google` | ✅ GCP credentials | Needs `GOOGLE_APPLICATION_CREDENTIALS` |
+| `edge` | ❌ Free | **Default.** Fast, zero config. Requires `pip install edge-tts` (uncomment in requirements.txt) |
+| `google` | ✅ GCP credentials | Natural voices, needs `GOOGLE_APPLICATION_CREDENTIALS` env var |
 | `openai` | ✅ OPENAI_API_KEY | `TTS_PROVIDER=openai` |
 
-## STT Providers
-
-| Provider | API Key Needed | Config |
-|---|---|---|
-| `whisper` | ✅ OPENAI_API_KEY | `STT_PROVIDER=whisper` |
-| `google` | ✅ GCP credentials | Needs `GOOGLE_APPLICATION_CREDENTIALS` |
+**Speech Input (STT):** The frontend uses the browser's built-in Web Speech API (`webkitSpeechRecognition`). Speech is transcribed to text locally in the browser, then sent to the backend as a text message — no raw audio upload needed, no API key required.
 
 ## Project Structure
 
@@ -126,8 +119,7 @@ digital-human-adk/
 │   ├── digital_human.py      ← ADK Agent ("Xiao Wei", Gemini 2.5 Flash)
 │   └── tools.py              ← Custom tools (in-memory memory, etc.)
 ├── audio/
-│   ├── stt.py                ← Speech-to-text (Google / Whisper)
-│   └── tts.py                ← Text-to-speech (Google / OpenAI / Edge)
+│   └── tts.py                ← Text-to-speech (Edge / Google / OpenAI)
 ├── server.py                 ← ADK server + custom /chat, /audio/* endpoints
 ├── frontend/                 ← Next.js + Live2D frontend
 │   ├── src/pages/

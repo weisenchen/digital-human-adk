@@ -26,7 +26,7 @@ export default function ConversationContainer() {
     chatData,
     handleTextSubmit,
     setInputText,
-    handleUserVoiceRecorded,
+    handleSpeechRecognized,
     isWaitingAIOutput,
     lastAIReplyURL,
     handleOnAudioPlayEnd,
@@ -61,7 +61,7 @@ export default function ConversationContainer() {
             <Send className="w-5 h-5" />
           </Button>
         </div>
-        <VoiceRecorder onAudioRecordingComplete={handleUserVoiceRecorded}/>
+        <VoiceRecorder onSpeechRecognized={handleSpeechRecognized}/>
       </form>
       <AudioPlayer
         audioFileUrl={lastAIReplyURL}

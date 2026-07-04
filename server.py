@@ -1,5 +1,5 @@
 """
-Digital Human Server — built on ADK's built-in web server with custom STT/TTS and chat endpoints.
+Digital Human Server - built on ADK's built-in web server with custom TTS and chat endpoints.
 
 Usage:
     python server.py
@@ -14,7 +14,7 @@ sys.path.insert(0, AGENTS_DIR)
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, Form
 from fastapi.responses import FileResponse
 
 from google.adk.cli.fast_api import get_fast_api_app
@@ -23,12 +23,11 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from agents.digital_human import root_agent
-from audio.stt import transcribe_audio
 from audio.tts import synthesize
 
 
 def create_app() -> FastAPI:
-    """Create ADK web server with custom STT/TTS and chat endpoints."""
+    """Create ADK web server with custom TTS and chat endpoints."""
 
     # 1. ADK built-in server (Web UI, /run, /run_sse, WebSocket, session mgmt)
     app = get_fast_api_app(
@@ -65,14 +64,7 @@ def create_app() -> FastAPI:
                 break
         return {"reply": reply}
 
-    # 3. Speech-to-Text
-    @app.post("/audio/stt")
-    async def speech_to_text(file: UploadFile = File(...), language: str = Form("en")):
-        audio_bytes = await file.read()
-        text = await transcribe_audio(audio_bytes, language)
-        return {"text": text}
-
-    # 4. Text-to-Speech
+    # 3. Text-to-Speech
     @app.post("/audio/tts")
     async def text_to_speech(text: str = Form(...), language: str = Form("en")):
         path = await synthesize(text, language)
@@ -88,7 +80,6 @@ if __name__ == "__main__":
     app = create_app()
     print(f"🚀 ADK Digital Human: http://{host}:{port}")
     print(f"💬 Chat: POST /chat           (form: text=...)")
-    print(f"🎤 STT:  POST /audio/stt      (form: file+language)")
     print(f"🔊 TTS:  POST /audio/tts      (form: text+language)")
     print(f"🖥️  Web:  http://{host}:{port}            (ADK Web UI)")
     uvicorn.run(app, host=host, port=port)
