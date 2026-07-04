@@ -598,8 +598,24 @@ def create_app() -> FastAPI:
 
 if __name__ == "__main__":
     import uvicorn
+    import subprocess
+    import signal
     port = int(os.getenv("PORT", 8000))
     host = os.getenv("HOST", "0.0.0.0")
+
+    # Clean up stale process on the same port before binding
+    try:
+        result = subprocess.run(
+            ["lsof", "-t", "-i", f":{port}", "-s", "TCP:LISTEN"],
+            capture_output=True, text=True, timeout=5,
+        )
+        pids = [int(p) for p in result.stdout.strip().split() if p]
+        for pid in pids:
+            os.kill(pid, signal.SIGTERM)
+            logger.warning("Killed stale process PID %d holding port %d", pid, port)
+    except (FileNotFoundError, subprocess.TimeoutExpired, ValueError, OSError):
+        pass
+
     app = create_app()
     print(f"🚀 ADK Digital Human: http://{host}:{port}")
     print(f"💬 Chat:        POST /chat              (form: text=...)")
