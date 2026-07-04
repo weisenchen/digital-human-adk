@@ -3,7 +3,6 @@
 import React, { useContext } from 'react';
 import { X } from 'lucide-react';
 import CharacterSelector from '../CharacterSelector/CharacterSelector.component';
-import LanguageSelector from '../LanguageSelector/LanguageSelector.component';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 
 interface SettingsSidebarProps {
@@ -12,8 +11,6 @@ interface SettingsSidebarProps {
 
 export default function SettingsSidebar({ onClose }: SettingsSidebarProps) {
   const context = useContext(VoiceAssistantContext);
-  const selectedLanguage = context?.selectedLanguage || 'en-GB';
-  const handleLanguageChange = context?.handleLanguageChange || (() => {});
 
   return (
     <aside className="w-[280px] flex-shrink-0 bg-white border-r border-gray-200 flex flex-col h-full">
@@ -29,12 +26,8 @@ export default function SettingsSidebar({ onClose }: SettingsSidebarProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3">
         <CharacterSelector />
-        <LanguageSelector
-          selectedLanguage={selectedLanguage}
-          onLanguageChange={handleLanguageChange}
-        />
       </div>
     </aside>
   );

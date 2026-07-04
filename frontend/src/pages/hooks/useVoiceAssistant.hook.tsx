@@ -32,7 +32,7 @@ const PROFESSIONAL_PROMPT = "Be professional, clear, and concise. No emojis. Foc
 
 const useVoiceAssistant = ()=>{
     const [isWaitingAIOutput,setIsWaitingAIOutput] = useState<boolean>(false)
-    const [selectedLanguage, setSelectedLanguage] = useState<string>("en-GB");
+    const [selectedLanguage, setSelectedLanguage] = useState<string>("en-US");
     const [chatData, setChatData] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [mouthOpen, setMouthOpen] = useState(0);

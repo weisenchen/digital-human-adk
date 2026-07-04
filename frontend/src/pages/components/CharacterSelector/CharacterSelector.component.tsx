@@ -50,7 +50,7 @@ const CharacterSelector: React.FC = () => {
         <Mic className="w-4 h-4 text-gray-500" />
         <span className="text-sm font-medium text-gray-700">Voice</span>
         <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full ml-auto">
-          {LOCALE_LABELS[locale] || locale}
+          English
         </span>
       </div>
 

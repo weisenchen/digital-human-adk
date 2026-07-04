@@ -5,7 +5,7 @@ import { createContext } from "react";
 const VoiceAssistantContext = createContext({
   handleSpeechRecognized: (t) => {},
   isWaitingAIOutput: false,
-  selectedLanguage: "en-GB",
+  selectedLanguage: "en-US",
   handleLanguageChange: (l) => {},
   chatData: [],
   inputText: "",
