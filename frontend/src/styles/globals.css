@@ -3,6 +3,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Inter font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* DESIGN.md CSS custom properties */
+:root {
+  --color-primary: #1A202C;
+  --color-secondary: #4A5568;
+  --color-tertiary: #6B46C1;
+  --color-tertiary-light: #E9D8FD;
+  --color-accent: #667EEA;
+  --color-surface: #FFFFFF;
+  --color-background: #F7FAFC;
+  --color-bubble-user: #EDF2F7;
+  --color-bubble-ai: #EBF4FF;
+  --color-muted: #A0AEC0;
+  --color-border-light: #E2E8F0;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-elevated: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-background);
+  color: var(--color-primary);
+}
+
 /* Live2D canvas container */
 #live2d-canvas {
   position: relative;
@@ -10,11 +37,29 @@
   height: 100%;
 }
 
-/* Conversation scroll */
-.conversation-scroll::-webkit-scrollbar {
+/* Scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
-.conversation-scroll::-webkit-scrollbar-thumb {
-  background: #ccc;
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-muted);
   border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary);
+}
+
+/* Streaming cursor animation */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.streaming-cursor::after {
+  content: '▍';
+  animation: blink 1s step-end infinite;
+  color: var(--color-tertiary);
+  margin-left: 2px;
 }

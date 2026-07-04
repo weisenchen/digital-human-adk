@@ -8,11 +8,6 @@ export interface VoiceRecorderProps {
   language: string;
 }
 
-/**
- * VoiceRecorder - uses browser's Web Speech API (SpeechRecognition)
- * to transcribe speech to text with real-time interim results.
- * Shows what the user is saying while they speak.
- */
 const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   onSpeechRecognized,
   language,
@@ -21,7 +16,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   const [interimText, setInterimText] = useState("");
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       recognitionRef.current?.stop();
@@ -30,14 +24,12 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
   const handleRecordToggle = useCallback(async () => {
     if (isRecording) {
-      // Stop recording
       recognitionRef.current?.stop();
       setIsRecording(false);
       setInterimText("");
       return;
     }
 
-    // Check browser support
     const SpeechRecognitionAPI =
       (window as any).SpeechRecognition ||
       (window as any).webkitSpeechRecognition;
@@ -49,8 +41,8 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
     const recognition = new SpeechRecognitionAPI();
     recognition.lang = language;
-    recognition.continuous = true;      // Keep listening for continuous speech
-    recognition.interimResults = true;  // Show results while speaking
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -66,10 +58,8 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         }
       }
 
-      // Show interim text as user speaks
       setInterimText(interimTranscript);
 
-      // If we have final text, send it
       if (finalTranscript.trim()) {
         onSpeechRecognized(finalTranscript.trim());
       }
@@ -82,7 +72,6 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     };
 
     recognition.onend = () => {
-      // Only reset if we're not already stopped
       setIsRecording(false);
       setInterimText("");
     };
@@ -98,21 +87,18 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       <button
         type="button"
         onClick={handleRecordToggle}
-        className={`rounded-full px-4 py-2 transition-all duration-200 ${
+        className={`rounded-full p-2.5 transition-all duration-200 shadow-sm ${
           isRecording
-            ? "bg-red-400 hover:bg-red-500 text-white animate-pulse"
-            : "bg-orange-400 hover:bg-orange-500 text-white"
+            ? "bg-[#E53E3E] hover:bg-red-600 text-white animate-pulse shadow-md"
+            : "bg-[#6B46C1] hover:bg-[#667EEA] text-white"
         }`}
+        aria-label={isRecording ? "Stop Listening" : "Start Listening"}
       >
         {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-        <span className="sr-only">
-          {isRecording ? "Stop Listening" : "Start Listening"}
-        </span>
       </button>
 
-      {/* Interim transcript bubble */}
       {isRecording && interimText && (
-        <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-white bg-opacity-90 backdrop-blur-sm text-gray-700 text-sm px-3 py-1.5 rounded-xl shadow-lg border border-orange-200 whitespace-nowrap max-w-[200px] overflow-hidden text-ellipsis z-10">
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-white bg-opacity-95 backdrop-blur-sm text-[#4A5568] text-xs px-3 py-1.5 rounded-xl shadow-elevated border border-[#E2E8F0] whitespace-nowrap max-w-[180px] overflow-hidden text-ellipsis z-10">
           🎤 {interimText}
         </div>
       )}

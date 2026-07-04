@@ -15,9 +15,7 @@ import Loading from '../Loading/Loading.component'
 export default function ConversationContainer() {
   const context = useContext(VoiceAssistantContext);
   if (!context) {
-    throw new Error(
-      'VoiceAssistantContext is undefined. Did you forget to wrap the component with VoiceAssistantProvider?'
-    );
+    throw new Error('VoiceAssistantContext is undefined.');
   }
 
   const {
@@ -30,42 +28,42 @@ export default function ConversationContainer() {
     selectedLanguage,
   } = context;
 
-  // Map our language codes to SpeechRecognition BCP 47 codes
   const speechRecognitionLang = selectedLanguage === 'en-GB' ? 'en-US'
     : selectedLanguage === 'cmn-CN' ? 'zh-CN'
     : selectedLanguage === 'Yue-HK' ? 'zh-HK'
     : 'en-US';
 
   return (
-    <div className="bg-white bg-opacity-60 backdrop-blur-sm rounded-2xl shadow-lg border border-white border-opacity-20 p-4 flex flex-col h-[calc(100vh-7rem)]">
-      <h2 className="text-3xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-red-600 flex items-center">
-        <MessageCircle className="w-8 h-8 mr-2 text-orange-400" />
-        Conversation Dialog
+    <div className="bg-white rounded-xl shadow-card border border-[#E2E8F0] p-4 flex flex-col h-full">
+      <h2 className="text-xl font-bold text-[#1A202C] mb-4 flex items-center gap-2">
+        <MessageCircle className="w-5 h-5 text-[#6B46C1]" />
+        Conversation
       </h2>
+
       <ChatDisplay chatData={chatData} />
-      {isWaitingAIOutput && (
-        <Loading/>
-      )}
-      <form onSubmit={handleTextSubmit} className="flex items-center space-x-2 mt-4">
-        <div className="relative flex-1"> 
+
+      {isWaitingAIOutput && <Loading />}
+
+      <form onSubmit={handleTextSubmit} className="flex items-center gap-2 mt-4">
+        <div className="relative flex-1">
           <Input
             type="text"
-            placeholder="Type your message..."
+            placeholder="Type a message..."
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            className="w-full text-lg bg-transparent border border-red-500 border-opacity-50 text-gray-800 placeholder-gray-500 rounded-full px-4 py-2 pr-12"
+            className="w-full text-base bg-[#F7FAFC] text-[#1A202C] placeholder-[#A0AEC0] rounded-full px-5 py-2.5 pr-12 border-2 border-[#E2E8F0] focus:border-[#6B46C1] focus:ring-0 transition-colors"
             aria-label="Message input"
           />
           <Button
             type="submit"
-            className="absolute inset-y-0 right-2 text-orange-500 hover:text-orange-300 rounded-full p-2 flex items-center justify-center"
+            className="absolute inset-y-1 right-1 w-8 h-8 bg-[#6B46C1] hover:bg-[#667EEA] text-white rounded-full p-1.5 flex items-center justify-center transition-colors"
             aria-label="Send message"
-            variant= "ghost"
+            variant="ghost"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4" />
           </Button>
         </div>
-        <VoiceRecorder onSpeechRecognized={handleSpeechRecognized} language={speechRecognitionLang}/>
+        <VoiceRecorder onSpeechRecognized={handleSpeechRecognized} language={speechRecognitionLang} />
       </form>
     </div>
   );
