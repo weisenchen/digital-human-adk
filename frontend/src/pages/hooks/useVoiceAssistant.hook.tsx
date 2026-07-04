@@ -1,6 +1,6 @@
 "use client";
 
-import { getAIAudioFromText, getAIReplyFromText } from "@/pages/services/adk-assistant.service"
+import { sendChatStream, getAIAudioFromText } from "@/pages/services/adk-assistant.service"
 import {useState} from "react"
 
 interface Message {
@@ -18,13 +18,49 @@ const useVoiceAssistant = ()=>{
 
   const handleUserInput = async (input: string) => {
     setChatData((prev) => [...prev, { text: input, isUser: true }]);
+
+    // Add a placeholder AI message for streaming
+    setChatData((prev) => [...prev, { text: '', isUser: false }]);
     setIsWaitingAIOutput(true);
-        const result = await getAIReplyFromText(input);
-    setIsWaitingAIOutput(false);
-    if (result) {
-        const { aiResponseText } = result;
-        setChatData((prevData) => [...prevData, {text: aiResponseText, isUser: false}]);
-    }
+
+    let fullResponse = '';
+
+    sendChatStream(
+      input,
+      // onToken: append to the last AI message in chat
+      (chunk) => {
+        fullResponse += chunk;
+        setChatData((prev) => {
+          const updated = [...prev];
+          const lastIdx = updated.length - 1;
+          if (lastIdx >= 0 && !updated[lastIdx].isUser) {
+            updated[lastIdx] = { text: updated[lastIdx].text + chunk, isUser: false };
+          }
+          return updated;
+        });
+      },
+      // onComplete: stream finished, trigger TTS
+      async (fullText) => {
+        setIsWaitingAIOutput(false);
+        if (!fullText.trim()) return;
+
+        // Generate TTS audio for the full response
+        try {
+          const aiAudioResult = await getAIAudioFromText(fullText, selectedLanguage);
+          if (aiAudioResult) {
+            const url = URL.createObjectURL(aiAudioResult);
+            speaking(url);
+          }
+        } catch (aiAudioError) {
+          console.error("Error generating AI audio:", aiAudioError);
+        }
+      },
+      // onError
+      (err) => {
+        console.error("Stream error:", err);
+        setIsWaitingAIOutput(false);
+      },
+    );
   };
 
   const handleTextSubmit = (e: React.FormEvent) => {
@@ -37,39 +73,11 @@ const useVoiceAssistant = ()=>{
 
     /**
      * Called when the browser's Web Speech API returns a recognized transcript.
-     * The text is sent to the backend /chat endpoint (no raw audio to the server).
+     * The text is sent to the backend /run_sse endpoint (no raw audio to the server).
      */
     const handleSpeechRecognized = async (transcript: string) => {
       if (!transcript.trim()) return;
-
-      setChatData((prevData) => [...prevData, { text: transcript, isUser: true }]);
-
-      setIsWaitingAIOutput(true);
-      let aiResponseText = '';
-      try {
-        const result = await getAIReplyFromText(transcript);
-        if (result) {
-          aiResponseText = result.aiResponseText;
-          setChatData((prevData) => [...prevData, { text: aiResponseText, isUser: false }]);
-        }
-      } catch (aiReplyError) {
-        console.error("Error getting AI reply:", aiReplyError);
-      } finally {
-        setIsWaitingAIOutput(false); 
-      }
-  
-      // Convert AI text reply to audio (lip-sync)
-      if (aiResponseText) {
-        try {
-          const aiAudioResult = await getAIAudioFromText(aiResponseText, selectedLanguage);
-          if (aiAudioResult) {
-            const url = URL.createObjectURL(aiAudioResult);
-            speaking(url);
-          }
-        } catch (aiAudioError) {
-          console.error("Error generating AI audio:", aiAudioError);
-        }
-      }
+      handleUserInput(transcript);
     };
 
     const speaking = async (Audiourl: string) => {

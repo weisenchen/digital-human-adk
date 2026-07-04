@@ -30,7 +30,14 @@ export default function ConversationContainer() {
     isWaitingAIOutput,
     lastAIReplyURL,
     handleOnAudioPlayEnd,
+    selectedLanguage,
   } = context;
+
+  // Map our language codes to SpeechRecognition BCP 47 codes
+  const speechRecognitionLang = selectedLanguage === 'en-GB' ? 'en-US'
+    : selectedLanguage === 'cmn-CN' ? 'zh-CN'
+    : selectedLanguage === 'Yue-HK' ? 'zh-HK'
+    : 'en-US';
 
   return (
     <div className="bg-white bg-opacity-60 backdrop-blur-sm rounded-2xl shadow-lg border border-white border-opacity-20 p-4 flex flex-col h-[calc(100vh-7rem)]">
@@ -61,7 +68,7 @@ export default function ConversationContainer() {
             <Send className="w-5 h-5" />
           </Button>
         </div>
-        <VoiceRecorder onSpeechRecognized={handleSpeechRecognized}/>
+        <VoiceRecorder onSpeechRecognized={handleSpeechRecognized} language={speechRecognitionLang}/>
       </form>
       <AudioPlayer
         audioFileUrl={lastAIReplyURL}

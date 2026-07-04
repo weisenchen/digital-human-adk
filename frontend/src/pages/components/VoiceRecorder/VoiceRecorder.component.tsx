@@ -5,6 +5,7 @@ import { Mic, MicOff } from "lucide-react";
 
 export interface VoiceRecorderProps {
   onSpeechRecognized: (text: string) => void;
+  language: string;
 }
 
 /**
@@ -14,6 +15,7 @@ export interface VoiceRecorderProps {
  */
 const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   onSpeechRecognized,
+  language,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -37,7 +39,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     }
 
     const recognition = new SpeechRecognitionAPI();
-    recognition.lang = "zh-CN";
+    recognition.lang = language;
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
@@ -61,7 +63,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     recognitionRef.current = recognition;
     setIsRecording(true);
     recognition.start();
-  }, [isRecording, onSpeechRecognized]);
+  }, [isRecording, onSpeechRecognized, language]);
 
   return (
     <div>
