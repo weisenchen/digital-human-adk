@@ -291,8 +291,8 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   if (stage === 'input') {
     return (
       // Input stage: fully opaque white background — no transparency, no backdrop blur
-      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center p-4">
-        <div className="bg-white rounded-[var(--shape-lg)] shadow-elevation-5 w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div style={{ position: "fixed", inset: 0, zIndex: 50, width: "100vw", height: "100dvh", maxWidth: "100vw", maxHeight: "100dvh", overflow: "hidden", margin: 0, padding: 0, backgroundColor: "#ffffff" }} className="flex items-center justify-center">
+        <div className="bg-white rounded-[var(--shape-lg)] shadow-elevation-5 w-full max-w-2xl max-h-[90vh] flex flex-col" style={{ maxHeight: "calc(100dvh - 32px)" }}>
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--md-outline)]">
             <div className="flex items-center gap-2">
@@ -415,8 +415,8 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   if (stage === 'editor') {
     return (
       // Editor stage: fully opaque white background
-      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center p-4">
-        <div className="bg-white rounded-[var(--shape-lg)] shadow-elevation-5 w-full max-w-3xl max-h-[95vh] flex flex-col">
+      <div style={{ position: "fixed", inset: 0, zIndex: 50, width: "100vw", height: "100dvh", maxWidth: "100vw", maxHeight: "100dvh", overflow: "hidden", margin: 0, padding: 0, backgroundColor: "#ffffff" }} className="flex items-center justify-center">
+        <div className="bg-white rounded-[var(--shape-lg)] shadow-elevation-5 w-full max-w-3xl max-h-[95vh] flex flex-col" style={{ maxHeight: "calc(100dvh - 32px)" }}>
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--md-outline)]">
             <div className="flex items-center gap-2">
@@ -570,7 +570,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "#ffffff" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 50, width: "100vw", height: "100dvh", maxWidth: "100vw", maxHeight: "100dvh", overflow: "hidden", margin: 0, padding: 0, backgroundColor: "#ffffff" }} className="flex flex-col">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--md-outline)] bg-white">
         <div className="flex items-center gap-3">
