@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useContext } from 'react';
-import { Send, Trash2, FileText } from 'lucide-react';
+import { Send, Plus, BookOpen } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
@@ -83,7 +83,7 @@ export default function ConversationContainer() {
                 aria-label="Read a script in presentation mode"
                 title="Read Script"
               >
-                <FileText className="w-4 h-4" />
+                <BookOpen className="w-4 h-4" />
               </button>
               {chatData.length > 0 && (
                 <button
@@ -92,7 +92,7 @@ export default function ConversationContainer() {
                   aria-label="Clear conversation"
                   title="New conversation"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Plus className="w-4 h-4" />
                 </button>
               )}
             </div>
