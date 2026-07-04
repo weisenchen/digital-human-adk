@@ -83,7 +83,11 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   // Track if component is mounted
   const mountedRef = useRef(true);
   useEffect(() => {
+    // Hide body scrollbar so fixed overlay fills entire viewport
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     return () => {
+      document.body.style.overflow = prevOverflow;
       mountedRef.current = false;
       stopReading();
       stopTimer();
