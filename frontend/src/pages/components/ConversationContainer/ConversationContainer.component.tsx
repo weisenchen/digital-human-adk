@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useContext, useRef, useEffect } from 'react';
-import { MessageCircle, Send, Trash2, Sparkles, Bot, FileText, FileDown } from 'lucide-react';
+import { MessageCircle, Send, Trash2, Sparkles, Bot } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -11,7 +11,6 @@ import ChatDisplay from '../ChatDisplay/ChatDisplay.component';
 import VoiceRecorder from '../VoiceRecorder/VoiceRecorder.component';
 import Loading from '../Loading/Loading.component'
 import CharacterSelector from '../CharacterSelector/CharacterSelector.component';
-import { downloadHTML, downloadPDF } from '../../services/chat-export';
 
 const SUGGESTIONS = [
   { text: 'Hello! 👋', en: 'Hello! 👋', zh: '你好！👋' },
@@ -63,27 +62,6 @@ export default function ConversationContainer() {
           {isEnglish ? 'Chat' : '对话'}
         </h2>
         <div className="flex items-center gap-1">
-          {/* Download buttons */}
-          {chatData.length > 0 && (
-            <>
-              <button
-                onClick={() => downloadHTML(chatData, characterName, selectedLanguage)}
-                className="state-layer rounded-[var(--shape-full)] p-1.5 text-[var(--md-on-surface-variant)] hover:text-[var(--md-primary)] transition-colors duration-[var(--motion-sm)]"
-                aria-label="Download as HTML"
-                title="Download as HTML"
-              >
-                <FileText className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => downloadPDF(chatData, characterName, selectedLanguage)}
-                className="state-layer rounded-[var(--shape-full)] p-1.5 text-[var(--md-on-surface-variant)] hover:text-[var(--md-primary)] transition-colors duration-[var(--motion-sm)]"
-                aria-label="Download as PDF"
-                title="Download as PDF"
-              >
-                <FileDown className="w-4 h-4" />
-              </button>
-            </>
-          )}
           {/* Clear chat */}
           {chatData.length > 0 && (
             <button

@@ -2,7 +2,9 @@
 
 import React, { useRef, useEffect, useContext, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FileText, FileDown } from 'lucide-react';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
+import { isDownloadableContent, downloadContentHTML, downloadContentPDF } from '../../services/content-export';
 
 interface ChatMessage {
   text: string;
@@ -22,7 +24,9 @@ const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
   const isSpeaking = context?.isSpeaking || false;
   const aiInitial = characterName.charAt(0).toUpperCase();
 
-  // Check if user has scrolled away from bottom
+  // Track which AI message download popups are open
+  const [expandedMenu, setExpandedMenu] = useState<number | null>(null);
+
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -31,14 +35,12 @@ const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
     setUserScrolledUp(distFromBottom > threshold);
   }, []);
 
-  // Auto-scroll only when user hasn't scrolled up
   useEffect(() => {
     if (!userScrolledUp && bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chatData, userScrolledUp]);
 
-  // Scroll to bottom when user clicks "New messages"
   const scrollToBottom = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     setUserScrolledUp(false);
@@ -48,9 +50,21 @@ const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
     !chatData[chatData.length - 1].isUser &&
     chatData[chatData.length - 1].text === '';
 
+  // Close expanded menu when clicking outside
+  useEffect(() => {
+    if (expandedMenu === null) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.download-menu')) {
+        setExpandedMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [expandedMenu]);
+
   return (
     <div className="flex flex-col flex-grow min-h-0 relative">
-      {/* Scrollable chat area */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -75,20 +89,47 @@ const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
               )}
 
               {/* Message bubble */}
-              <div
-                className={`max-w-[85%] px-4 py-2.5 leading-relaxed text-sm md:text-base ${
-                  message.isUser
-                    ? 'bg-[var(--md-bubble-user)] text-[var(--md-on-surface)] rounded-[var(--shape-lg)] rounded-br-[var(--shape-sm)]'
-                    : 'bg-[var(--md-bubble-ai)] text-[var(--md-on-surface)] rounded-[var(--shape-lg)] rounded-bl-[var(--shape-sm)]'
-                } ${
-                  index === chatData.length - 1 && !message.isUser && message.text === ''
-                    ? 'streaming-cursor'
-                    : ''
-                }`}
-              >
-                <p className="text-sm md:text-base">
-                  {message.text || (index === chatData.length - 1 && !message.isUser ? '' : message.text)}
-                </p>
+              <div className="flex flex-col max-w-[85%] group">
+                <div
+                  className={`px-4 py-2.5 leading-relaxed text-sm md:text-base ${
+                    message.isUser
+                      ? 'bg-[var(--md-bubble-user)] text-[var(--md-on-surface)] rounded-[var(--shape-lg)] rounded-br-[var(--shape-sm)] self-end'
+                      : 'bg-[var(--md-bubble-ai)] text-[var(--md-on-surface)] rounded-[var(--shape-lg)] rounded-bl-[var(--shape-sm)]'
+                  } ${
+                    index === chatData.length - 1 && !message.isUser && message.text === ''
+                      ? 'streaming-cursor'
+                      : ''
+                  }`}
+                >
+                  <p className="text-sm md:text-base whitespace-pre-wrap break-words">
+                    {message.text || (index === chatData.length - 1 && !message.isUser ? '' : message.text)}
+                  </p>
+                </div>
+
+                {/* Download buttons for AI-generated content */}
+                {!message.isUser &&
+                 message.text &&
+                 !(index === chatData.length - 1 && message.text === '') &&
+                 isDownloadableContent(message.text) && (
+                  <div className="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-[var(--motion-sm)] self-start">
+                    <button
+                      onClick={() => downloadContentHTML(message.text, characterName)}
+                      className="flex items-center gap-1 text-label-sm text-[var(--md-on-surface-variant)] hover:text-[var(--md-primary)] px-2 py-0.5 rounded-[var(--shape-sm)] hover:bg-[var(--md-primary)]/5 transition-colors duration-[var(--motion-sm)]"
+                      title="Download as HTML"
+                    >
+                      <FileText className="w-3 h-3" />
+                      <span>HTML</span>
+                    </button>
+                    <button
+                      onClick={() => downloadContentPDF(message.text, characterName)}
+                      className="flex items-center gap-1 text-label-sm text-[var(--md-on-surface-variant)] hover:text-[var(--md-primary)] px-2 py-0.5 rounded-[var(--shape-sm)] hover:bg-[var(--md-primary)]/5 transition-colors duration-[var(--motion-sm)]"
+                      title="Download as PDF"
+                    >
+                      <FileDown className="w-3 h-3" />
+                      <span>PDF</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* User avatar */}
@@ -103,7 +144,7 @@ const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
         <div ref={bottomRef} />
       </div>
 
-      {/* Speaking waveform indicator */}
+      {/* Speaking waveform */}
       {isSpeaking && !isStreaming && (
         <div className="flex items-center gap-1.5 px-1 py-1">
           <div className="flex items-end gap-[3px] h-3">
@@ -123,13 +164,11 @@ const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
               transition={{ duration: 0.4, repeat: Infinity, delay: 0.2, ease: [0.2,0,0,1.0] }}
             />
           </div>
-          <span className="text-label-sm text-[var(--md-on-surface-variant)]">
-            Speaking...
-          </span>
+          <span className="text-label-sm text-[var(--md-on-surface-variant)]">Speaking...</span>
         </div>
       )}
 
-      {/* "New messages" floating button */}
+      {/* New messages button */}
       {userScrolledUp && (
         <button
           onClick={scrollToBottom}
