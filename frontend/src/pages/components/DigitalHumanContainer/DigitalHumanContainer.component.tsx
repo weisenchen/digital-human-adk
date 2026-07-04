@@ -42,61 +42,35 @@ const DigitalHumanContainer = () => {
     ctx.ellipse(cx, cy - 20 * s, 70 * s, 85 * s, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Hair — long flowing style
-    ctx.save();
+    // Hair — simple overlapping shapes (NO donut paths!)
     ctx.fillStyle = '#4A3728';
-    // Main hair (top cap)
+    // Top hair cap — solid ellipse covering the crown
     ctx.beginPath();
-    ctx.moveTo(cx - 68 * s, cy - 25 * s);
-    ctx.quadraticCurveTo(cx - 74 * s, cy - 50 * s, cx - 55 * s, cy - 82 * s);
-    ctx.quadraticCurveTo(cx - 30 * s, cy - 98 * s, cx, cy - 95 * s);
-    ctx.quadraticCurveTo(cx + 30 * s, cy - 98 * s, cx + 55 * s, cy - 82 * s);
-    ctx.quadraticCurveTo(cx + 74 * s, cy - 50 * s, cx + 68 * s, cy - 25 * s);
-    ctx.quadraticCurveTo(cx + 62 * s, cy - 58 * s, cx + 40 * s, cy - 78 * s);
-    ctx.quadraticCurveTo(cx + 15 * s, cy - 90 * s, cx, cy - 88 * s);
-    ctx.quadraticCurveTo(cx - 15 * s, cy - 90 * s, cx - 40 * s, cy - 78 * s);
-    ctx.quadraticCurveTo(cx - 62 * s, cy - 58 * s, cx - 68 * s, cy - 25 * s);
-    ctx.closePath();
+    ctx.ellipse(cx, cy - 55 * s, 68 * s, 50 * s, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Side hair — long flowing down (narrower, more natural)
+    // Long side hair — left (narrow flowing strand)
     ctx.beginPath();
-    ctx.moveTo(cx - 68 * s, cy - 25 * s);
-    ctx.quadraticCurveTo(cx - 78 * s, cy + 5 * s, cx - 65 * s, cy + 40 * s);
-    ctx.quadraticCurveTo(cx - 58 * s, cy + 55 * s, cx - 52 * s, cy + 60 * s);
-    ctx.quadraticCurveTo(cx - 56 * s, cy + 45 * s, cx - 58 * s, cy + 20 * s);
-    ctx.quadraticCurveTo(cx - 62 * s, cy - 5 * s, cx - 60 * s, cy - 30 * s);
-    ctx.quadraticCurveTo(cx - 65 * s, cy - 42 * s, cx - 68 * s, cy - 25 * s);
-    ctx.closePath();
+    ctx.ellipse(cx - 62 * s, cy - 10 * s, 14 * s, 60 * s, -0.2, 0, Math.PI * 2);
     ctx.fill();
 
+    // Long side hair — right
     ctx.beginPath();
-    ctx.moveTo(cx + 68 * s, cy - 25 * s);
-    ctx.quadraticCurveTo(cx + 78 * s, cy + 5 * s, cx + 65 * s, cy + 40 * s);
-    ctx.quadraticCurveTo(cx + 58 * s, cy + 55 * s, cx + 52 * s, cy + 60 * s);
-    ctx.quadraticCurveTo(cx + 56 * s, cy + 45 * s, cx + 58 * s, cy + 20 * s);
-    ctx.quadraticCurveTo(cx + 62 * s, cy - 5 * s, cx + 60 * s, cy - 30 * s);
-    ctx.quadraticCurveTo(cx + 65 * s, cy - 42 * s, cx + 68 * s, cy - 25 * s);
-    ctx.closePath();
+    ctx.ellipse(cx + 62 * s, cy - 10 * s, 14 * s, 60 * s, 0.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Bangs — soft fringe
+    // Side hair lower extensions
     ctx.beginPath();
-    ctx.moveTo(cx - 55 * s, cy - 68 * s);
-    ctx.quadraticCurveTo(cx - 45 * s, cy - 56 * s, cx - 35 * s, cy - 60 * s);
-    ctx.quadraticCurveTo(cx - 20 * s, cy - 52 * s, cx - 12 * s, cy - 57 * s);
-    ctx.quadraticCurveTo(cx, cy - 50 * s, cx + 12 * s, cy - 57 * s);
-    ctx.quadraticCurveTo(cx + 20 * s, cy - 52 * s, cx + 35 * s, cy - 60 * s);
-    ctx.quadraticCurveTo(cx + 45 * s, cy - 56 * s, cx + 55 * s, cy - 68 * s);
-    ctx.quadraticCurveTo(cx + 50 * s, cy - 74 * s, cx + 40 * s, cy - 76 * s);
-    ctx.quadraticCurveTo(cx + 25 * s, cy - 68 * s, cx + 12 * s, cy - 72 * s);
-    ctx.quadraticCurveTo(cx, cy - 68 * s, cx - 12 * s, cy - 72 * s);
-    ctx.quadraticCurveTo(cx - 25 * s, cy - 68 * s, cx - 40 * s, cy - 76 * s);
-    ctx.quadraticCurveTo(cx - 50 * s, cy - 74 * s, cx - 55 * s, cy - 68 * s);
-    ctx.closePath();
+    ctx.ellipse(cx - 58 * s, cy + 35 * s, 10 * s, 28 * s, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 58 * s, cy + 35 * s, 10 * s, 28 * s, 0.3, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.restore();
+    // Fringe / bangs
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 75 * s, 55 * s, 22 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     // Eyes — large, round
     const eyeY = cy - 15 * s;
@@ -215,46 +189,25 @@ const DigitalHumanContainer = () => {
     ctx.quadraticCurveTo(cx, cy - 88 * s, cx - 65 * s, cy - 65 * s);
     ctx.fill();
 
-    // Hair — short textured style (drawn as a cap over the head)
+    // Hair — short style, simple overlapping shapes
     ctx.fillStyle = '#2C1810';
-    // Main hair cap — covers top and sides naturally
+    // Top hair cap — solid ellipse covering the crown
     ctx.beginPath();
-    ctx.moveTo(cx - 68 * s, cy - 20 * s);
-    ctx.quadraticCurveTo(cx - 72 * s, cy - 40 * s, cx - 55 * s, cy - 78 * s);
-    ctx.quadraticCurveTo(cx - 30 * s, cy - 95 * s, cx, cy - 92 * s);
-    ctx.quadraticCurveTo(cx + 30 * s, cy - 95 * s, cx + 55 * s, cy - 78 * s);
-    ctx.quadraticCurveTo(cx + 72 * s, cy - 40 * s, cx + 68 * s, cy - 20 * s);
-    ctx.quadraticCurveTo(cx + 60 * s, cy - 55 * s, cx + 40 * s, cy - 72 * s);
-    ctx.quadraticCurveTo(cx + 15 * s, cy - 82 * s, cx, cy - 80 * s);
-    ctx.quadraticCurveTo(cx - 15 * s, cy - 82 * s, cx - 40 * s, cy - 72 * s);
-    ctx.quadraticCurveTo(cx - 60 * s, cy - 55 * s, cx - 68 * s, cy - 20 * s);
-    ctx.closePath();
+    ctx.ellipse(cx, cy - 50 * s, 68 * s, 48 * s, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Sideburn/side hair (thinner, natural)
+    // Sideburns — thin strips at sides
     ctx.beginPath();
-    ctx.ellipse(cx - 64 * s, cy - 35 * s, 18 * s, 40 * s, -0.15, 0, Math.PI * 2);
+    ctx.ellipse(cx - 66 * s, cy - 30 * s, 14 * s, 42 * s, -0.1, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(cx + 64 * s, cy - 35 * s, 18 * s, 40 * s, 0.15, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Forehead fringe (short bangs)
-    ctx.beginPath();
-    ctx.moveTo(cx - 52 * s, cy - 68 * s);
-    ctx.quadraticCurveTo(cx - 40 * s, cy - 58 * s, cx - 30 * s, cy - 62 * s);
-    ctx.quadraticCurveTo(cx - 15 * s, cy - 55 * s, cx, cy - 58 * s);
-    ctx.quadraticCurveTo(cx + 15 * s, cy - 55 * s, cx + 30 * s, cy - 62 * s);
-    ctx.quadraticCurveTo(cx + 40 * s, cy - 58 * s, cx + 52 * s, cy - 68 * s);
-    ctx.quadraticCurveTo(cx + 55 * s, cy - 72 * s, cx + 48 * s, cy - 75 * s);
-    ctx.quadraticCurveTo(cx + 30 * s, cy - 68 * s, cx + 15 * s, cy - 72 * s);
-    ctx.quadraticCurveTo(cx, cy - 68 * s, cx - 15 * s, cy - 72 * s);
-    ctx.quadraticCurveTo(cx - 30 * s, cy - 68 * s, cx - 48 * s, cy - 75 * s);
-    ctx.quadraticCurveTo(cx - 55 * s, cy - 72 * s, cx - 52 * s, cy - 68 * s);
-    ctx.closePath();
+    ctx.ellipse(cx + 66 * s, cy - 30 * s, 14 * s, 42 * s, 0.1, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.restore();
+    // Forehead fringe — short bangs
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 75 * s, 50 * s, 18 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     // Eyes — smaller, narrower
     const eyeY = cy - 12 * s;
