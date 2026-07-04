@@ -16,14 +16,14 @@ const DigitalHumanContainer = () => {
     characterName = 'Xiao Wei',
   } = useContext(VoiceAssistantContext);
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const modelRef = useRef<any>(null);
+  const appRef = useRef<any>(null);
   const hasStoppedMotions = useRef(false);
   const resumeMotionTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    let appRef: any = null;
-
     const initializePixi = async () => {
       try {
         const { PIXI, Live2DModel } = await loadPixi();
@@ -31,28 +31,49 @@ const DigitalHumanContainer = () => {
         Live2DModel.registerTicker(PIXI.Ticker);
 
         const canvas = canvasRef.current;
-        if (!canvas) return;
+        const container = containerRef.current;
+        if (!canvas || !container) return;
 
+        // Create PIXI app — resizeTo matches the parent container size
         const app = new PIXI.Application({
           view: canvas,
-          height: 650,
-          width: 650,
+          resizeTo: container,
           autoDensity: true,
           antialias: true,
           resolution: window.devicePixelRatio,
           transparent: true,
+          backgroundColor: null,
         });
-        appRef = app;
+        appRef.current = app;
 
         const url = `${window.location.origin}/shizuku_model/shizuku.model.json`;
         const model = await Live2DModel.from(url);
         model.autoInteract = false;
 
         app.stage.addChild(model);
-        model.scale.set(0.5);
-        model.position.set(30, -30);
 
+        // Scale model proportionally based on container width
+        const scaleModel = () => {
+          const w = container.clientWidth;
+          if (w > 0 && modelRef.current) {
+            const s = Math.min(0.5, (w / 1300) * 0.6);
+            modelRef.current.scale.set(s);
+            modelRef.current.position.set(0, -10);
+          }
+        };
+
+        scaleModel();
         modelRef.current = model;
+
+        // Watch container size changes and re-scale model + renderer
+        const ro = new ResizeObserver(() => {
+          app.renderer.resize(container.clientWidth, container.clientHeight);
+          scaleModel();
+        });
+        ro.observe(container);
+
+        // Cleanup observer when effect cleans up
+        (app as any).__resizeObserver = ro;
       } catch (error) {
         console.error("Failed to initialize Live2D:", error);
       }
@@ -65,9 +86,12 @@ const DigitalHumanContainer = () => {
         clearTimeout(resumeMotionTimeout.current);
       }
       modelRef.current = null;
-      if (appRef) {
-        try { appRef.destroy(true, { children: true, texture: true }); } catch {}
-        appRef = null;
+      if (appRef.current) {
+        if (appRef.current.__resizeObserver) {
+          appRef.current.__resizeObserver.disconnect();
+        }
+        try { appRef.current.destroy(true, { children: true, texture: true }); } catch {}
+        appRef.current = null;
       }
     };
   }, []);
@@ -78,20 +102,18 @@ const DigitalHumanContainer = () => {
 
     try {
       if (!hasStoppedMotions.current) {
-        // Don't stop all motions — keep idle breathing
         model.internalModel.motionManager.state.reservedIdleGroup = "idle";
-        // Set idle expression
         model.expression('f00');
         hasStoppedMotions.current = true;
       }
-      // Subtle breathing when not speaking (mouthOpen ≈ 0)
+      // Subtle breathing when not speaking
       const breathValue = mouthOpen < 0.05
         ? 0.03 + Math.sin(Date.now() / 800) * 0.02
         : mouthOpen;
       model.internalModel.coreModel.setParamFloat("PARAM_MOUTH_OPEN_Y", Math.max(breathValue, mouthOpen));
       model.internalModel.coreModel.setParamFloat("PARAM_BREATH", 0.5 + Math.sin(Date.now() / 1200) * 0.3);
     } catch (error) {
-      console.error("Live2D mouth animation error:", error);
+      console.error("Live2D animation error:", error);
     }
 
     if (resumeMotionTimeout.current) {
@@ -110,12 +132,15 @@ const DigitalHumanContainer = () => {
   }, [mouthOpen]);
 
   return (
-    <div className="flex flex-col items-center justify-center bg-white rounded-[var(--shape-md)] shadow-elevation-1 border border-[var(--md-outline)] p-4 h-full overflow-hidden">
-      <div className="flex items-center gap-2 mb-2 text-body-md text-[var(--md-on-surface-variant)]">
-        <span className="w-2 h-2 rounded-[var(--shape-full)] bg-[#48BB78] animate-pulse" />
+    <div
+      ref={containerRef}
+      className="flex flex-col items-center justify-center bg-white rounded-[var(--shape-md)] shadow-elevation-1 border border-[var(--md-outline)] p-3 sm:p-4 h-full w-full overflow-hidden"
+    >
+      <div className="flex items-center gap-2 mb-1 sm:mb-2 text-label-sm sm:text-body-md text-[var(--md-on-surface-variant)]">
+        <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-[var(--shape-full)] bg-[#48BB78] animate-pulse" />
         {characterName || 'Character'} is here
       </div>
-      <canvas ref={canvasRef} className="max-w-full max-h-full" />
+      <canvas ref={canvasRef} className="w-full h-full" />
     </div>
   );
 };

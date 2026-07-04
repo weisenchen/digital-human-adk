@@ -24,8 +24,8 @@ export default function LanguageSelector({
             value={selectedLanguage}
             onValueChange={(value) => onLanguageChange(value)}
         >
-        <SelectTrigger className="w-[160px] bg-white text-[var(--md-on-surface)] border border-[var(--md-outline)] hover:border-[var(--md-primary)] transition-colors duration-[var(--motion-sm)]">
-          <Globe className="w-4 h-4 mr-2 text-[var(--md-primary)]" />
+        <SelectTrigger className="w-[130px] sm:w-[160px] bg-white text-[var(--md-on-surface)] border border-[var(--md-outline)] hover:border-[var(--md-primary)] transition-colors duration-[var(--motion-sm)]">
+          <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 text-[var(--md-primary)]" />
           <SelectValue placeholder="Select Language" />
         </SelectTrigger>
         <SelectContent className="bg-white text-[var(--md-on-surface)] border border-[var(--md-outline)]">
