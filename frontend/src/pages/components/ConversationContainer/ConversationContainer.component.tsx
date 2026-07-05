@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useContext } from 'react';
-import { Send, Sparkles, MessageSquare, Mic, FileText } from 'lucide-react';
+import React, { useState, useContext, useRef, useEffect } from 'react';
+import { Send, Sparkles, MessageSquare, Mic, FileText, Plus, Monitor, Podcast, FilePlus, Paperclip } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
@@ -21,6 +21,20 @@ const SUGGESTIONS = [
 
 export default function ConversationContainer() {
   const [showPresentation, setShowPresentation] = useState(false);
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const plusRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Close plus menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (plusRef.current && !plusRef.current.contains(e.target as Node)) {
+        setShowPlusMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const context = useContext(VoiceAssistantContext);
   if (!context) {
@@ -133,6 +147,55 @@ export default function ConversationContainer() {
       {/* ── Input area ── */}
       <form onSubmit={handleTextSubmit} className="px-4 pb-4 pt-2">
         <div className="flex items-center gap-2 border border-[var(--md-outline)] rounded-[var(--shape-xl)] px-4 py-2.5 bg-white focus-within:border-[var(--md-tertiary)] focus-within:shadow-[0_0_0_3px_var(--md-tertiary-container)] transition-all duration-[var(--motion-md)]">
+          {/* ── Plus button ── */}
+          <div ref={plusRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setShowPlusMenu(prev => !prev)}
+              className="state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] transition-colors"
+              aria-label="Add"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+
+            {/* Dropdown menu */}
+            {showPlusMenu && (
+              <div className="absolute bottom-full left-0 mb-2 w-52 bg-white rounded-[var(--shape-lg)] shadow-elevation-3 border border-[var(--md-outline)] py-1.5 z-30">
+                <button
+                  type="button"
+                  onClick={() => { setShowPlusMenu(false); window.dispatchEvent(new CustomEvent('open-talk-show')); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[var(--md-surface-variant)] text-label-sm text-[var(--md-on-surface)] transition-colors"
+                >
+                  <Podcast className="w-4 h-4 text-[var(--md-tertiary)]" />
+                  Start New TalkShow
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowPlusMenu(false); window.dispatchEvent(new CustomEvent('open-presentation')); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[var(--md-surface-variant)] text-label-sm text-[var(--md-on-surface)] transition-colors"
+                >
+                  <Monitor className="w-4 h-4 text-[var(--md-tertiary)]" />
+                  Start New Presentation
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowPlusMenu(false); if (clearChat) clearChat(); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[var(--md-surface-variant)] text-label-sm text-[var(--md-on-surface)] transition-colors"
+                >
+                  <FilePlus className="w-4 h-4 text-[var(--md-tertiary)]" />
+                  Start New Section
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowPlusMenu(false); fileInputRef.current?.click(); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[var(--md-surface-variant)] text-label-sm text-[var(--md-on-surface)] transition-colors"
+                >
+                  <Paperclip className="w-4 h-4 text-[var(--md-tertiary)]" />
+                  Attach a File
+                </button>
+              </div>
+            )}
+          </div>
           <Input
             type="text"
             value={inputText}
@@ -156,6 +219,20 @@ export default function ConversationContainer() {
           </button>
         </div>
       </form>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            setInputText(file.name);
+            // TODO: handle actual file upload if needed
+          }
+        }}
+      />
 
       {/* Presentation mode overlay */}
       {showPresentation && (
