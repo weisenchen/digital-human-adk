@@ -197,7 +197,7 @@ export default function ConversationContainer() {
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Message Xiao Wei..."
+            placeholder={`Message ${characterName || 'Xiao Wei'}...`}
             className="border-0 p-0 shadow-none focus-visible:ring-0 text-body-md bg-transparent"
             disabled={isWaitingAIOutput}
           />
