@@ -8,6 +8,13 @@ interface Message {
     isUser: boolean;
   }
 
+interface HistoryItem {
+  id: string;
+  timestamp: number;
+  preview: string;
+  messages: Message[];
+}
+
 const LANGUAGE_LOCALE_MAP: Record<string, string> = {
   'en-GB': 'en-US',
   'cmn-CN': 'cmn-CN',
@@ -46,6 +53,9 @@ const useVoiceAssistant = ()=>{
     // Model selection
     const [models, setModels] = useState<ModelOption[]>([]);
     const [selectedModel, setSelectedModel] = useState<string>('deepseek-chat');
+
+    // Conversation history
+    const [history, setHistory] = useState<HistoryItem[]>([]);
 
     // UX enhancements
     const [isSpeaking, setIsSpeaking] = useState(false);
@@ -134,8 +144,26 @@ const useVoiceAssistant = ()=>{
   // ── Clear chat ────────────────────────────────────────
   const clearChat = useCallback(() => {
     cancelAll();
-    setChatData([]);
+    // Save current conversation to history before clearing
+    setChatData((prev) => {
+      if (prev.length > 0) {
+        const firstUserMsg = prev.find((m) => m.isUser);
+        const preview = firstUserMsg
+          ? firstUserMsg.text.slice(0, 60) + (firstUserMsg.text.length > 60 ? '...' : '')
+          : `Conversation (${prev.length} messages)`;
+        setHistory((h) => [
+          { id: Date.now().toString(), timestamp: Date.now(), preview, messages: prev },
+          ...h,
+        ]);
+      }
+      return [];
+    });
     setToastMessage('Conversation cleared');
+  }, []);
+
+  // ── Load a history conversation ──────────────────────
+  const loadHistoryItem = useCallback((item: HistoryItem) => {
+    setChatData(item.messages);
   }, []);
 
   // ── Path 1: Text chat ─────────────────────────────────
@@ -414,6 +442,9 @@ const useVoiceAssistant = ()=>{
     models,
     selectedModel,
     handleModelSelect,
+    // History
+    history,
+    loadHistoryItem,
   };
 };
 

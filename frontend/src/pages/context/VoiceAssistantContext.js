@@ -28,6 +28,9 @@ const VoiceAssistantContext = createContext({
   models: [],
   selectedModel: "deepseek-chat",
   handleModelSelect: (m) => {},
+  // History
+  history: [],
+  loadHistoryItem: (item) => {},
 });
 
 export default VoiceAssistantContext;
