@@ -5,8 +5,9 @@ import {
   X, ChevronLeft, ChevronRight, Play, Square, FileText,
   ToggleLeft, ToggleRight, Sparkles, Loader2, Plus, Minus,
   Timer as TimerIcon, Hourglass, ChevronDown, ChevronUp,
-  MessageSquareText,
+  MessageSquareText, Sun, Moon, Palette,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { getAIAudioFromText, generateSlides, SlideData } from '@/services/adk-assistant.service';
 import { getSharedAudioContext, resumeSharedAudioContext } from '@/lib/audio-context';
 
@@ -77,6 +78,8 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [expandedSpeech, setExpandedSpeech] = useState<number | null>(null);
   const [ttsError, setTtsError] = useState<string | null>(null);
+  const [slideDirection, setSlideDirection] = useState<1 | -1>(1);
+  const [theme, setTheme] = useState<'light' | 'dark' | 'colorful'>('light');
 
   // Timer state
   const [slideTimeRemaining, setSlideTimeRemaining] = useState(0);
@@ -320,6 +323,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
     if (currentSlide < slides.length - 1) {
       stopTimer();
       stopReading();
+      setSlideDirection(1);
       setCurrentSlide(currentSlide + 1);
     }
   }, [currentSlide, slides.length, stopTimer, stopReading]);
@@ -328,6 +332,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
     if (currentSlide > 0) {
       stopTimer();
       stopReading();
+      setSlideDirection(-1);
       setCurrentSlide(currentSlide - 1);
     }
   }, [currentSlide, stopTimer, stopReading]);
@@ -790,10 +795,19 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
     }
   };
 
+  // Theme-derived classes
+  const themeBg = theme === 'dark' ? 'bg-gray-950' : theme === 'colorful' ? 'bg-gradient-to-br from-indigo-50 via-white to-purple-50' : 'bg-white';
+  const themeText = theme === 'dark' ? 'text-gray-100' : 'text-[var(--md-on-surface)]';
+  const themeTopBar = theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white';
+
+  const cycleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : prev === 'dark' ? 'colorful' : 'light');
+  };
+
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, overflow: "hidden", backgroundColor: "#ffffff" }} className="flex flex-col">
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, overflow: "hidden" }} className={`flex flex-col transition-colors duration-500 ${themeBg} ${themeText}`}>
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--md-outline)] bg-white">
+      <div className={`flex items-center justify-between px-4 sm:px-6 py-3 border-b transition-colors duration-500 ${themeTopBar}`}>
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
@@ -824,14 +838,30 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
             {autoAdvance ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
             {autoAdvance ? `Auto ${formatTime(slideTimeRemaining)}` : 'Auto'}
           </button>
+          {/* Theme toggle */}
+          <button
+            onClick={cycleTheme}
+            className="state-layer flex items-center gap-1 text-label-sm px-2.5 py-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] transition-colors"
+            title={`Theme: ${theme}`}
+          >
+            {theme === 'light' ? <Sun className="w-4 h-4" /> : theme === 'dark' ? <Moon className="w-4 h-4" /> : <Palette className="w-4 h-4" />}
+          </button>
         </div>
       </div>
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        {/* Slide content */}
+        {/* Slide content with animation */}
         <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 lg:p-16 overflow-y-auto">
-          <SlideRenderer display={slide.display} />
+          <motion.div
+            key={currentSlide}
+            initial={{ opacity: 0, x: slideDirection > 0 ? 60 : -60 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="w-full"
+          >
+            <SlideRenderer display={slide.display} />
+          </motion.div>
           {/* Speech indicator: show that narrator is reading different text */}
           {slide.speech !== slide.display && isReading && readingSlide === currentSlide && (
             <div className="mt-4 flex items-center gap-1.5 text-label-sm text-[var(--md-primary)] bg-[var(--md-primary-container)] px-3 py-1 rounded-[var(--shape-full)]">
