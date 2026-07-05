@@ -1,4 +1,4 @@
-"""OpenAI-compatible API clients for non-Gemini models (DeepSeek, Claude, etc.)."""
+"""OpenAI-compatible API clients for non-Gemini models (DeepSeek, etc.)."""
 
 import os, logging
 from openai import OpenAI
@@ -39,25 +39,6 @@ MODEL_CATALOG: dict[str, dict] = {
         "api_base": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
         "api_key_env": "DEEPSEEK_API_KEY",
         "model": "deepseek-reasoner",
-    },
-    # Claude via OpenRouter
-    "anthropic/claude-sonnet-4": {
-        "id": "anthropic/claude-sonnet-4",
-        "name": "Claude Sonnet 4",
-        "provider": "Anthropic",
-        "backend": "openai",
-        "api_base": "https://openrouter.ai/api/v1",
-        "api_key_env": "OPENROUTER_API_KEY",
-        "model": "anthropic/claude-sonnet-4",
-    },
-    "anthropic/claude-haiku-3.5": {
-        "id": "anthropic/claude-haiku-3.5",
-        "name": "Claude Haiku 3.5",
-        "provider": "Anthropic",
-        "backend": "openai",
-        "api_base": "https://openrouter.ai/api/v1",
-        "api_key_env": "OPENROUTER_API_KEY",
-        "model": "anthropic/claude-haiku-3.5",
     },
 }
 

@@ -15,7 +15,7 @@ sys.path.insert(0, AGENTS_DIR)
 from dotenv import load_dotenv
 load_dotenv()  # project .env
 
-# Also load Hermes config for API keys (DeepSeek, OpenRouter, etc.)
+# Also load Hermes config for API keys (DeepSeek, etc.)
 hermes_env = Path(os.path.expanduser("~/.hermes/.env"))
 if hermes_env.exists():
     load_dotenv(hermes_env)
@@ -180,7 +180,7 @@ def create_app() -> FastAPI:
     async def _chat_openai(
         text: str, session_id: str, character_name: str, personality: str
     ) -> dict:
-        """Chat via OpenAI-compatible API (DeepSeek, Claude, etc.)."""
+        """Chat via OpenAI-compatible API (DeepSeek, etc.)."""
         model_id = _get_model_for_session(session_id)
         info = MODEL_CATALOG.get(model_id)
         if not info:
@@ -431,7 +431,7 @@ def create_app() -> FastAPI:
                     yield f"data: {_sse_event(event.partial, text_part)}\n\n"
 
         async def _stream_openai(text: str, session_id: str, character_name: str, personality: str):
-            """Stream from OpenAI-compatible API (DeepSeek, Claude, etc.)."""
+            """Stream from OpenAI-compatible API (DeepSeek, etc.)."""
             model_id = _get_model_for_session(session_id)
             info = MODEL_CATALOG.get(model_id)
             if not info:
