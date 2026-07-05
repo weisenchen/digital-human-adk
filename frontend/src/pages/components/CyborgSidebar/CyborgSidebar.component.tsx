@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useContext } from 'react';
-import { X, MessageSquarePlus, FileText, Settings, Brain, ChevronDown, ChevronUp, History, Mic } from 'lucide-react';
+import { MessageSquarePlus, FileText, Settings, Brain, ChevronDown, ChevronUp, History, Mic, ChevronsLeft } from 'lucide-react';
 import CharacterSelector from '../CharacterSelector/CharacterSelector.component';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 
@@ -48,8 +48,9 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
         <button
           onClick={onClose}
           className="state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] transition-colors"
+          title="Collapse sidebar"
         >
-          <X className="w-4 h-4" />
+          <ChevronsLeft className="w-4 h-4" />
         </button>
       </div>
 
