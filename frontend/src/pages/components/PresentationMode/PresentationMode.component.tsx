@@ -308,7 +308,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   // ── Render: Script Input ───────────────────────
   if (stage === 'input') {
     return (
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: -5000, zIndex: 50, overflow: "hidden", backgroundColor: "#ffffff" }} className="flex items-center justify-center">
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, overflow: "hidden", backgroundColor: "#ffffff" }} className="flex items-center justify-center">
         <div className="bg-white rounded-[var(--shape-lg)] shadow-elevation-5 w-full max-w-2xl max-h-[90vh] flex flex-col" style={{ maxHeight: "calc(100vh - 32px)" }}>
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--md-outline)]">
@@ -431,7 +431,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   // ── Render: Slide Editor (after AI generation) ──
   if (stage === 'editor') {
     return (
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: -5000, zIndex: 50, overflow: "hidden", backgroundColor: "#ffffff" }} className="flex items-center justify-center">
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, overflow: "hidden", backgroundColor: "#ffffff" }} className="flex items-center justify-center">
         <div className="bg-white rounded-[var(--shape-lg)] shadow-elevation-5 w-full max-w-3xl max-h-[95vh] flex flex-col" style={{ maxHeight: "calc(100vh - 32px)" }}>
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--md-outline)]">
@@ -586,7 +586,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   };
 
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: -5000, zIndex: 50, overflow: "hidden", backgroundColor: "#ffffff" }} className="flex flex-col">
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, overflow: "hidden", backgroundColor: "#ffffff" }} className="flex flex-col">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--md-outline)] bg-white">
         <div className="flex items-center gap-3">
