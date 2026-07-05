@@ -176,6 +176,11 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
       const audioContext = audioContextRef.current || new AudioContext();
       audioContextRef.current = audioContext;
 
+      // Resume if suspended (browser autoplay policy)
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+
       const arrayBuffer = await blob.arrayBuffer();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
