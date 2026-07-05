@@ -49,7 +49,6 @@ export default function TalkShowMode({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesRef = useRef<TalkShowMessage[]>([]);
   const spokenIdsRef = useRef<Set<number>>(new Set());
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Keep messagesRef in sync
   useEffect(() => { messagesRef.current = messages; }, [messages]);
@@ -81,22 +80,26 @@ export default function TalkShowMode({
     setMouthOpen(0);
   }, [setMouthOpen]);
 
-  const playSound = useCallback((effect: string) => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-    }
+  const playSound = useCallback(async (effect: string) => {
     const soundMap: Record<string, string> = {
       applause: '/sounds/applause.wav',
       laugh: '/sounds/laugh.wav',
       whoosh: '/sounds/whoosh.wav',
     };
-    const src = soundMap[effect];
-    if (src) {
-      audioRef.current.src = src;
-      audioRef.current.volume = 0.5;
-      audioRef.current.play().catch(() => {});
-    }
-  }, []);
+    const url = soundMap[effect];
+    if (!url) return;
+    try {
+      const audioCtx = getAudioContext();
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+      const resp = await fetch(url);
+      const arrayBuffer = await resp.arrayBuffer();
+      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+      const source = audioCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioCtx.destination);
+      source.start(0);
+    } catch {}
+  }, [getAudioContext]);
 
   const togglePause = useCallback(() => {
     setIsPaused(prev => {
