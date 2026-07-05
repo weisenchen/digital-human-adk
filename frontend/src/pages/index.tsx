@@ -1,30 +1,21 @@
 "use client";
 
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { Menu } from 'lucide-react';
 import ConversationContainer from './components/ConversationContainer/ConversationContainer.component';
 import CyborgSidebar from './components/CyborgSidebar/CyborgSidebar.component';
 import PresentationMode from './components/PresentationMode/PresentationMode.component';
 import VoiceAssistantProvider from './context/VoiceAssistantProvider';
 import VoiceAssistantContext from './context/VoiceAssistantContext';
-import { SlideData } from '@/services/adk-assistant.service';
 
 /** Wraps PresentationMode with context values for voiceId + language */
-function PresentationWrapper({
-  slides, minutes, onClose
-}: {
-  slides: SlideData[];
-  minutes: number;
-  onClose: () => void;
-}) {
+function PresentationWrapper({ onClose }: { onClose: () => void }) {
   const ctx = useContext(VoiceAssistantContext);
   return (
     <PresentationMode
       characterName={ctx?.characterName || 'Xiao Wei'}
       voiceId={ctx?.selectedVoice || ''}
       language={ctx?.selectedLanguage || 'en'}
-      initialSlides={slides}
-      initialMinutes={minutes}
       onClose={onClose}
     />
   );
@@ -32,17 +23,13 @@ function PresentationWrapper({
 
 export default function Home() {
   const [showCyborg, setShowCyborg] = useState(false);
-
-  // Presentation overlay state (triggered from CyborgSidebar AI Generate)
-  const [presentationSlides, setPresentationSlides] = useState<SlideData[] | null>(null);
-  const [presentationMinutes, setPresentationMinutes] = useState(10);
   const [showPresentation, setShowPresentation] = useState(false);
 
-  const handleOpenPresentation = (slides: SlideData[], totalMinutes: number) => {
-    setPresentationSlides(slides);
-    setPresentationMinutes(totalMinutes);
-    setShowPresentation(true);
-  };
+  useEffect(() => {
+    const handler = () => setShowPresentation(true);
+    window.addEventListener('open-presentation', handler);
+    return () => window.removeEventListener('open-presentation', handler);
+  }, []);
 
   return (
     <VoiceAssistantProvider>
@@ -51,7 +38,6 @@ export default function Home() {
         {showCyborg && (
           <CyborgSidebar
             onClose={() => setShowCyborg(false)}
-            onOpenPresentation={handleOpenPresentation}
           />
         )}
 
@@ -78,10 +64,8 @@ export default function Home() {
         </main>
 
         {/* Presentation overlay (full-screen) */}
-        {showPresentation && presentationSlides && (
+        {showPresentation && (
           <PresentationWrapper
-            slides={presentationSlides}
-            minutes={presentationMinutes}
             onClose={() => setShowPresentation(false)}
           />
         )}
