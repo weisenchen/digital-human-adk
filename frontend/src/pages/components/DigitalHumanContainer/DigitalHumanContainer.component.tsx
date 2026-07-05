@@ -84,6 +84,8 @@ const DigitalHumanContainer = ({ compact = false }: { compact?: boolean }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const customImgRef = useRef<HTMLImageElement | null>(null);
   const [customAvatar, setCustomAvatar] = useState<string | null>(null);
+  const mouthOpenRef = useRef(mouthOpen);
+  mouthOpenRef.current = mouthOpen;
 
   // Load custom avatar image when URL changes
   useEffect(() => {
@@ -545,6 +547,9 @@ const DigitalHumanContainer = ({ compact = false }: { compact?: boolean }) => {
 
     const ctx = canvas.getContext('2d')!;
 
+    let cachedW: number;
+    let cachedH: number;
+
     const resize = () => {
       const rect = container.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
@@ -553,9 +558,12 @@ const DigitalHumanContainer = ({ compact = false }: { compact?: boolean }) => {
       canvas.style.width = rect.width + 'px';
       canvas.style.height = rect.height + 'px';
       ctx.scale(dpr, dpr);
+      cachedW = rect.width;
+      cachedH = rect.height;
     };
 
     resize();
+
     const ro = new ResizeObserver(resize);
     ro.observe(container);
 
@@ -563,9 +571,8 @@ const DigitalHumanContainer = ({ compact = false }: { compact?: boolean }) => {
     let lastMouth = 0;
 
     const animate = (time: number) => {
-      const rect = container!.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
+      const w = cachedW;
+      const h = cachedH;
       ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
 
       // Blink
@@ -577,7 +584,10 @@ const DigitalHumanContainer = ({ compact = false }: { compact?: boolean }) => {
         blinkRef.current -= 0.016;
       }
 
-      lastMouth += (mouthOpen - lastMouth) * 0.3;
+      // Mouth — blend toward current mouthOpen, with a tiny idle tremor
+      const idleBreath = 0.02 + Math.sin(time / 600) * 0.015;
+      const target = Math.max(idleBreath, mouthOpenRef.current);
+      lastMouth += (target - lastMouth) * 0.3;
 
       if (customAvatar && customImgRef.current) {
         // Draw custom uploaded image
@@ -600,7 +610,7 @@ const DigitalHumanContainer = ({ compact = false }: { compact?: boolean }) => {
       cancelAnimationFrame(animRef.current);
       ro.disconnect();
     };
-  }, [drawFace, mouthOpen, customAvatar, characterName]);
+  }, [drawFace, customAvatar, characterName]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
