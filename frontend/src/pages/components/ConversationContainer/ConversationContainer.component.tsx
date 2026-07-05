@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useContext } from 'react';
-import { Send, Plus, BookOpen } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
@@ -36,6 +36,20 @@ export default function ConversationContainer() {
 
   const isFirstMessage = chatData.length === 0;
 
+  // Listen for menu-triggered events from top bar
+  React.useEffect(() => {
+    const onNewConv = () => {
+      if (clearChat) clearChat();
+    };
+    const onPresentation = () => setShowPresentation(true);
+    window.addEventListener('new-conversation', onNewConv);
+    window.addEventListener('open-presentation', onPresentation);
+    return () => {
+      window.removeEventListener('new-conversation', onNewConv);
+      window.removeEventListener('open-presentation', onPresentation);
+    };
+  }, [clearChat]);
+
   const speechRecognitionLang = selectedLanguage === 'en-GB' ? 'en-US'
     : selectedLanguage === 'cmn-CN' ? 'zh-CN'
     : selectedLanguage === 'Yue-HK' ? 'zh-HK'
@@ -67,7 +81,7 @@ export default function ConversationContainer() {
         /* ── Conversation mode ── */
         <div className="flex-1 flex flex-col min-h-0">
           {/* Compact header */}
-          <div className="flex items-center justify-between py-3 px-1 border-b border-[var(--md-outline)]/30 mb-2">
+          <div className="flex items-center py-3 px-1 border-b border-[var(--md-outline)]/30 mb-2">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 border border-[var(--md-outline)]">
                 <DigitalHumanContainer compact />
@@ -75,26 +89,6 @@ export default function ConversationContainer() {
               <span className="text-label-sm text-[var(--md-on-surface)] font-medium">
                 {characterName}
               </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setShowPresentation(true)}
-                className="state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:text-[var(--md-primary)] transition-colors"
-                aria-label="Read a script in presentation mode"
-                title="Read Script"
-              >
-                <BookOpen className="w-4 h-4" />
-              </button>
-              {chatData.length > 0 && (
-                <button
-                  onClick={clearChat}
-                  className="state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:text-[var(--md-error)] transition-colors"
-                  aria-label="Clear conversation"
-                  title="New conversation"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              )}
             </div>
           </div>
 
