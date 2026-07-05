@@ -53,7 +53,7 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
         </button>
       </div>
 
-      <div className="flex-1 p-3 space-y-4">
+      <div className="flex-1 p-3 space-y-4 flex flex-col">
         {/* ── New Conversation ── */}
         <button
           onClick={handleNewConversation}
@@ -71,47 +71,6 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
           <FileText className="w-4 h-4 text-gray-400" />
           Read Script
         </button>
-
-        {/* ── Recent (collapsible history) ── */}
-        <div className="border-t border-gray-100 pt-3">
-          <button
-            onClick={() => setHistoryOpen(!historyOpen)}
-            className="w-full flex items-center justify-between gap-2 mb-1"
-          >
-            <div className="flex items-center gap-2">
-              <History className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Recent</span>
-            </div>
-            {historyOpen ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
-          </button>
-
-          {historyOpen && (
-            <div className="pt-1">
-              {context.history && context.history.length > 0 ? (
-                <div className="space-y-1 max-h-[260px] overflow-y-auto pr-1">
-                  {context.history.map((item: any) => (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        context.loadHistoryItem(item);
-                        setHistoryOpen(false);
-                        onClose();
-                      }}
-                      className="w-full text-left p-2.5 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all"
-                    >
-                      <div className="text-xs text-gray-500 mb-1">{formatTime(item.timestamp)}</div>
-                      <div className="text-xs text-gray-800 line-clamp-2 leading-relaxed">
-                        {item.preview || `(${item.messages?.length || 0} messages)`}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-xs text-gray-400 text-center py-2">No history yet</div>
-              )}
-            </div>
-          )}
-        </div>
 
         {/* ── Settings (collapsible) ── */}
         <div className="border-t border-gray-100 pt-3">
@@ -183,6 +142,50 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* ── Spacer to push Recent to bottom ── */}
+        <div className="flex-1" />
+
+        {/* ── Recent (collapsible history) at bottom ── */}
+        <div className="border-t border-gray-100 pt-3">
+          <button
+            onClick={() => setHistoryOpen(!historyOpen)}
+            className="w-full flex items-center justify-between gap-2 mb-1"
+          >
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Recent</span>
+            </div>
+            {historyOpen ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
+          </button>
+
+          {historyOpen && (
+            <div className="pt-1">
+              {context.history && context.history.length > 0 ? (
+                <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1">
+                  {context.history.map((item: any) => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        context.loadHistoryItem(item);
+                        setHistoryOpen(false);
+                        onClose();
+                      }}
+                      className="w-full text-left p-2.5 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all"
+                    >
+                      <div className="text-xs text-gray-500 mb-1">{formatTime(item.timestamp)}</div>
+                      <div className="text-xs text-gray-800 line-clamp-2 leading-relaxed">
+                        {item.preview || `(${item.messages?.length || 0} messages)`}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-gray-400 text-center py-2">No history yet</div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </aside>
