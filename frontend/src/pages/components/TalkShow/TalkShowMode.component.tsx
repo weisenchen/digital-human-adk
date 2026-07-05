@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { X, Send, Volume2, Pause, Play, Mic } from 'lucide-react';
 import DigitalHumanContainer from '../DigitalHumanContainer/DigitalHumanContainer.component';
-import VoiceRecorder from '../VoiceRecorder/VoiceRecorder.component';
 import { sendTalkShowMessage, getAIAudioFromText, getTalkShowSuggestions } from '@/services/adk-assistant.service';
 import { getSharedAudioContext } from '@/lib/audio-context';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
@@ -41,6 +40,9 @@ export default function TalkShowMode({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [voiceRecording, setVoiceRecording] = useState(false);
+  const voiceRecogRef = useRef<any>(null);
+  const voiceFinalRef = useRef<string>('');
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -215,6 +217,55 @@ export default function TalkShowMode({
     startShow();
     return () => stopSpeaking();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const voiceStartRecording = useCallback(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { alert('Speech recognition not supported'); return; }
+    const recog = new SR();
+    recog.lang = 'en';
+    recog.continuous = true;
+    recog.interimResults = true;
+    recog.maxAlternatives = 1;
+    recog.onresult = (event: any) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const r = event.results[i];
+        if (r.isFinal) voiceFinalRef.current += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      setInput(voiceFinalRef.current + interim);
+    };
+    recog.onerror = () => { setVoiceRecording(false); };
+    recog.onend = () => { setVoiceRecording(false); };
+    voiceRecogRef.current = recog;
+    setVoiceRecording(true);
+    recog.start();
+  }, []);
+
+  const voiceStopRecording = useCallback(() => {
+    setVoiceRecording(false);
+    try { voiceRecogRef.current?.stop(); } catch {}
+    const text = voiceFinalRef.current.trim();
+    voiceFinalRef.current = '';
+    if (!text || isWaiting) return;
+    setInput(text);
+    setSuggestions([]);
+    const guestMsg: TalkShowMessage = { role: 'guest', content: text };
+    const updated = [...messagesRef.current, guestMsg];
+    setMessages(updated);
+    setIsWaiting(true);
+    const history = updated.map(m => ({ role: m.role, content: m.content }));
+    sendTalkShowMessage({
+      topic, guestName, hostName, background, questions, personality,
+      durationMinutes, message: text, history, language: 'en',
+    }).then(({ reply, soundEffect }: {reply: string; soundEffect: string | null}) => {
+      setMessages(prev => [...prev, { role: 'host', content: reply }]);
+      if (soundEffect) playSound(soundEffect);
+    }).catch(err => {
+      console.error('Talk show voice error:', err);
+      setMessages(prev => [...prev, { role: 'host', content: '(Error getting response)' }]);
+    }).finally(() => { setIsWaiting(false); setInput(''); });
+  }, [isWaiting, topic, guestName, hostName, background, questions, personality, durationMinutes, playSound]);
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
@@ -444,33 +495,24 @@ export default function TalkShowMode({
                 disabled={isWaiting || isPaused}
                 className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 disabled:bg-gray-50 disabled:text-gray-400"
               />
-              <VoiceRecorder
-                language="en"
-                toggleMode
-                onSpeechRecognized={(text) => {
-                  setInput(text);
-                  setSuggestions([]);
-                  const guestMsg: TalkShowMessage = { role: 'guest', content: text };
-                  const updated = [...messagesRef.current, guestMsg];
-                  setMessages(updated);
-                  setIsWaiting(true);
-                  const history = updated.map(m => ({ role: m.role, content: m.content }));
-                  sendTalkShowMessage({
-                    topic, guestName, hostName, background, questions, personality,
-                    durationMinutes, message: text, history, language: 'en',
-                  }).then(({ reply, soundEffect }) => {
-                    setMessages(prev => [...prev, { role: 'host', content: reply }]);
-                    if (soundEffect) playSound(soundEffect);
-                  }).catch(err => {
-                    console.error('Talk show voice error:', err);
-                    setMessages(prev => [...prev, { role: 'host', content: '(Error getting response)' }]);
-                  }).finally(() => {
-                    setIsWaiting(false);
-                    setInput('');
-                  });
-                }}
-                onInterimText={(text) => setInput(text)}
-              />
+              <div className="relative">
+                {voiceRecording && (
+                  <div className="absolute inset-0 rounded-full animate-ping bg-red-400/30" />
+                )}
+                <button
+                  type="button"
+                  onClick={() => { if (voiceRecording) voiceStopRecording(); else voiceStartRecording(); }}
+                  disabled={isWaiting || isPaused}
+                  className={`p-2.5 rounded-xl transition-colors ${
+                    voiceRecording
+                      ? 'bg-red-500 text-white animate-pulse'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  } disabled:opacity-40 disabled:cursor-not-allowed`}
+                  title={voiceRecording ? 'Tap to stop' : 'Tap to speak'}
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
+              </div>
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || isWaiting || isPaused}

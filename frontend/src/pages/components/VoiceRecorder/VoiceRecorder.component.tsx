@@ -7,14 +7,12 @@ export interface VoiceRecorderProps {
   onSpeechRecognized: (text: string) => void;
   onInterimText?: (text: string) => void;
   language: string;
-  toggleMode?: boolean;
 }
 
 const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   onSpeechRecognized,
   onInterimText,
   language,
-  toggleMode = false,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   // @ts-ignore - SpeechRecognition is a browser API not in TS types
@@ -104,22 +102,13 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
-    if (toggleMode) {
-      if (isRecording) {
-        stopRecording();
-      } else {
-        startRecording();
-      }
-      return;
-    }
     startRecording();
-  }, [startRecording, stopRecording, toggleMode, isRecording]);
+  }, [startRecording]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
-    if (toggleMode) return; // toggle mode uses click, not pointer up
     stopRecording();
-  }, [stopRecording, toggleMode]);
+  }, [stopRecording]);
 
   const handlePointerLeave = useCallback((e: React.PointerEvent) => {
     // Only cancel if button is pressed (pointer is held and moved away)
@@ -157,7 +146,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
               ? "bg-[var(--md-error)] text-white shadow-elevation-3"
               : "bg-[var(--md-primary)] text-white"
           }`}
-          aria-label={isRecording ? (toggleMode ? 'Tap to stop' : 'Release to send') : (toggleMode ? 'Tap to speak' : 'Hold to record')}
+          aria-label={isRecording ? "Release to send" : "Hold to record"}
         >
           <Mic className="w-5 h-5" />
         </button>
@@ -166,7 +155,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       {/* "Hold to record" / release label */}
       {isRecording && (
         <div className="mt-1.5 text-label-sm text-[var(--md-error)] animate-pulse whitespace-nowrap">
-          {toggleMode ? 'Tap to stop' : 'Release to send'}
+          Release to send
         </div>
       )}
     </div>
