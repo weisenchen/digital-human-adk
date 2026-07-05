@@ -120,7 +120,7 @@ export const sendTalkShowMessage = async (params: {
   history: Array<{role: string; content: string}>;
   language?: string;
   durationMinutes?: number;
-}): Promise<string> => {
+}): Promise<{reply: string; soundEffect: string | null}> => {
   const formData = new FormData();
   formData.append('topic', params.topic);
   formData.append('guest_name', params.guestName);
@@ -135,7 +135,7 @@ export const sendTalkShowMessage = async (params: {
   const res = await fetch(`${BASE_URL}/api/talk-show/ask`, { method: 'POST', body: formData });
   if (!res.ok) throw new Error(`Talk show request failed: ${res.status}`);
   const data = await res.json();
-  return data.reply as string;
+  return { reply: data.reply as string, soundEffect: data.sound_effect as string | null };
 };
 
 /** Generate 3 suggested responses for the guest during talk show */

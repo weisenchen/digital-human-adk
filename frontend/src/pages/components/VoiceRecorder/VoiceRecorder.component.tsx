@@ -7,12 +7,14 @@ export interface VoiceRecorderProps {
   onSpeechRecognized: (text: string) => void;
   onInterimText?: (text: string) => void;
   language: string;
+  toggleMode?: boolean;
 }
 
 const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   onSpeechRecognized,
   onInterimText,
   language,
+  toggleMode = false,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   // @ts-ignore - SpeechRecognition is a browser API not in TS types
@@ -102,13 +104,22 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
+    if (toggleMode) {
+      if (isRecording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+      return;
+    }
     startRecording();
-  }, [startRecording]);
+  }, [startRecording, stopRecording, toggleMode, isRecording]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
+    if (toggleMode) return; // toggle mode uses click, not pointer up
     stopRecording();
-  }, [stopRecording]);
+  }, [stopRecording, toggleMode]);
 
   const handlePointerLeave = useCallback((e: React.PointerEvent) => {
     // Only cancel if button is pressed (pointer is held and moved away)

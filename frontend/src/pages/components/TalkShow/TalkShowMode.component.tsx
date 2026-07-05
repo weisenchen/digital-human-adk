@@ -49,6 +49,7 @@ export default function TalkShowMode({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesRef = useRef<TalkShowMessage[]>([]);
   const spokenIdsRef = useRef<Set<number>>(new Set());
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Keep messagesRef in sync
   useEffect(() => { messagesRef.current = messages; }, [messages]);
@@ -79,6 +80,23 @@ export default function TalkShowMode({
     setIsSpeaking(false);
     setMouthOpen(0);
   }, [setMouthOpen]);
+
+  const playSound = useCallback((effect: string) => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+    }
+    const soundMap: Record<string, string> = {
+      applause: '/sounds/applause.wav',
+      laugh: '/sounds/laugh.wav',
+      whoosh: '/sounds/whoosh.wav',
+    };
+    const src = soundMap[effect];
+    if (src) {
+      audioRef.current.src = src;
+      audioRef.current.volume = 0.5;
+      audioRef.current.play().catch(() => {});
+    }
+  }, []);
 
   const togglePause = useCallback(() => {
     setIsPaused(prev => {
@@ -167,7 +185,7 @@ export default function TalkShowMode({
   const startShow = useCallback(async () => {
     setIsWaiting(true);
     try {
-      const reply = await sendTalkShowMessage({
+      const { reply, soundEffect } = await sendTalkShowMessage({
         topic,
         guestName,
         hostName,
@@ -181,13 +199,14 @@ export default function TalkShowMode({
       });
       const hostMsg: TalkShowMessage = { role: 'host', content: reply };
       setMessages([hostMsg]);
+      if (soundEffect) playSound(soundEffect);
     } catch (err) {
       console.error('Talk show start error:', err);
       setMessages([{ role: 'host', content: `(Error starting the show: ${err})` }]);
     } finally {
       setIsWaiting(false);
     }
-  }, [topic, guestName, hostName, background, questions, personality, durationMinutes]);
+  }, [topic, guestName, hostName, background, questions, personality, durationMinutes, playSound]);
 
   useEffect(() => {
     startShow();
@@ -207,7 +226,7 @@ export default function TalkShowMode({
 
     try {
       const history = updated.map(m => ({ role: m.role, content: m.content }));
-      const reply = await sendTalkShowMessage({
+      const { reply, soundEffect } = await sendTalkShowMessage({
         topic,
         guestName,
         hostName,
@@ -221,13 +240,14 @@ export default function TalkShowMode({
       });
       const hostMsg: TalkShowMessage = { role: 'host', content: reply };
       setMessages(prev => [...prev, hostMsg]);
+      if (soundEffect) playSound(soundEffect);
     } catch (err) {
       console.error('Talk show ask error:', err);
       setMessages(prev => [...prev, { role: 'host', content: '(Error getting response)' }]);
     } finally {
       setIsWaiting(false);
     }
-  }, [input, isWaiting, topic, guestName, hostName, background, questions, personality, isPaused]);
+  }, [input, isWaiting, topic, guestName, hostName, background, questions, personality, durationMinutes, isPaused, playSound]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -423,27 +443,28 @@ export default function TalkShowMode({
               />
               <VoiceRecorder
                 language="en"
+                toggleMode
                 onSpeechRecognized={(text) => {
                   setInput(text);
-                  // Auto-send after brief delay so user sees what was recognized
-                  setTimeout(() => {
+                  setSuggestions([]);
+                  const guestMsg: TalkShowMessage = { role: 'guest', content: text };
+                  const updated = [...messagesRef.current, guestMsg];
+                  setMessages(updated);
+                  setIsWaiting(true);
+                  const history = updated.map(m => ({ role: m.role, content: m.content }));
+                  sendTalkShowMessage({
+                    topic, guestName, hostName, background, questions, personality,
+                    durationMinutes, message: text, history, language: 'en',
+                  }).then(({ reply, soundEffect }) => {
+                    setMessages(prev => [...prev, { role: 'host', content: reply }]);
+                    if (soundEffect) playSound(soundEffect);
+                  }).catch(err => {
+                    console.error('Talk show voice error:', err);
+                    setMessages(prev => [...prev, { role: 'host', content: '(Error getting response)' }]);
+                  }).finally(() => {
+                    setIsWaiting(false);
                     setInput('');
-                    setSuggestions([]);
-                    const guestMsg: TalkShowMessage = { role: 'guest', content: text };
-                    const updated = [...messagesRef.current, guestMsg];
-                    setMessages(updated);
-                    setIsWaiting(true);
-                    const history = updated.map(m => ({ role: m.role, content: m.content }));
-                    sendTalkShowMessage({
-                      topic, guestName, hostName, background, questions, personality,
-                      durationMinutes, message: text, history, language: 'en',
-                    }).then(reply => {
-                      setMessages(prev => [...prev, { role: 'host', content: reply }]);
-                    }).catch(err => {
-                      console.error('Talk show voice error:', err);
-                      setMessages(prev => [...prev, { role: 'host', content: '(Error getting response)' }]);
-                    }).finally(() => setIsWaiting(false));
-                  }, 300);
+                  });
                 }}
                 onInterimText={(text) => setInput(text)}
               />

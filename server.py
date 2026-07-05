@@ -738,6 +738,15 @@ def create_app() -> FastAPI:
             "- CRITICAL: Speak directly. NEVER include stage directions, action descriptions,",
             "  or any text in asterisks or brackets like *walks on stage*, [smiles], or (waves).",
             "  Just say your lines — as if you're live on air and the audience only hears your voice.",
+            "",
+            "── SOUND EFFECTS ──",
+            "If a sound effect fits the moment, append it at the end of your response in double curly braces.",
+            "NEVER describe the sound in words — use the tag and speak your lines as normal.",
+            "Available sounds: {{APPLAUSE}}, {{LAUGH}}, {{WHOOSH}}",
+            "- {{APPLAUSE}}: After opening announcement, after closing, after a particularly impressive insight",
+            "- {{LAUGH}}: After a funny remark or joke",
+            "- {{WHOOSH}}: Between segment transitions (Opening→Warm-up→Discussion→Closing)",
+            "Only use a sound when it truly fits. Don't force it. Most responses have NO sound effect.",
         ]
 
         if background.strip():
@@ -805,7 +814,14 @@ def create_app() -> FastAPI:
                     timeout=60,
                 )
                 reply = resp.choices[0].message.content or ""
-                return {"reply": reply}
+                # Parse sound effect
+                sound_effect = None
+                import re as _re
+                m = _re.search(r'\{\{(\w+)\}\}', reply)
+                if m and m.group(1) in ('APPLAUSE', 'LAUGH', 'WHOOSH'):
+                    sound_effect = m.group(1).lower()
+                    reply = _re.sub(r'\s*\{\{\w+\}\}\s*', '', reply).strip()
+                return {"reply": reply, "sound_effect": sound_effect}
             except Exception as exc:
                 logger.error("Talk show error: %s", exc, exc_info=True)
                 return {"reply": f"(Error: {exc})"}
@@ -839,7 +855,14 @@ def create_app() -> FastAPI:
                 if e.author != "user" and e.content and e.content.parts and not e.partial:
                     reply = e.content.parts[0].text or ""
                     break
-            return {"reply": reply}
+            # Parse sound effect
+            sound_effect = None
+            import re as _re
+            m = _re.search(r'\{\{(\w+)\}\}', reply)
+            if m and m.group(1) in ('APPLAUSE', 'LAUGH', 'WHOOSH'):
+                sound_effect = m.group(1).lower()
+                reply = _re.sub(r'\s*\{\{\w+\}\}\s*', '', reply).strip()
+            return {"reply": reply, "sound_effect": sound_effect}
 
     @app.post("/api/talk-show/suggest")
     async def talk_show_suggest(
