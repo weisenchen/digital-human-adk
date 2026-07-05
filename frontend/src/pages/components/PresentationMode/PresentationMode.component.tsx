@@ -170,17 +170,18 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
     if (!text.trim()) return;
     stopReading();
 
+    // Create audio element immediately (within user gesture chain)
+    const audio = new Audio();
+    currentSourceRef.current = audio as any;
+    setReadingSlide(slideIndex);
+    setIsReading(true);
+
     try {
       const blob = await getAIAudioFromText(text, language, voiceId);
       if (!mountedRef.current) return;
 
-      setReadingSlide(slideIndex);
-      setIsReading(true);
-
-      // Use HTMLAudioElement (better autoplay support than AudioContext)
       const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      currentSourceRef.current = audio as any;
+      audio.src = url;
 
       await audio.play();
 
