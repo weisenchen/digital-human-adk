@@ -1,12 +1,34 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { Menu } from 'lucide-react';
 import ConversationContainer from './components/ConversationContainer/ConversationContainer.component';
 import CyborgSidebar from './components/CyborgSidebar/CyborgSidebar.component';
 import PresentationMode from './components/PresentationMode/PresentationMode.component';
 import VoiceAssistantProvider from './context/VoiceAssistantProvider';
+import VoiceAssistantContext from './context/VoiceAssistantContext';
 import { SlideData } from '@/services/adk-assistant.service';
+
+/** Wraps PresentationMode with context values for voiceId + language */
+function PresentationWrapper({
+  slides, minutes, onClose
+}: {
+  slides: SlideData[];
+  minutes: number;
+  onClose: () => void;
+}) {
+  const ctx = useContext(VoiceAssistantContext);
+  return (
+    <PresentationMode
+      characterName={ctx?.characterName || 'Xiao Wei'}
+      voiceId={ctx?.selectedVoice || ''}
+      language={ctx?.selectedLanguage || 'en'}
+      initialSlides={slides}
+      initialMinutes={minutes}
+      onClose={onClose}
+    />
+  );
+}
 
 export default function Home() {
   const [showCyborg, setShowCyborg] = useState(false);
@@ -57,10 +79,9 @@ export default function Home() {
 
         {/* Presentation overlay (full-screen) */}
         {showPresentation && presentationSlides && (
-          <PresentationMode
-            characterName="Xiao Wei"
-            voiceId=""
-            language="en"
+          <PresentationWrapper
+            slides={presentationSlides}
+            minutes={presentationMinutes}
             onClose={() => setShowPresentation(false)}
           />
         )}
