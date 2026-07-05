@@ -37,7 +37,7 @@ export default function Home() {
         <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--md-outline)] bg-white/80 backdrop-blur-md shrink-0 z-20">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowCyborg(true)}
+              onClick={() => setShowCyborg(prev => !prev)}
               className="state-layer p-2 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] transition-colors"
               title="Open Sidebar"
             >

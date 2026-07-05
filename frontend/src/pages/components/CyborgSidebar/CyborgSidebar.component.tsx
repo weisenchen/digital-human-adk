@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useContext } from 'react';
-import { X, MessageSquarePlus, FileText, Settings, Brain, Menu, ChevronDown, ChevronUp, History, Mic } from 'lucide-react';
+import { X, MessageSquarePlus, FileText, Settings, Brain, ChevronDown, ChevronUp, History, Mic } from 'lucide-react';
 import CharacterSelector from '../CharacterSelector/CharacterSelector.component';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 
@@ -44,11 +44,7 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
   return (
     <aside className="w-[280px] flex-shrink-0 bg-white border-r border-[var(--md-outline)] flex flex-col h-full overflow-y-auto">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--md-outline)] sticky top-0 bg-white z-10">
-        <div className="flex items-center gap-2">
-          <Menu className="w-4 h-4 text-[var(--md-on-surface-variant)]" />
-          <span className="text-label-sm text-[var(--md-on-surface)]">Menu</span>
-        </div>
+      <div className="flex items-center justify-end px-4 py-3 border-b border-[var(--md-outline)] sticky top-0 bg-white z-10">
         <button
           onClick={onClose}
           className="state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] transition-colors"
