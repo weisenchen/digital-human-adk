@@ -56,7 +56,23 @@ const useVoiceAssistant = ()=>{
     const [selectedModel, setSelectedModel] = useState<string>('deepseek-chat');
 
     // Conversation history
-    const [history, setHistory] = useState<HistoryItem[]>([]);
+    const [history, setHistory] = useState<HistoryItem[]>(() => {
+      // Load persisted history from localStorage (client-side only)
+      if (typeof window !== 'undefined') {
+        try {
+          const saved = localStorage.getItem('chat_history');
+          if (saved) return JSON.parse(saved);
+        } catch {}
+      }
+      return [];
+    });
+
+    // Persist history to localStorage whenever it changes
+    useEffect(() => {
+      try {
+        localStorage.setItem('chat_history', JSON.stringify(history));
+      } catch {}
+    }, [history]);
 
     // UX enhancements
     const [isSpeaking, setIsSpeaking] = useState(false);

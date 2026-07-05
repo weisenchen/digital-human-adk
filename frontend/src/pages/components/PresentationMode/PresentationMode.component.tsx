@@ -80,7 +80,6 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
 
   // Timer state
   const [slideTimeRemaining, setSlideTimeRemaining] = useState(0);
-  const [timerRunning, setTimerRunning] = useState(false);
   // Audio playback
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const audioElemRef = useRef<HTMLAudioElement | null>(null);

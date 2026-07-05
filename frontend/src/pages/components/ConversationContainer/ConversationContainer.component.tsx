@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useContext, useRef, useEffect } from 'react';
-import { Send, Sparkles, MessageSquare, Mic, FileText, Plus, Monitor, Podcast, FilePlus, Paperclip } from 'lucide-react';
+import { Send, Sparkles, MessageSquare, FileText, Plus, Monitor, Podcast, FilePlus, Paperclip } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
@@ -37,9 +37,6 @@ export default function ConversationContainer() {
   }, []);
 
   const context = useContext(VoiceAssistantContext);
-  if (!context) {
-    throw new Error('VoiceAssistantContext is undefined.');
-  }
 
   const {
     inputText,

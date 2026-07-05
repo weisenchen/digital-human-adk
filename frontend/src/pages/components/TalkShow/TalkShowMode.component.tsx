@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useCallback, useContext, useEffect } from 'react';
-import { X, Send, Square, Volume2, Pause, Play } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useContext } from 'react';
+import { X, Send, Volume2, Pause, Play } from 'lucide-react';
 import DigitalHumanContainer from '../DigitalHumanContainer/DigitalHumanContainer.component';
 import { sendTalkShowMessage, getAIAudioFromText } from '@/services/adk-assistant.service';
 import { getSharedAudioContext } from '@/lib/audio-context';
@@ -31,7 +31,7 @@ export default function TalkShowMode({
   personality,
   onEnd,
 }: TalkShowModeProps) {
-  const { selectedLanguage, setMouthOpen, characterName } = useContext(VoiceAssistantContext);
+  const { selectedLanguage, setMouthOpen } = useContext(VoiceAssistantContext);
   const [messages, setMessages] = useState<TalkShowMessage[]>([]);
   const [input, setInput] = useState('');
   const [isWaiting, setIsWaiting] = useState(false);
@@ -142,8 +142,6 @@ export default function TalkShowMode({
       });
       const hostMsg: TalkShowMessage = { role: 'host', content: reply };
       setMessages([hostMsg]);
-      // Speak the opening
-      // speakHostResponse(reply, '');
     } catch (err) {
       console.error('Talk show start error:', err);
       setMessages([{ role: 'host', content: `(Error starting the show: ${err})` }]);
