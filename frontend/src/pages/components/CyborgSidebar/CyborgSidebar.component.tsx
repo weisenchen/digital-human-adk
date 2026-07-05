@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useContext } from 'react';
-import { X, MessageSquarePlus, FileText, Sparkles, Brain, Menu, ChevronDown, ChevronUp, History } from 'lucide-react';
+import { X, MessageSquarePlus, FileText, Settings, Brain, Menu, ChevronDown, ChevronUp, History } from 'lucide-react';
 import CharacterSelector from '../CharacterSelector/CharacterSelector.component';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 
@@ -120,7 +120,7 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
             className="w-full flex items-center justify-between gap-2 mb-1"
           >
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-gray-500" />
+              <Settings className="w-4 h-4 text-gray-500" />
               <span className="text-sm font-medium text-gray-700">Settings</span>
             </div>
             {settingsOpen ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}

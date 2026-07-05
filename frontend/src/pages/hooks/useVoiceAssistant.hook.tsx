@@ -2,6 +2,7 @@
 
 import { sendChatMessage, sendChatStream, injectName, getAIAudioFromText, fetchVoices, VoiceOption, fetchModels, selectModel, ModelOption } from "@/services/adk-assistant.service"
 import { useRef, useState, useCallback, useEffect } from "react"
+import { getSharedAudioContext } from "@/lib/audio-context"
 
 interface Message {
     text: string;
@@ -74,7 +75,7 @@ const useVoiceAssistant = ()=>{
 
     const getAudioContext = useCallback((): AudioContext => {
       if (!audioContextRef.current) {
-        audioContextRef.current = new AudioContext();
+        audioContextRef.current = getSharedAudioContext();
         analyserRef.current = audioContextRef.current.createAnalyser();
         analyserRef.current.connect(audioContextRef.current.destination);
       }
