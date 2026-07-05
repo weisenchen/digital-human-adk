@@ -30,7 +30,7 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10">
         <div className="flex items-center gap-2">
           <Menu className="w-4 h-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700">Sidebar</span>
+          <span className="text-sm font-medium text-gray-700">Menu</span>
         </div>
         <button
           onClick={onClose}
