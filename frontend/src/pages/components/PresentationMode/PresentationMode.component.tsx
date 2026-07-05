@@ -18,6 +18,10 @@ interface PresentationModeProps {
   language: string;
   /** Close / exit callback */
   onClose: () => void;
+  /** Optional pre-generated slides (skip input stage) */
+  initialSlides?: SlideData[];
+  /** Optional total presentation duration in minutes */
+  initialMinutes?: number;
 }
 
 /**
@@ -53,12 +57,17 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   voiceId,
   language,
   onClose,
+  initialSlides,
+  initialMinutes,
 }) => {
   // ── State ─────────────────────────────────────────
-  const [stage, setStage] = useState<'input' | 'editor' | 'present'>('input');
+  const [stage, setStage] = useState<'input' | 'editor' | 'present'>(
+    initialSlides && initialSlides.length > 0 ? 'editor' : 'input'
+  );
   const [script, setScript] = useState('');
-  const [slides, setSlides] = useState<SlideData[]>([]);
+  const [slides, setSlides] = useState<SlideData[]>(initialSlides || []);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [totalMinutes, setTotalMinutes] = useState(initialMinutes || 10);
   const [isReading, setIsReading] = useState(false);
   const [autoAdvance, setAutoAdvance] = useState(true);
   const [readingSlide, setReadingSlide] = useState<number | null>(null);
@@ -68,9 +77,8 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   const [expandedSpeech, setExpandedSpeech] = useState<number | null>(null);
 
   // Timer state
-  const [totalMinutes, setTotalMinutes] = useState(10);
   const [slideTimeRemaining, setSlideTimeRemaining] = useState(0);
-
+  const [timerRunning, setTimerRunning] = useState(false);
   // Audio playback
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
