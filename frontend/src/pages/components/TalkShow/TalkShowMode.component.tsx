@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useContext, useEffect } from 'react';
-import { X, Send, Square, Volume2 } from 'lucide-react';
+import { X, Send, Square, Volume2, Pause, Play } from 'lucide-react';
 import DigitalHumanContainer from '../DigitalHumanContainer/DigitalHumanContainer.component';
 import { sendTalkShowMessage, getAIAudioFromText } from '@/services/adk-assistant.service';
 import { getSharedAudioContext } from '@/lib/audio-context';
@@ -34,6 +34,7 @@ export default function TalkShowMode({
   const [input, setInput] = useState('');
   const [isWaiting, setIsWaiting] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -71,6 +72,15 @@ export default function TalkShowMode({
     setIsSpeaking(false);
     setMouthOpen(0);
   }, [setMouthOpen]);
+
+  const togglePause = useCallback(() => {
+    setIsPaused(prev => {
+      if (!prev) {
+        stopSpeaking();
+      }
+      return !prev;
+    });
+  }, [stopSpeaking]);
 
   const speakHostResponse = useCallback(async (text: string, voice: string) => {
     stopSpeaking();
@@ -146,7 +156,7 @@ export default function TalkShowMode({
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
-    if (!text || isWaiting) return;
+    if (!text || isWaiting || isPaused) return;
     setInput('');
 
     const guestMsg: TalkShowMessage = { role: 'guest', content: text };
@@ -197,14 +207,34 @@ export default function TalkShowMode({
               Speaking
             </span>
           )}
+          {isPaused && (
+            <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
+              <Pause className="w-3 h-3" />
+              Paused
+            </span>
+          )}
         </div>
-        <button
-          onClick={() => { stopSpeaking(); onEnd(); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-        >
-          <X className="w-3.5 h-3.5" />
-          End Show
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={togglePause}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+              isPaused
+                ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+            }`}
+            title={isPaused ? 'Resume Show' : 'Pause Show'}
+          >
+            {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+            {isPaused ? 'Resume' : 'Pause'}
+          </button>
+          <button
+            onClick={() => { stopSpeaking(); onEnd(); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+            End Show
+          </button>
+        </div>
       </div>
 
       {/* Main content: avatar left + chat right */}
@@ -267,6 +297,15 @@ export default function TalkShowMode({
           </div>
 
           {/* Input bar */}
+          {isPaused && (
+            <div className="shrink-0 border-t border-amber-200 px-4 py-3 bg-amber-50">
+              <div className="flex items-center justify-center gap-2 text-sm text-amber-700">
+                <Pause className="w-4 h-4" />
+                Show paused — click <button onClick={togglePause} className="font-medium underline hover:text-amber-900">Resume</button> to continue
+              </div>
+            </div>
+          )}
+          {!isPaused && (
           <div className="shrink-0 border-t border-gray-200 px-4 py-3 bg-white">
             <div className="flex items-center gap-2">
               <input
@@ -275,18 +314,19 @@ export default function TalkShowMode({
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={`Reply as ${guestName}...`}
-                disabled={isWaiting}
+                disabled={isWaiting || isPaused}
                 className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 disabled:bg-gray-50 disabled:text-gray-400"
               />
               <button
                 onClick={handleSend}
-                disabled={!input.trim() || isWaiting}
+                disabled={!input.trim() || isWaiting || isPaused}
                 className="p-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-colors"
               >
                 <Send className="w-4 h-4" />
               </button>
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>
