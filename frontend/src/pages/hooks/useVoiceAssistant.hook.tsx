@@ -2,7 +2,7 @@
 
 import { sendChatMessage, sendChatStream, injectName, getAIAudioFromText, fetchVoices, VoiceOption, fetchModels, selectModel, ModelOption } from "@/services/adk-assistant.service"
 import { useRef, useState, useCallback, useEffect } from "react"
-import { getSharedAudioContext } from "@/lib/audio-context"
+import { getSharedAudioContext, closeSharedAudioContext } from "@/lib/audio-context"
 
 interface Message {
     text: string;
@@ -353,7 +353,7 @@ const useVoiceAssistant = ()=>{
     return () => {
       cancelPlayback();
       if (audioContextRef.current) {
-        try { audioContextRef.current.close(); } catch {}
+        closeSharedAudioContext();
         audioContextRef.current = null;
         analyserRef.current = null;
       }

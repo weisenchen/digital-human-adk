@@ -8,7 +8,7 @@ import {
   MessageSquareText,
 } from 'lucide-react';
 import { getAIAudioFromText, generateSlides, SlideData } from '@/services/adk-assistant.service';
-import { getSharedAudioContext, resumeSharedAudioContext } from '@/lib/audio-context';
+import { getSharedAudioContext } from '@/lib/audio-context';
 
 interface PresentationModeProps {
   /** Current voice character name (for display) */
@@ -76,13 +76,15 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   const [numSlides, setNumSlides] = useState(5);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [expandedSpeech, setExpandedSpeech] = useState<number | null>(null);
+  const [ttsError, setTtsError] = useState<string | null>(null);
 
   // Timer state
   const [slideTimeRemaining, setSlideTimeRemaining] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   // Audio playback
-  const audioContextRef = useRef<AudioContext | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const audioElemRef = useRef<HTMLAudioElement | null>(null);
+  const resolvePlaybackRef = useRef<(() => void) | null>(null);
 
   // Timer refs
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -110,11 +112,6 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
       mountedRef.current = false;
       stopReading();
       stopTimer();
-      if (audioContextRef.current) {
-        try { audioContextRef.current.close(); } catch {}
-        audioContextRef.current = null;
-      }
-      // Note: shared AudioContext from getSharedAudioContext() is NOT closed here
     };
   }, []);
 
@@ -156,14 +153,80 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   }, [currentSlide, stage, autoAdvance, slides.length, totalMinutes, startTimer]);
 
   const stopReading = useCallback(() => {
+    // Stop Web Audio source
     if (currentSourceRef.current) {
-      try {
-        (currentSourceRef.current as AudioBufferSourceNode).stop();
-      } catch {}
+      try { (currentSourceRef.current as AudioBufferSourceNode).stop(); } catch {}
       currentSourceRef.current = null;
+    }
+    // Stop HTMLAudioElement fallback
+    if (audioElemRef.current) {
+      try { audioElemRef.current.pause(); } catch {}
+      audioElemRef.current = null;
+    }
+    // Resolve any pending playback promise (so it doesn't hang forever)
+    if (resolvePlaybackRef.current) {
+      resolvePlaybackRef.current();
+      resolvePlaybackRef.current = null;
     }
     setIsReading(false);
     setReadingSlide(null);
+  }, []);
+
+  /**
+   * Play audio blob using Web Audio API (decodeAudioData).
+   * Falls back to HTMLAudioElement if decodeAudioData fails.
+   */
+  const playBlob = useCallback(async (blob: Blob): Promise<void> => {
+    const ctx = getSharedAudioContext();
+
+    // Clear any previous resolve callback
+    resolvePlaybackRef.current = null;
+
+    // Try Web Audio API first
+    try {
+      const arrayBuffer = await blob.arrayBuffer();
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(ctx.destination);
+      source.start(0);
+      currentSourceRef.current = source;
+
+      await new Promise<void>((resolve) => {
+        source.onended = () => { currentSourceRef.current = null; resolve(); };
+      });
+      return;
+    } catch (decodeErr) {
+      // Web Audio API decode failed — fall back to HTMLAudioElement
+      console.warn('Web Audio decode failed, falling back to <audio>:', decodeErr);
+    }
+
+    // Fallback: HTMLAudioElement
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audioElemRef.current = audio;
+    try {
+      await audio.play();
+      await new Promise<void>((resolve) => {
+        // Register resolve so stopReading() can unstick this promise
+        resolvePlaybackRef.current = () => {
+          URL.revokeObjectURL(url);
+          audioElemRef.current = null;
+          resolve();
+        };
+        audio.onended = () => {
+          resolvePlaybackRef.current = null;
+          URL.revokeObjectURL(url);
+          audioElemRef.current = null;
+          resolve();
+        };
+      });
+    } catch (playErr) {
+      resolvePlaybackRef.current = null;
+      URL.revokeObjectURL(url);
+      audioElemRef.current = null;
+      throw playErr;
+    }
   }, []);
 
   const speakText = useCallback(async (text: string, slideIndex: number) => {
@@ -184,20 +247,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
       const blob = await getAIAudioFromText(text, ttsLanguage, voiceId);
       if (!mountedRef.current) return;
 
-      const ctx = getSharedAudioContext();
-      const arrayBuffer = await blob.arrayBuffer();
-      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-
-      const source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(ctx.destination);
-      source.start(0);
-
-      currentSourceRef.current = source;
-
-      await new Promise<void>((resolve) => {
-        source.onended = () => resolve();
-      });
+      await playBlob(blob);
 
       if (mountedRef.current) {
         setIsReading(false);
@@ -213,9 +263,11 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
       if (mountedRef.current) {
         setIsReading(false);
         setReadingSlide(null);
+        setTtsError(`TTS failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        setTimeout(() => setTtsError(null), 5000);
       }
     }
-  }, [language, voiceId, stopReading, autoAdvance, slides.length]);
+  }, [language, voiceId, stopReading, autoAdvance, slides.length, playBlob]);
 
   const handleAIGenerate = async () => {
     if (!script.trim()) return;
@@ -284,12 +336,18 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
     }
   }, [currentSlide, stopTimer, stopReading]);
 
-  const toggleReadCurrent = () => {
+  const toggleReadCurrent = async () => {
     if (isReading) {
       stopReading();
     } else {
       const slide = slides[currentSlide];
       if (slide) {
+        // Resume AudioContext synchronously during user gesture before any await
+        try {
+          const ctx = getSharedAudioContext();
+          if (ctx.state === 'suspended') await ctx.resume();
+        } catch {}
+        // Now call speakText (AudioContext is already running)
         speakText(slide.speech, currentSlide);
       }
     }
@@ -303,6 +361,11 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
       else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') goPrev();
       else if (e.key === ' ' && !isReading) {
         e.preventDefault();
+        // Resume AudioContext during keyboard gesture too
+        try {
+          const ctx = getSharedAudioContext();
+          if (ctx.state === 'suspended') { ctx.resume(); }
+        } catch {}
         const slide = slides[currentSlide];
         if (slide) speakText(slide.speech, currentSlide);
       }
@@ -723,6 +786,13 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--md-error)] animate-pulse" />
                 <span className="text-label-sm text-[var(--md-on-surface-variant)]">Speaking</span>
+              </div>
+            )}
+
+            {/* TTS error feedback */}
+            {ttsError && (
+              <div className="mt-2 text-label-xs text-[var(--md-error)] text-center max-w-[10rem]">
+                {ttsError}
               </div>
             )}
           </div>
