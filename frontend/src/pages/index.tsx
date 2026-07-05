@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { BookOpen } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import ConversationContainer from './components/ConversationContainer/ConversationContainer.component';
 import CyborgSidebar from './components/CyborgSidebar/CyborgSidebar.component';
 import PresentationMode from './components/PresentationMode/PresentationMode.component';
@@ -43,7 +43,7 @@ export default function Home() {
                 className="flex items-center gap-1.5 p-1.5 rounded-md hover:bg-gray-100 text-gray-500 transition-colors text-sm"
                 title="Open Sidebar"
               >
-                <BookOpen className="w-5 h-5" />
+                <Menu className="w-5 h-5" />
                 <span className="hidden sm:inline">Sidebar</span>
               </button>
             )}
