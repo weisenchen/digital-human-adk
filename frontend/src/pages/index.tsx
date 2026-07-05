@@ -52,7 +52,6 @@ export default function Home() {
                 title="Open Sidebar"
               >
                 <Menu className="w-5 h-5" />
-                <span className="hidden sm:inline">Sidebar</span>
               </button>
             )}
           </div>
