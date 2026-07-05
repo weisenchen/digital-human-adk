@@ -41,10 +41,10 @@ export default function Home() {
               <button
                 onClick={() => setShowCyborg(true)}
                 className="flex items-center gap-1.5 p-1.5 rounded-md hover:bg-gray-100 text-gray-500 transition-colors text-sm"
-                title="Open Cyborg"
+                title="Open Sidebar"
               >
                 <BookOpen className="w-5 h-5" />
-                <span className="hidden sm:inline">Cyborg</span>
+                <span className="hidden sm:inline">Sidebar</span>
               </button>
             )}
           </div>
