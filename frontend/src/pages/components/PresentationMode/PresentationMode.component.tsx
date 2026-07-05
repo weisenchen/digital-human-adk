@@ -636,23 +636,158 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
     : 0;
   const timerUrgent = slideTimeRemaining <= 30;
 
-  // Convert markdown-like syntax to basic HTML for display
-  const renderSlideContent = (text: string): string => {
-    return text
-      .split('\n')
-      .map(line => {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('### '))  return `<h3 class="text-headline-sm font-semibold mt-4 mb-2">${escapeHtml(trimmed.slice(4))}</h3>`;
-        if (trimmed.startsWith('## '))   return `<h2 class="text-headline-md font-bold mt-6 mb-3">${escapeHtml(trimmed.slice(3))}</h2>`;
-        if (trimmed.startsWith('# '))    return `<h1 class="text-headline-lg font-bold mt-8 mb-4">${escapeHtml(trimmed.slice(2))}</h1>`;
-        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-          return `<li class="text-body-lg ml-4 list-disc mb-1">${escapeHtml(trimmed.slice(2))}</li>`;
-        }
-        if (trimmed.startsWith('> '))    return `<blockquote class="border-l-4 border-[var(--md-primary)] pl-4 italic text-body-lg text-[var(--md-on-surface-variant)] my-3">${escapeHtml(trimmed.slice(2))}</blockquote>`;
-        if (trimmed === '') return '<br/>';
-        return `<p class="text-body-lg mb-2">${escapeHtml(trimmed)}</p>`;
-      })
-      .join('\n');
+  // ── Slide Type System ───────────────────────────────
+  type SlideType = 'TITLE' | 'SECTION' | 'CONTENT' | 'QUOTE' | 'DATA' | 'COMPARE' | 'CLOSE';
+
+  const parseSlideType = (display: string): { type: SlideType; content: string } => {
+    const firstLine = display.trim().split('\n')[0].trim();
+    if (firstLine.startsWith('##TITLE')) return { type: 'TITLE', content: display.replace(/^##TITLE\s*\n?/, '').trim() };
+    if (firstLine.startsWith('##SECTION')) return { type: 'SECTION', content: display.replace(/^##SECTION\s*\n?/, '').trim() };
+    if (firstLine.startsWith('##QUOTE')) return { type: 'QUOTE', content: display.replace(/^##QUOTE\s*\n?/, '').trim() };
+    if (firstLine.startsWith('##DATA')) return { type: 'DATA', content: display.replace(/^##DATA\s*\n?/, '').trim() };
+    if (firstLine.startsWith('##COMPARE')) return { type: 'COMPARE', content: display.replace(/^##COMPARE\s*\n?/, '').trim() };
+    if (firstLine.startsWith('##CLOSE')) return { type: 'CLOSE', content: display.replace(/^##CLOSE\s*\n?/, '').trim() };
+    return { type: 'CONTENT', content: display };
+  };
+
+  const escapeHtml = (text: string): string => {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  };
+
+  // Parse markdown-like syntax to HTML (for CONTENT type)
+  const markdownToHtml = (text: string): string => {
+    return text.split('\n').map(line => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('### '))  return `<h3 class="text-2xl font-semibold mt-4 mb-2 text-[var(--md-on-surface)]">${escapeHtml(trimmed.slice(4))}</h3>`;
+      if (trimmed.startsWith('## '))   return `<h2 class="text-3xl font-bold mt-6 mb-3 text-[var(--md-on-surface)]">${escapeHtml(trimmed.slice(3))}</h2>`;
+      if (trimmed.startsWith('# '))    return `<h1 class="text-4xl font-bold mt-8 mb-4 text-[var(--md-on-surface)]">${escapeHtml(trimmed.slice(2))}</h1>`;
+      if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        return `<li class="text-xl ml-4 list-disc mb-1 text-[var(--md-on-surface)]">${escapeHtml(trimmed.slice(2))}</li>`;
+      }
+      if (trimmed.startsWith('> '))    return `<blockquote class="border-l-4 border-[var(--md-primary)] pl-4 italic text-xl text-[var(--md-on-surface-variant)] my-3">${escapeHtml(trimmed.slice(2))}</blockquote>`;
+      if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
+        return `<p class="text-xl font-bold text-center text-[var(--md-primary)] my-4">${escapeHtml(trimmed.slice(2, -2))}</p>`;
+      }
+      if (trimmed.startsWith('**Call to action:**')) {
+        return `<p class="text-xl font-bold text-center text-amber-600 mt-6">${escapeHtml(trimmed)}</p>`;
+      }
+      if (trimmed === '') return '<br/>';
+      return `<p class="text-xl mb-2 text-[var(--md-on-surface)]">${escapeHtml(trimmed)}</p>`;
+    }).join('\n');
+  };
+
+  const SlideRenderer = ({ display }: { display: string }) => {
+    const { type, content } = parseSlideType(display);
+    const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+
+    switch (type) {
+      case 'TITLE': {
+        const title = lines.find(l => l.startsWith('## '))?.replace(/^##\s+/, '') || lines[0] || '';
+        const subtitle = lines.filter(l => !l.startsWith('## ') && !l.startsWith('#') && !l.startsWith('*') && !l.startsWith('-'))[0] || '';
+        return (
+          <div className="flex flex-col items-center justify-center h-full min-h-[50vh] p-8">
+            <div className="text-center max-w-3xl">
+              <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-6 leading-tight">{title}</h1>
+              {subtitle && <p className="text-2xl text-gray-500 font-light">{subtitle}</p>}
+            </div>
+          </div>
+        );
+      }
+      case 'SECTION': {
+        const sectionTitle = lines.find(l => l.startsWith('## '))?.replace(/^##\s+/, '') || lines[0] || '';
+        return (
+          <div className="flex flex-col items-center justify-center h-full min-h-[50vh] bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-12">
+            <h2 className="text-4xl sm:text-5xl font-bold text-white text-center">{sectionTitle}</h2>
+          </div>
+        );
+      }
+      case 'QUOTE': {
+        const quoteLine = lines.find(l => l.startsWith('>'))?.replace(/^>\s*"?|"?$/g, '') || '';
+        const attribution = lines.find(l => l.startsWith('—') || l.startsWith('-'))?.replace(/^—\s*|^-\s*/, '') || '';
+        return (
+          <div className="flex flex-col items-center justify-center h-full min-h-[50vh] p-8">
+            <div className="max-w-3xl bg-amber-50 border-l-8 border-amber-400 rounded-r-2xl p-8">
+              <div className="text-5xl text-amber-300 mb-4">"</div>
+              <p className="text-2xl sm:text-3xl font-serif italic text-gray-800 leading-relaxed">{quoteLine}</p>
+              {attribution && <p className="text-lg text-gray-500 mt-4 ml-2">— {attribution}</p>}
+            </div>
+          </div>
+        );
+      }
+      case 'DATA': {
+        const title = lines.find(l => l.startsWith('## '))?.replace(/^##\s+/, '') || '';
+        // Find the big number — bold text or a percentage
+        const bigNumber = lines.find(l => l.includes('%') || l.match(/\*\*.+?\*\*/))?.replace(/\*\*/g, '') || '';
+        const bullets = lines.filter(l => l.startsWith('- ') || l.startsWith('* ')).map(l => l.replace(/^[-*]\s+/, ''));
+        const rest = lines.filter(l => !l.startsWith('## ') && !l.startsWith('- ') && !l.startsWith('* ') && !l.includes('%') && !l.match(/\*\*/))[0] || '';
+        return (
+          <div className="flex flex-col items-center justify-center h-full min-h-[50vh] p-8">
+            <div className="max-w-3xl w-full bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-10 text-center">
+              {title && <h2 className="text-2xl font-semibold text-gray-700 mb-6">{title}</h2>}
+              {bigNumber && <div className="text-6xl sm:text-7xl font-bold text-emerald-600 mb-4">{bigNumber}</div>}
+              {rest && <p className="text-xl text-gray-600 mb-6">{rest}</p>}
+              {bullets.length > 0 && (
+                <ul className="space-y-2 text-left max-w-lg mx-auto">
+                  {bullets.map((b, i) => <li key={i} className="text-lg text-gray-600 flex items-start gap-2"><span className="text-emerald-500 mt-1">•</span> {b}</li>)}
+                </ul>
+              )}
+            </div>
+          </div>
+        );
+      }
+      case 'COMPARE': {
+        const title = lines.find(l => l.startsWith('## '))?.replace(/^##\s+/, '') || '';
+        const leftLabel = lines.find(l => l.startsWith('Left:'))?.replace(/^Left:\s*/, '') || '';
+        const rightLabel = lines.find(l => l.startsWith('Right:'))?.replace(/^Right:\s*/, '') || '';
+        const leftBullets = lines.filter(l => l.startsWith('Left:') || (lines.indexOf(l) > lines.findIndex(x => x.startsWith('Left:')) && lines.indexOf(l) < (lines.findIndex(x => x.startsWith('Right:')) || lines.length) && (l.startsWith('- ') || l.startsWith('* '))));
+        const rightBullets = lines.filter(l => l.startsWith('Right:') || (lines.indexOf(l) > (lines.findIndex(x => x.startsWith('Right:')) || 0) && (l.startsWith('- ') || l.startsWith('* '))));
+        return (
+          <div className="flex flex-col items-center justify-center h-full min-h-[50vh] p-8">
+            <div className="max-w-4xl w-full">
+              {title && <h2 className="text-2xl font-semibold text-gray-800 text-center mb-8">{title}</h2>}
+              <div className="grid grid-cols-2 gap-8">
+                <div className="bg-blue-50 rounded-xl p-6">
+                  {leftLabel && <h3 className="text-xl font-semibold text-blue-700 mb-3">{leftLabel}</h3>}
+                  <ul className="space-y-2">
+                    {leftBullets.filter(l => l.startsWith('- ')).map((b, i) => <li key={i} className="text-lg text-gray-700">• {b.replace(/^[-*]\s+/, '')}</li>)}
+                  </ul>
+                </div>
+                <div className="bg-purple-50 rounded-xl p-6">
+                  {rightLabel && <h3 className="text-xl font-semibold text-purple-700 mb-3">{rightLabel}</h3>}
+                  <ul className="space-y-2">
+                    {rightBullets.filter(l => l.startsWith('- ')).map((b, i) => <li key={i} className="text-lg text-gray-700">• {b.replace(/^[-*]\s+/, '')}</li>)}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      case 'CLOSE': {
+        const title = lines.find(l => l.startsWith('## '))?.replace(/^##\s+/, '') || '';
+        const takeaway = lines.filter(l => !l.startsWith('## ') && !l.includes('Call to action'))[0] || '';
+        const cta = lines.find(l => l.includes('Call to action'))?.replace(/\*\*Call to action:\*\*\s*/, '') || lines.find(l => l.includes('Call to action'))?.replace(/\*\*/g, '') || '';
+        return (
+          <div className="flex flex-col items-center justify-center h-full min-h-[50vh] bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-12">
+            <div className="text-center max-w-3xl">
+              {title && <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">{title}</h2>}
+              {takeaway && <p className="text-xl text-gray-300 mb-8">{takeaway}</p>}
+              {cta && <div className="inline-block bg-amber-500 text-gray-900 font-bold text-xl px-8 py-4 rounded-full">{cta}</div>}
+            </div>
+          </div>
+        );
+      }
+      default: { // CONTENT
+        const firstLine = lines[0] || '';
+        const isHeadingOnly = firstLine.startsWith('## ');
+        const bodyContent = isHeadingOnly ? lines.slice(1).join('\n') : content;
+        return (
+          <div className="w-full max-w-3xl">
+            <div dangerouslySetInnerHTML={{ __html: markdownToHtml(content) }} />
+          </div>
+        );
+      }
+    }
   };
 
   return (
@@ -696,10 +831,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         {/* Slide content */}
         <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 lg:p-16 overflow-y-auto">
-          <div
-            className="w-full max-w-3xl prose-headings:text-[var(--md-on-surface)] prose-p:text-[var(--md-on-surface)] prose-li:text-[var(--md-on-surface)]"
-            dangerouslySetInnerHTML={{ __html: renderSlideContent(slide.display) }}
-          />
+          <SlideRenderer display={slide.display} />
           {/* Speech indicator: show that narrator is reading different text */}
           {slide.speech !== slide.display && isReading && readingSlide === currentSlide && (
             <div className="mt-4 flex items-center gap-1.5 text-label-sm text-[var(--md-primary)] bg-[var(--md-primary-container)] px-3 py-1 rounded-[var(--shape-full)]">
