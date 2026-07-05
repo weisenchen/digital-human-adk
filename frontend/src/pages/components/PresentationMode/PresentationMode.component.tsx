@@ -170,6 +170,10 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
     if (!text.trim()) return;
     stopReading();
 
+    // Auto-detect language: if text contains CJK characters, use zh
+    const hasCJK = /[\u4e00-\u9fff\u3400-\u4dbf]/.test(text);
+    const ttsLanguage = hasCJK ? 'zh' : language;
+
     // Ensure shared AudioContext is alive
     await resumeSharedAudioContext();
 
@@ -177,7 +181,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
     setIsReading(true);
 
     try {
-      const blob = await getAIAudioFromText(text, language, voiceId);
+      const blob = await getAIAudioFromText(text, ttsLanguage, voiceId);
       if (!mountedRef.current) return;
 
       const ctx = getSharedAudioContext();
