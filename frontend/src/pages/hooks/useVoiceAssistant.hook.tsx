@@ -427,6 +427,7 @@ const useVoiceAssistant = ()=>{
     setInputText,
     handleTextSubmit,
     mouthOpen,
+    setMouthOpen,
     voices,
     selectedVoice,
     selectedGender,

@@ -8,7 +8,7 @@ import {
   MessageSquareText,
 } from 'lucide-react';
 import { getAIAudioFromText, generateSlides, SlideData } from '@/services/adk-assistant.service';
-import { getSharedAudioContext } from '@/lib/audio-context';
+import { getSharedAudioContext, resumeSharedAudioContext } from '@/lib/audio-context';
 
 interface PresentationModeProps {
   /** Current voice character name (for display) */
@@ -231,6 +231,8 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
 
   const speakText = useCallback(async (text: string, slideIndex: number) => {
     if (!text.trim()) return;
+    // Reset mountedRef (it may have been cleared by Fast Refresh cleanup)
+    mountedRef.current = true;
     stopReading();
 
     // Auto-detect language: if text contains CJK characters, use zh
@@ -245,27 +247,22 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
 
     try {
       const blob = await getAIAudioFromText(text, ttsLanguage, voiceId);
-      if (!mountedRef.current) return;
 
       await playBlob(blob);
 
-      if (mountedRef.current) {
-        setIsReading(false);
-        setReadingSlide(null);
+      setIsReading(false);
+      setReadingSlide(null);
 
-        // Auto-advance to next slide after reading finishes
-        if (autoAdvance && slideIndex < slides.length - 1) {
-          setCurrentSlide(slideIndex + 1);
-        }
+      // Auto-advance to next slide after reading finishes
+      if (autoAdvance && slideIndex < slides.length - 1) {
+        setCurrentSlide(slideIndex + 1);
       }
     } catch (err) {
       console.error('Presentation TTS error:', err);
-      if (mountedRef.current) {
-        setIsReading(false);
-        setReadingSlide(null);
-        setTtsError(`TTS failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        setTimeout(() => setTtsError(null), 5000);
-      }
+      setIsReading(false);
+      setReadingSlide(null);
+      setTtsError(`TTS failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setTimeout(() => setTtsError(null), 5000);
     }
   }, [language, voiceId, stopReading, autoAdvance, slides.length, playBlob]);
 

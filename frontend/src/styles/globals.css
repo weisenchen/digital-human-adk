@@ -1,42 +1,48 @@
-/* ADK Digital Human - Frontend styles (MD3-based) */
+/* ADK Digital Human - Frontend styles */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Inter font from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+/* Sora — warm, modern sans-serif for UI body text */
+/* DM Serif Display — elegant serif for the character name and hero moments */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap');
 
-/* ── MD3 CSS Custom Properties ────────────────────────────────────── */
+/* ── Design Tokens ──────────────────────────────────────────────── */
 :root {
-  /* Colors */
-  --md-primary: #6B46C1;
+  /* Core palette — warm charcoal primary, plum-purple accent */
+  --md-primary: #1A202C;
   --md-on-primary: #FFFFFF;
-  --md-primary-container: #E9D8FD;
+  --md-primary-container: #EDF2F7;
   --md-on-primary-container: #1A202C;
   --md-secondary: #4A5568;
   --md-on-secondary: #FFFFFF;
-  --md-secondary-container: #EDF2F7;
+  --md-secondary-container: #F1F5F9;
   --md-on-secondary-container: #1A202C;
-  --md-tertiary: #667EEA;
+  --md-tertiary: #7C3AED;
   --md-on-tertiary: #FFFFFF;
-  --md-tertiary-container: #EBF4FF;
-  --md-on-tertiary-container: #1A202C;
-  --md-error: #E53E3E;
+  --md-tertiary-container: #F3EEFF;
+  --md-on-tertiary-container: #3B0764;
+  --md-error: #DC2626;
   --md-on-error: #FFFFFF;
-  --md-error-container: #FED7D7;
-  --md-on-error-container: #1A202C;
+  --md-error-container: #FEE2E2;
+  --md-on-error-container: #7F1D1D;
   --md-surface: #FFFFFF;
   --md-on-surface: #1A202C;
-  --md-surface-variant: #F7FAFC;
-  --md-on-surface-variant: #4A5568;
+  --md-surface-variant: #F8FAFC;
+  --md-on-surface-variant: #475569;
   --md-outline: #E2E8F0;
   --md-outline-variant: #CBD5E0;
-  --md-background: #F7FAFC;
+  --md-background: #FAFAF9;
   --md-on-background: #1A202C;
-  --md-surface-tint: #6B46C1;
+  --md-surface-tint: #7C3AED;
+
+  /* App-specific bubble colors */
+  --md-bubble-user: #F1F5F9;
+  --md-bubble-ai: #F5F3FF;
 
   /* Font */
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-sans: 'Sora', system-ui, sans-serif;
+  --font-serif: 'DM Serif Display', Georgia, serif;
 
   /* Shape */
   --shape-none: 0px;
@@ -48,18 +54,21 @@
   --shape-full: 9999px;
 
   /* Elevation */
-  --elevation-1-shadow: 0 1px 3px 1px rgba(0,0,0,0.15), 0 1px 2px 0 rgba(0,0,0,0.30);
-  --elevation-2-shadow: 0 2px 6px 2px rgba(0,0,0,0.15), 0 1px 2px 0 rgba(0,0,0,0.30);
-  --elevation-3-shadow: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px 0 rgba(0,0,0,0.30);
+  --elevation-1-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+  --elevation-2-shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --elevation-3-shadow: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.05);
+  --elevation-4-shadow: 0 20px 25px -5px rgba(0,0,0,0.10), 0 8px 10px -6px rgba(0,0,0,0.05);
+  --elevation-5-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
 
   /* Motion */
   --motion-xs: 50ms;
   --motion-sm: 100ms;
   --motion-md: 200ms;
   --motion-lg: 300ms;
-  --motion-xl: 400ms;
+  --motion-xl: 500ms;
   --easing-emphasized: cubic-bezier(0.2, 0, 0, 1.0);
   --easing-standard: cubic-bezier(0.2, 0, 0, 1.0);
+  --easing-decelerate: cubic-bezier(0.0, 0, 0, 1.0);
 }
 
 body {

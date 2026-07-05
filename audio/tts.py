@@ -25,42 +25,42 @@ VOICE_CATALOG: dict[str, dict[str, list[tuple[str, str, str]]]] = {
         "female": [
             ("en-US-JennyNeural",    "Jenny",  "Jenny"),
             ("en-US-AriaNeural",     "Aria",   "Aria"),
-            ("en-US-JaneNeural",     "Jane",   "Jane"),
             ("en-US-MichelleNeural", "Michelle", "Michelle"),
-            ("en-US-CoraNeural",     "Cora",   "Cora"),
+            ("en-US-AvaNeural",      "Ava",    "Ava"),
+            ("en-US-EmmaNeural",     "Emma",   "Emma"),
+            ("en-US-AnaNeural",      "Ana",    "Ana"),
         ],
         "male": [
             ("en-US-GuyNeural",      "Guy",    "Guy"),
-            ("en-US-DavisNeural",    "Davis",  "Davis"),
-            ("en-US-TonyNeural",     "Tony",   "Tony"),
-            ("en-US-BrandonNeural",  "Brandon","Brandon"),
             ("en-US-EricNeural",     "Eric",   "Eric"),
+            ("en-US-AndrewNeural",   "Andrew", "Andrew"),
+            ("en-US-BrianNeural",    "Brian",  "Brian"),
+            ("en-US-ChristopherNeural", "Christopher", "Christopher"),
+            ("en-US-RogerNeural",    "Roger",  "Roger"),
+            ("en-US-SteffanNeural",  "Steffan","Steffan"),
         ],
     },
     "en-GB": {
         "female": [
             ("en-GB-SoniaNeural",    "Sonia",  "Sonia"),
             ("en-GB-LibbyNeural",    "Libby",  "Libby"),
-            ("en-GB-AdaNeural",      "Ada",    "Ada"),
+            ("en-GB-MaisieNeural",   "Maisie", "Maisie"),
         ],
         "male": [
             ("en-GB-RyanNeural",     "Ryan",   "Ryan"),
             ("en-GB-ThomasNeural",   "Thomas", "Thomas"),
-            ("en-GB-AlfieNeural",    "Alfie",  "Alfie"),
         ],
     },
     "cmn-CN": {
         "female": [
             ("zh-CN-XiaoxiaoNeural", "Xiaoxiao",  "小笑"),
-            ("zh-CN-XiaohanNeural",  "Xiaohan",   "晓涵"),
-            ("zh-CN-XiaomoNeural",   "Xiaomo",    "小墨"),
             ("zh-CN-XiaoyiNeural",   "Xiaoyi",    "小伊"),
         ],
         "male": [
             ("zh-CN-YunxiNeural",    "Yunxi",     "云希"),
             ("zh-CN-YunjianNeural",  "Yunjian",   "云健"),
             ("zh-CN-YunyangNeural",  "Yunyang",   "云扬"),
-            ("zh-CN-YunhaoNeural",   "Yunhao",    "云浩"),
+            ("zh-CN-YunxiaNeural",   "Yunxia",    "云夏"),
         ],
     },
     "Yue-HK": {
@@ -83,32 +83,33 @@ VOICE_CATALOG: dict[str, dict[str, list[tuple[str, str, str]]]] = {
     "ko-KR": {
         "female": [
             ("ko-KR-SunHiNeural",    "SunHi",     "선희"),
-            ("ko-KR-JiMinNeural",    "JiMin",     "지민"),
         ],
         "male": [
             ("ko-KR-InJoonNeural",   "InJoon",    "인준"),
-            ("ko-KR-BongJinNeural",  "BongJin",   "봉진"),
+            ("ko-KR-HyunsuMultilingualNeural", "Hyunsu", "현수"),
         ],
     },
     "fr-FR": {
         "female": [
             ("fr-FR-DeniseNeural",   "Denise",    "Denise"),
-            ("fr-FR-EliseNeural",    "Elise",     "Élise"),
+            ("fr-FR-EloiseNeural",    "Eloise",    "Éloïse"),
+            ("fr-FR-VivienneMultilingualNeural", "Vivienne", "Vivienne"),
         ],
         "male": [
             ("fr-FR-HenriNeural",    "Henri",     "Henri"),
+            ("fr-FR-RemyMultilingualNeural", "Remy", "Rémy"),
         ],
     },
 }
 
 POPULAR_NAMES: dict[str, dict[str, list[str]]] = {
     "en-US": {
-        "female": ["Olivia", "Emma", "Charlotte", "Amelia", "Sophia", "Ava", "Isabella", "Mia", "Evelyn", "Luna"],
-        "male":   ["Liam", "Noah", "Oliver", "James", "William", "Elijah", "Benjamin", "Lucas", "Henry", "Alexander"],
+        "female": ["Olivia", "Emma", "Amelia", "Sophia", "Ava", "Isabella", "Mia", "Evelyn", "Luna"],
+        "male":   ["Liam", "William", "Elijah", "Benjamin", "Lucas", "Henry", "Alexander"],
     },
     "en-GB": {
         "female": ["Olivia", "Amelia", "Isla", "Ava", "Ivy", "Freya", "Lily", "Florence", "Ella", "Evie"],
-        "male":   ["Oliver", "George", "Arthur", "Noah", "Muhammad", "Leo", "Harry", "Oscar", "Jack", "Charlie"],
+        "male":   ["George", "Arthur", "Muhammad", "Leo", "Harry", "Oscar", "Jack", "Charlie"],
     },
     "cmn-CN": {
         "female": ["小薇", "小美", "小雨", "小琳", "小娜", "小悦", "小雪", "小蝶", "小慧", "小琪"],
@@ -128,7 +129,7 @@ POPULAR_NAMES: dict[str, dict[str, list[str]]] = {
     },
     "fr-FR": {
         "female": ["Louise", "Emma", "Alice", "Chloé", "Léa", "Manon", "Juliette", "Camille", "Sarah", "Jade"],
-        "male":   ["Gabriel", "Léo", "Jules", "Louis", "Adam", "Lucas", "Ashton", "Ethan", "Raphaël", "Noah"],
+        "male":   ["Gabriel", "Léo", "Jules", "Louis", "Adam", "Lucas", "Ashton", "Ethan", "Raphaël"],
     },
 }
 

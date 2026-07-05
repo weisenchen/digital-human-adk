@@ -21,6 +21,7 @@ if hermes_env.exists():
     load_dotenv(hermes_env)
 
 from fastapi import FastAPI, Form, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from google.adk.cli.fast_api import get_fast_api_app
@@ -73,6 +74,15 @@ def create_app() -> FastAPI:
         web=True,
         allow_origins=["*"],
         auto_create_session=True,
+    )
+
+    # Explicit CORS middleware — ensures headers on ALL responses including errors
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     # 2. Per-model ADK runners (Gemini models)
@@ -560,6 +570,129 @@ def create_app() -> FastAPI:
             logger.error("inject-name error: %s", exc, exc_info=True)
             return {"status": "error", "error": str(exc)}
 
+    # ── Talk Show state (in-memory) ──────────────────────────────────────
+    _talk_show_sessions: dict[str, dict] = {}
+
+    @app.post("/api/talk-show/ask")
+    async def talk_show_ask(
+        topic: str = Form(""),
+        guest_name: str = Form("Guest"),
+        host_name: str = Form(""),
+        background: str = Form(""),
+        questions: str = Form(""),
+        message: str = Form(""),
+        history_json: str = Form("[]"),
+        language: str = Form("en"),
+    ):
+        """Talk Show: host responds as a talk show host, grounded in background materials.
+
+        Returns JSON: {\"reply\": \"Host's spoken response\"}
+        """
+        try:
+            import json
+            history: list = json.loads(history_json)
+        except (json.JSONDecodeError, TypeError):
+            history = []
+
+        # Build the system prompt
+        system_parts = [
+            f'You are a talk show host named "{host_name}". You are interviewing {guest_name} about the topic: {topic}.',
+            "",
+            "RULES:",
+            "- You are the HOST. Ask questions, follow up, and keep the conversation flowing.",
+            f"- Your guest is {guest_name}. Address them by name and make them feel welcome.",
+            "- All responses must be in English.",
+            "- Keep responses conversational, natural, and engaging — like a real interview.",
+            "- Ask follow-up questions based on what the guest says.",
+            "- Sound genuinely interested and professional.",
+        ]
+
+        if background.strip():
+            system_parts.append("")
+            system_parts.append("BACKGROUND MATERIALS (use these to inform your questions and responses):")
+            system_parts.append(background.strip())
+
+        if questions.strip():
+            system_parts.append("")
+            system_parts.append("INTERVIEW QUESTIONS / OUTLINE (follow these during the show):")
+            system_parts.append(questions.strip())
+
+        system_prompt = "\n".join(system_parts)
+
+        # Build messages for the LLM
+        messages = [{"role": "system", "content": system_prompt}]
+
+        # First message from host (opening)
+        if not history:
+            messages.append({
+                "role": "user",
+                "content": f"Open the show. Introduce yourself as {host_name}, welcome {guest_name}, and introduce the topic: {topic}. Be warm and engaging."
+            })
+        else:
+            # Add conversation history
+            for h in history:
+                role = "assistant" if h.get("role") == "host" else "user"
+                messages.append({"role": role, "content": h.get("content", "")})
+            messages.append({"role": "user", "content": message})
+
+        # Route to the active model
+        model_id = _get_model_for_session("talk_show_session")
+        info = MODEL_CATALOG.get(model_id)
+
+        if not info:
+            return {"reply": f"(Error: No model configured)"}
+
+        if info.get("backend") == "openai":
+            client = get_openai_client(model_id)
+            if not client:
+                return {"reply": f"(Error: '{info['name']}' not configured)"}
+            try:
+                resp = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        client.chat.completions.create,
+                        model=info["model"],
+                        messages=messages,
+                        temperature=0.7,
+                    ),
+                    timeout=60,
+                )
+                reply = resp.choices[0].message.content or ""
+                return {"reply": reply}
+            except Exception as exc:
+                logger.error("Talk show error: %s", exc, exc_info=True)
+                return {"reply": f"(Error: {exc})"}
+        else:
+            # ADK (Gemini) route
+            runner = _get_adk_runner(model_id)
+            svc = _get_adk_session_service(model_id)
+            if not runner or not svc:
+                return {"reply": f"(Error: Model '{model_id}' not available)"}
+            try:
+                await svc.create_session(
+                    app_name="digital_human",
+                    user_id="default_user",
+                    session_id="talk_show_session",
+                )
+            except Exception:
+                pass
+
+            # Build a combined text prompt for ADK
+            prompt_text = "\n\n".join([f"{m['role']}: {m['content']}" for m in messages])
+            new_msg = types.Content(role="user", parts=[types.Part(text=prompt_text)])
+            events = []
+            async for event in runner.run_async(
+                user_id="default_user",
+                session_id="talk_show_session",
+                new_message=new_msg,
+            ):
+                events.append(event)
+            reply = ""
+            for e in reversed(events):
+                if e.author != "user" and e.content and e.content.parts and not e.partial:
+                    reply = e.content.parts[0].text or ""
+                    break
+            return {"reply": reply}
+
     @app.get("/api/voices")
     async def get_voices():
         """Return available TTS voices with locale, gender, and popular names."""
@@ -572,10 +705,17 @@ def create_app() -> FastAPI:
         voice: str = Form(""),
         background_tasks: BackgroundTasks = None,
     ):
-        path = await synthesize(text, language, voice or None)
-        if background_tasks:
-            background_tasks.add_task(os.remove, path)
-        return FileResponse(path, media_type="audio/mpeg", filename="speech.mp3")
+        try:
+            path = await synthesize(text, language, voice or None)
+            if background_tasks:
+                background_tasks.add_task(os.remove, path)
+            return FileResponse(path, media_type="audio/mpeg", filename="speech.mp3")
+        except Exception as exc:
+            logger.error("TTS error: %s", exc, exc_info=True)
+            return JSONResponse(
+                {"error": f"TTS failed: {exc}"},
+                status_code=500,
+            )
 
     @app.post("/generate-slides")
     async def generate_slides(

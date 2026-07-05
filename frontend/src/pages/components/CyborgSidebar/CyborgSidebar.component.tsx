@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useContext } from 'react';
-import { X, MessageSquarePlus, FileText, Settings, Brain, Menu, ChevronDown, ChevronUp, History } from 'lucide-react';
+import { X, MessageSquarePlus, FileText, Settings, Brain, Menu, ChevronDown, ChevronUp, History, Mic } from 'lucide-react';
 import CharacterSelector from '../CharacterSelector/CharacterSelector.component';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 
@@ -37,86 +37,93 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
     window.dispatchEvent(new CustomEvent('open-presentation'));
   };
 
+  const handleTalkShow = () => {
+    window.dispatchEvent(new CustomEvent('open-talk-show'));
+  };
+
   return (
-    <aside className="w-[280px] flex-shrink-0 bg-white border-r border-gray-200 flex flex-col h-full overflow-y-auto">
+    <aside className="w-[280px] flex-shrink-0 bg-white border-r border-[var(--md-outline)] flex flex-col h-full overflow-y-auto">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--md-outline)] sticky top-0 bg-white z-10">
         <div className="flex items-center gap-2">
-          <Menu className="w-4 h-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700">Menu</span>
+          <Menu className="w-4 h-4 text-[var(--md-on-surface-variant)]" />
+          <span className="text-label-sm text-[var(--md-on-surface)]">Menu</span>
         </div>
         <button
           onClick={onClose}
-          className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+          className="state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="flex-1 p-3 space-y-4 flex flex-col">
+      <div className="flex-1 p-3 space-y-3 flex flex-col">
         {/* ── New Conversation ── */}
         <button
           onClick={handleNewConversation}
-          className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors"
+          className="w-full flex items-center gap-2 px-3 py-2.5 text-label-sm text-[var(--md-on-surface)] hover:bg-[var(--md-surface-variant)] rounded-[var(--shape-md)] border border-[var(--md-outline)] transition-colors"
         >
-          <MessageSquarePlus className="w-4 h-4 text-gray-400" />
-          New Conversation
+          <MessageSquarePlus className="w-4 h-4 text-[var(--md-tertiary)]" />
+          <span>New Conversation</span>
         </button>
 
-        {/* ── Read Script (opens full window) ── */}
+        {/* ── Read Script ── */}
         <button
           onClick={handleReadScript}
+          className="w-full flex items-center gap-2 px-3 py-2.5 text-label-sm text-[var(--md-on-surface)] hover:bg-[var(--md-surface-variant)] rounded-[var(--shape-md)] border border-[var(--md-outline)] transition-colors"
+        >
+          <FileText className="w-4 h-4 text-[var(--md-tertiary)]" />
+          <span>Read Script</span>
+        </button>
+
+        {/* ── New Talk Show ── */}
+        <button
+          onClick={handleTalkShow}
           className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors"
         >
-          <FileText className="w-4 h-4 text-gray-400" />
-          Read Script
+          <Mic className="w-4 h-4 text-gray-400" />
+          New Talk Show
         </button>
 
         {/* ── Settings (collapsible) ── */}
-        <div className="border-t border-gray-100 pt-3">
+        <div className="border-t border-[var(--md-outline)] pt-3">
           <button
             onClick={() => setSettingsOpen(!settingsOpen)}
-            className="w-full flex items-center justify-between gap-2 mb-1"
+            className="w-full flex items-center justify-between gap-2 mb-1 px-1 py-1.5 rounded-[var(--shape-sm)] hover:bg-[var(--md-surface-variant)] transition-colors"
           >
             <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Settings</span>
+              <Settings className="w-4 h-4 text-[var(--md-on-surface-variant)]" />
+              <span className="text-label-sm text-[var(--md-on-surface)]">Settings</span>
             </div>
-            {settingsOpen ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
+            {settingsOpen ? <ChevronUp className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" />}
           </button>
-
-          {settingsOpen && (
-            <div className="pt-1">
-              <CharacterSelector />
-            </div>
-          )}
+          {settingsOpen && <CharacterSelector />}
 
           {/* ── Model (collapsible) ── */}
-          <div className="mt-3 border-t border-gray-100 pt-3">
+          <div className="mt-1">
             <button
               onClick={() => setModelOpen(!modelOpen)}
-              className="w-full flex items-center justify-between gap-2 mb-1"
+              className="w-full flex items-center justify-between gap-2 px-1 py-1.5 rounded-[var(--shape-sm)] hover:bg-[var(--md-surface-variant)] transition-colors"
             >
               <div className="flex items-center gap-2">
-                <Brain className="w-4 h-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Model</span>
+                <Brain className="w-4 h-4 text-[var(--md-on-surface-variant)]" />
+                <span className="text-label-sm text-[var(--md-on-surface)]">Model</span>
               </div>
-              {modelOpen ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
+              {modelOpen ? <ChevronUp className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" />}
             </button>
-
             {modelOpen && (
               <div className="pt-1">
                 {context.models && context.models.length > 0 ? (
-                  <div className="space-y-1 max-h-[180px] overflow-y-auto pr-1">
+                  <div className="space-y-1 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
                     {context.models.map((m: any) => {
                       const isSelected = context.selectedModel === m.id;
                       return (
                         <label
                           key={m.id}
-                          className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all border ${
+                          className={`flex items-center gap-2 p-2 rounded-[var(--shape-md)] cursor-pointer transition-all border ${
                             isSelected
-                              ? 'bg-white border-gray-300 shadow-sm'
-                              : 'border-transparent hover:bg-gray-50 hover:border-gray-200'
+                              ? 'bg-white border-[var(--md-outline)] shadow-sm'
+                              : 'border-transparent hover:bg-[var(--md-surface-variant)] hover:border-[var(--md-outline)]'
                           } ${!m.available ? 'opacity-40 cursor-not-allowed' : ''}`}
                         >
                           <input
@@ -126,18 +133,18 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
                             checked={isSelected}
                             disabled={!m.available}
                             onChange={() => context.handleModelSelect(m.id)}
-                            className="accent-gray-900 w-3 h-3 flex-shrink-0"
+                            className="accent-[var(--md-tertiary)] w-3 h-3 flex-shrink-0"
                           />
                           <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium text-gray-900 truncate">{m.name}</div>
-                            <div className="text-[10px] text-gray-400 truncate">{m.provider}</div>
+                            <div className="text-xs font-medium text-[var(--md-on-surface)] truncate">{m.name}</div>
+                            <div className="text-[10px] text-[var(--md-on-surface-variant)] truncate">{m.provider}</div>
                           </div>
                         </label>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="text-xs text-gray-400 text-center py-2">No models available</div>
+                  <div className="text-label-xs text-[var(--md-on-surface-variant)] text-center py-3">No models available</div>
                 )}
               </div>
             )}
@@ -148,22 +155,21 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
         <div className="flex-1" />
 
         {/* ── Recent (collapsible history) at bottom ── */}
-        <div className="border-t border-gray-100 pt-3">
+        <div className="border-t border-[var(--md-outline)] pt-3">
           <button
             onClick={() => setHistoryOpen(!historyOpen)}
-            className="w-full flex items-center justify-between gap-2 mb-1"
+            className="w-full flex items-center justify-between gap-2 px-1 py-1.5 rounded-[var(--shape-sm)] hover:bg-[var(--md-surface-variant)] transition-colors"
           >
             <div className="flex items-center gap-2">
-              <History className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Recent</span>
+              <History className="w-4 h-4 text-[var(--md-on-surface-variant)]" />
+              <span className="text-label-sm text-[var(--md-on-surface)]">Recent</span>
             </div>
-            {historyOpen ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
+            {historyOpen ? <ChevronUp className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" />}
           </button>
-
           {historyOpen && (
             <div className="pt-1">
               {context.history && context.history.length > 0 ? (
-                <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1">
+                <div className="space-y-1 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
                   {context.history.map((item: any) => (
                     <button
                       key={item.id}
@@ -172,17 +178,17 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
                         setHistoryOpen(false);
                         onClose();
                       }}
-                      className="w-full text-left p-2.5 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all"
+                      className="w-full text-left p-2.5 rounded-[var(--shape-md)] hover:bg-[var(--md-surface-variant)] border border-transparent hover:border-[var(--md-outline)] transition-all"
                     >
-                      <div className="text-xs text-gray-500 mb-1">{formatTime(item.timestamp)}</div>
-                      <div className="text-xs text-gray-800 line-clamp-2 leading-relaxed">
+                      <div className="text-label-xs text-[var(--md-on-surface-variant)] mb-1">{formatTime(item.timestamp)}</div>
+                      <div className="text-xs text-[var(--md-on-surface)] line-clamp-2 leading-relaxed">
                         {item.preview || `(${item.messages?.length || 0} messages)`}
                       </div>
                     </button>
                   ))}
                 </div>
               ) : (
-                <div className="text-xs text-gray-400 text-center py-2">No history yet</div>
+                <div className="text-label-xs text-[var(--md-on-surface-variant)] text-center py-3">No history yet</div>
               )}
             </div>
           )}

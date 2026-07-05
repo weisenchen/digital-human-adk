@@ -104,7 +104,35 @@ export const selectModel = async (modelId: string): Promise<void> => {
   await fetch(`${BASE_URL}/api/select-model`, { method: 'POST', body: formData });
 };
 
-/** Send AI response text -> get audio file (full sentence) */
+/**
+ * Talk Show: send a message to the host and get their response.
+ * Host's replies are grounded in background materials and follow the interview structure.
+ * All content is in English.
+ */
+export const sendTalkShowMessage = async (params: {
+  topic: string;
+  guestName: string;
+  hostName: string;
+  background: string;
+  questions: string;
+  message: string;
+  history: Array<{role: string; content: string}>;
+  language?: string;
+}): Promise<string> => {
+  const formData = new FormData();
+  formData.append('topic', params.topic);
+  formData.append('guest_name', params.guestName);
+  formData.append('host_name', params.hostName);
+  formData.append('background', params.background);
+  formData.append('questions', params.questions);
+  formData.append('message', params.message);
+  formData.append('history_json', JSON.stringify(params.history));
+  formData.append('language', params.language || 'en');
+  const res = await fetch(`${BASE_URL}/api/talk-show/ask`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`Talk show request failed: ${res.status}`);
+  const data = await res.json();
+  return data.reply as string;
+};
 export const getAIAudioFromText = async (text: string, language: string, voice?: string) => {
   const formData = new FormData();
   formData.append('text', text);

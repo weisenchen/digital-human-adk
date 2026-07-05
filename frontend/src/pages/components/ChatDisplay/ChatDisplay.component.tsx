@@ -136,8 +136,8 @@ const ChatDisplay: React.FC<ChatDisplayProps> = ({ chatData }) => {
 
               {/* User avatar */}
               {message.isUser && (
-                <div className="w-8 h-8 rounded-[var(--shape-full)] flex items-center justify-center text-xs font-bold flex-shrink-0 tonal-surface">
-                  U
+                <div className="w-8 h-8 rounded-[var(--shape-full)] flex items-center justify-center text-xs font-bold flex-shrink-0 bg-[var(--md-surface-variant)] text-[var(--md-on-surface-variant)] border border-[var(--md-outline)]">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </div>
               )}
             </motion.div>

@@ -17,15 +17,11 @@ const NAME_AVATARS: Record<string, AvatarConfig> = {
   // English female
   'Olivia':     { hairColor: '#8B5A2B', skinTone: ['#FFE4D6','#FDDBC8'], eyeColor: '#5B7D5B', outfitColor: '#7B9CB5', hairStyle: 'long', accessory: 'bow' },
   'Emma':       { hairColor: '#D4A574', skinTone: ['#FFF0E8','#FDE8D8'], eyeColor: '#6B8E9B', outfitColor: '#C48B9F', hairStyle: 'bob', accessory: 'none' },
-  'Charlotte':  { hairColor: '#1A1A2E', skinTone: ['#F5E0D0','#E8D0C0'], eyeColor: '#4A7B9B', outfitColor: '#8B6B9B', hairStyle: 'ponytail', accessory: 'none' },
   'Amelia':     { hairColor: '#B8860B', skinTone: ['#FFE8D8','#FDDCC8'], eyeColor: '#7B9B4A', outfitColor: '#D4A060', hairStyle: 'curly', accessory: 'none' },
   'Sophia':     { hairColor: '#4A0E1B', skinTone: ['#FDE8DC','#F5D8CC'], eyeColor: '#5B4A7B', outfitColor: '#9B6B7B', hairStyle: 'long', accessory: 'bow' },
   'Ava':        { hairColor: '#C0753A', skinTone: ['#FFECD8','#FDE0C8'], eyeColor: '#4A8B6B', outfitColor: '#6B9B7B', hairStyle: 'bob', accessory: 'none' },
   // English male
-  'James':      { hairColor: '#3A2518', skinTone: ['#F0D8C8','#E0C8B8'], eyeColor: '#4A6B8B', outfitColor: '#4A6B7B', hairStyle: 'short', accessory: 'none' },
   'Liam':       { hairColor: '#C8A060', skinTone: ['#F5E0D0','#E8D0C0'], eyeColor: '#5B8B4A', outfitColor: '#6B7B4A', hairStyle: 'spiky', accessory: 'none' },
-  'Noah':       { hairColor: '#8B6B3A', skinTone: ['#F0DCC8','#E0CCB8'], eyeColor: '#6B7B9B', outfitColor: '#7B6B5B', hairStyle: 'wavy', accessory: 'none' },
-  'Oliver':     { hairColor: '#D4904A', skinTone: ['#F8E4D0','#E8D0BC'], eyeColor: '#4A7B6B', outfitColor: '#5B8B7B', hairStyle: 'curly', accessory: 'none' },
   'Elijah':     { hairColor: '#2C1810', skinTone: ['#E8D0C0','#D8C0B0'], eyeColor: '#8B6B4A', outfitColor: '#8B4A3A', hairStyle: 'short', accessory: 'none' },
   'Mateo':      { hairColor: '#1A0E08', skinTone: ['#E8CCB0','#D8BCA0'], eyeColor: '#6B4A3A', outfitColor: '#8B6B4A', hairStyle: 'spiky', accessory: 'none' },
   // Chinese female
@@ -624,47 +620,10 @@ const DigitalHumanContainer = ({ compact = false }: { compact?: boolean }) => {
   return (
     <div
       ref={containerRef}
-      className={`${compact ? 'w-full h-full' : 'flex flex-col items-center justify-center bg-gradient-to-b from-[#F8F0E6] to-[#F0E8DC] rounded-[var(--shape-md)] shadow-elevation-1 border border-[var(--md-outline)] p-3 sm:p-4 overflow-hidden relative'}`}
-      style={{ height: compact ? '100%' : '100%', maxHeight: compact ? '100%' : '65vh', minHeight: 0 }}
+      className={`${compact ? 'w-full h-full' : 'w-full h-full flex flex-col items-center justify-center rounded-[var(--shape-md)] overflow-hidden relative bg-gradient-to-b from-[var(--md-surface)] to-[var(--md-surface-variant)]'}`}
+      style={{ height: compact ? '100%' : '100%', maxHeight: compact ? '100%' : '100%', minHeight: 0 }}
     >
-      {!compact && (
-        <div className="flex items-center gap-2 mb-1 sm:mb-2 text-label-sm sm:text-body-md text-[var(--md-on-surface-variant)] shrink-0">
-          <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-[var(--shape-full)] bg-[#48BB78] animate-pulse" />
-          {characterName || 'Character'} is here
-          {customAvatar && (
-            <button
-              onClick={clearCustomAvatar}
-              className="ml-1 text-label-xs text-[var(--md-primary)] hover:underline cursor-pointer"
-              title="Reset to default avatar"
-            >
-              (reset)
-            </button>
-          )}
-        </div>
-      )}
-      <canvas ref={canvasRef} className={compact ? 'w-full h-full' : 'w-full flex-1'} style={{ maxHeight: compact ? '100%' : 'calc(65vh - 40px)' }} />
-
-      {!compact && (
-        <>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="absolute bottom-2 right-2 state-layer p-1.5 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)]/70 transition-colors opacity-50 hover:opacity-100 text-lg leading-none"
-            title="Upload custom avatar"
-          >
-            📷
-          </button>
-          <div className="absolute top-2 right-2 text-[10px] text-[var(--md-on-surface-variant)]/30 select-none">
-            {selectedGender === 'male' ? '♂' : '♀'}
-          </div>
-        </>
-      )}
+      <canvas ref={canvasRef} className="w-full flex-1" style={{ maxHeight: '100%' }} />
     </div>
   );
 };
