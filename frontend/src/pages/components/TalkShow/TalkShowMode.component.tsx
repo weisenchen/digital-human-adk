@@ -79,7 +79,16 @@ export default function TalkShowMode({
 
   const togglePause = useCallback(() => {
     setIsPaused(prev => {
-      if (!prev) {
+      if (prev) {
+        // Resuming: clear last host message from spokenIds so it gets re-spoken
+        const msgs = messagesRef.current;
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          if (msgs[i].role === 'host') {
+            spokenIdsRef.current.delete(i);
+            break;
+          }
+        }
+      } else {
         stopSpeaking();
       }
       return !prev;
