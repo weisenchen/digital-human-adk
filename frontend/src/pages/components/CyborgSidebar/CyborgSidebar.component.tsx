@@ -67,13 +67,13 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
           <span>New Conversation</span>
         </button>
 
-        {/* ── Read Script ── */}
+        {/* ── Presentation 演示 ── */}
         <button
           onClick={handleReadScript}
           className="w-full flex items-center gap-2 px-3 py-2.5 text-label-sm text-[var(--md-on-surface)] hover:bg-[var(--md-surface-variant)] rounded-[var(--shape-md)] border border-[var(--md-outline)] transition-colors"
         >
           <FileText className="w-4 h-4 text-[var(--md-tertiary)]" />
-          <span>Read Script</span>
+          <span>Presentation 演示</span>
         </button>
 
         {/* ── New Talk Show ── */}
