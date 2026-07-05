@@ -1,35 +1,13 @@
 "use client";
 
-import { useState, useContext, useEffect } from 'react';
+import { useState } from 'react';
 import { Menu } from 'lucide-react';
 import ConversationContainer from './components/ConversationContainer/ConversationContainer.component';
 import CyborgSidebar from './components/CyborgSidebar/CyborgSidebar.component';
-import PresentationMode from './components/PresentationMode/PresentationMode.component';
 import VoiceAssistantProvider from './context/VoiceAssistantProvider';
-import VoiceAssistantContext from './context/VoiceAssistantContext';
-
-/** Wraps PresentationMode with context values for voiceId + language */
-function PresentationWrapper({ onClose }: { onClose: () => void }) {
-  const ctx = useContext(VoiceAssistantContext);
-  return (
-    <PresentationMode
-      characterName={ctx?.characterName || 'Xiao Wei'}
-      voiceId={ctx?.selectedVoice || ''}
-      language={ctx?.selectedLanguage || 'en'}
-      onClose={onClose}
-    />
-  );
-}
 
 export default function Home() {
   const [showCyborg, setShowCyborg] = useState(false);
-  const [showPresentation, setShowPresentation] = useState(false);
-
-  useEffect(() => {
-    const handler = () => setShowPresentation(true);
-    window.addEventListener('open-presentation', handler);
-    return () => window.removeEventListener('open-presentation', handler);
-  }, []);
 
   return (
     <VoiceAssistantProvider>
@@ -61,13 +39,6 @@ export default function Home() {
             <ConversationContainer />
           </div>
         </main>
-
-        {/* Presentation overlay (full-screen) */}
-        {showPresentation && (
-          <PresentationWrapper
-            onClose={() => setShowPresentation(false)}
-          />
-        )}
       </div>
     </VoiceAssistantProvider>
   );
