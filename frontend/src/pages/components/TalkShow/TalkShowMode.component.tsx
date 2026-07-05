@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { X, Send, Volume2, Pause, Play } from 'lucide-react';
 import DigitalHumanContainer from '../DigitalHumanContainer/DigitalHumanContainer.component';
-import { sendTalkShowMessage, getAIAudioFromText } from '@/services/adk-assistant.service';
+import { sendTalkShowMessage, getAIAudioFromText, getTalkShowSuggestions } from '@/services/adk-assistant.service';
 import { getSharedAudioContext } from '@/lib/audio-context';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 
@@ -31,12 +31,13 @@ export default function TalkShowMode({
   personality,
   onEnd,
 }: TalkShowModeProps) {
-  const { selectedLanguage, setMouthOpen } = useContext(VoiceAssistantContext);
+  const { selectedLanguage, setMouthOpen, selectedVoice } = useContext(VoiceAssistantContext);
   const [messages, setMessages] = useState<TalkShowMessage[]>([]);
   const [input, setInput] = useState('');
   const [isWaiting, setIsWaiting] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -44,6 +45,7 @@ export default function TalkShowMode({
   const rafIdRef = useRef<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesRef = useRef<TalkShowMessage[]>([]);
+  const spokenIdsRef = useRef<Set<number>>(new Set());
 
   // Keep messagesRef in sync
   useEffect(() => { messagesRef.current = messages; }, [messages]);
@@ -125,6 +127,30 @@ export default function TalkShowMode({
     }
   }, [selectedLanguage, getAudioContext, stopSpeaking, setMouthOpen]);
 
+  // Auto-play host TTS when new host messages arrive
+  useEffect(() => {
+    if (isPaused || isWaiting || !selectedVoice) return;
+    const lastIdx = messages.length - 1;
+    if (lastIdx < 0) return;
+    const lastMsg = messages[lastIdx];
+    if (lastMsg.role !== 'host' || spokenIdsRef.current.has(lastIdx)) return;
+    if (lastMsg.content.startsWith('(Error')) return;
+    spokenIdsRef.current.add(lastIdx);
+    speakHostResponse(lastMsg.content, selectedVoice);
+  }, [messages, isPaused, isWaiting, selectedVoice, speakHostResponse]);
+
+  // Fetch guest suggestions after host responds
+  useEffect(() => {
+    if (isWaiting || messages.length === 0) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.role !== 'host') return;
+    if (lastMsg.content.startsWith('(Error')) { setSuggestions([]); return; }
+    const history = messagesRef.current.map(m => ({ role: m.role, content: m.content }));
+    getTalkShowSuggestions({ topic, guestName, hostName, background, history, language: 'en' })
+      .then(setSuggestions)
+      .catch(() => setSuggestions([]));
+  }, [isWaiting, messages, topic, guestName, hostName, background]);
+
   // Start the show: generate opening
   const startShow = useCallback(async () => {
     setIsWaiting(true);
@@ -159,6 +185,7 @@ export default function TalkShowMode({
     const text = input.trim();
     if (!text || isWaiting || isPaused) return;
     setInput('');
+    setSuggestions([]);
 
     const guestMsg: TalkShowMessage = { role: 'guest', content: text };
     const updated = [...messagesRef.current, guestMsg];
@@ -239,6 +266,40 @@ export default function TalkShowMode({
         </div>
       </div>
 
+      {/* ── Show Progress Indicator ── */}
+      {(() => {
+        const hostCount = messages.filter(m => m.role === 'host').length;
+        const segments = [
+          { id: 'opening', label: 'Opening', icon: '🎬' },
+          { id: 'warmup', label: 'Warm-up', icon: '👋' },
+          { id: 'main', label: 'Discussion', icon: '🎯' },
+          { id: 'closing', label: 'Closing', icon: '🎬' },
+        ];
+        let activeIdx = 0;
+        if (hostCount >= 8) activeIdx = 3;
+        else if (hostCount >= 4) activeIdx = 2;
+        else if (hostCount >= 2) activeIdx = 1;
+        return (
+          <div className="shrink-0 flex items-center gap-1 px-4 py-1.5 bg-gray-50 border-b border-gray-100">
+            {segments.map((seg, i) => (
+              <div key={seg.id} className="flex items-center gap-0 flex-1">
+                <div className={`flex items-center gap-1 text-[10px] font-medium transition-colors ${
+                  i < activeIdx ? 'text-green-600' : i === activeIdx ? 'text-gray-900' : 'text-gray-300'
+                }`}>
+                  <span>{i <= activeIdx ? seg.icon : '○'}</span>
+                  <span className="hidden sm:inline">{seg.label}</span>
+                </div>
+                {i < segments.length - 1 && (
+                  <div className={`flex-1 h-px mx-1.5 transition-colors ${
+                    i < activeIdx ? 'bg-green-400' : 'bg-gray-200'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Main content: avatar left + chat right */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Avatar */}
@@ -298,12 +359,39 @@ export default function TalkShowMode({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input bar */}
+          {/* Suggestion chips */}
+          {suggestions.length > 0 && !isWaiting && !isPaused && (
+            <div className="shrink-0 px-4 py-2 border-t border-gray-100 bg-gray-50/50">
+              <div className="flex flex-wrap gap-2">
+                {suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { setInput(s); setSuggestions([]); }}
+                    className="text-xs px-3 py-1.5 bg-white border border-gray-200 rounded-full text-gray-600 hover:bg-gray-100 hover:border-gray-300 hover:text-gray-800 transition-colors whitespace-nowrap max-w-[280px] truncate"
+                    title={s}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pause overlay */}
           {isPaused && (
-            <div className="shrink-0 border-t border-amber-200 px-4 py-3 bg-amber-50">
-              <div className="flex items-center justify-center gap-2 text-sm text-amber-700">
+            <div className="shrink-0 border-t border-amber-200 px-4 py-4 bg-amber-50">
+              <div className="flex items-center justify-center gap-2 text-sm text-amber-700 mb-3">
                 <Pause className="w-4 h-4" />
                 Show paused — click <button onClick={togglePause} className="font-medium underline hover:text-amber-900">Resume</button> to continue
+              </div>
+              <div className="flex items-center justify-center gap-6 text-xs text-amber-600">
+                <span>🎬 <span className="font-medium">{messages.filter(m => m.role === 'host').length}</span> host replies</span>
+                <span>💬 <span className="font-medium">{messages.filter(m => m.role === 'guest').length}</span> guest replies</span>
+                {messages.filter(m => m.role === 'host').slice(-1)[0] && (
+                  <span className="max-w-[300px] truncate" title={messages.filter(m => m.role === 'host').slice(-1)[0].content}>
+                    📌 Last: {messages.filter(m => m.role === 'host').slice(-1)[0].content.slice(0, 60)}...
+                  </span>
+                )}
               </div>
             </div>
           )}

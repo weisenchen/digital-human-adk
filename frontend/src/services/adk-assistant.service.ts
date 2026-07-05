@@ -135,6 +135,29 @@ export const sendTalkShowMessage = async (params: {
   const data = await res.json();
   return data.reply as string;
 };
+
+/** Generate 3 suggested responses for the guest during talk show */
+export const getTalkShowSuggestions = async (params: {
+  topic: string;
+  guestName: string;
+  hostName: string;
+  background: string;
+  history: { role: string; content: string }[];
+  language?: string;
+}): Promise<string[]> => {
+  const formData = new FormData();
+  formData.append('topic', params.topic);
+  formData.append('guest_name', params.guestName);
+  formData.append('host_name', params.hostName);
+  formData.append('background', params.background);
+  formData.append('history_json', JSON.stringify(params.history));
+  formData.append('language', params.language || 'en');
+  const res = await fetch(`${BASE_URL}/api/talk-show/suggest`, { method: 'POST', body: formData });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.suggestions || [];
+};
+
 export const getAIAudioFromText = async (text: string, language: string, voice?: string) => {
   const formData = new FormData();
   formData.append('text', text);

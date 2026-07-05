@@ -606,30 +606,87 @@ def create_app() -> FastAPI:
 
         style_desc = PERSONALITY_MAP.get(personality, personality)
 
-        # Build the system prompt
+        # Determine which show segment we're in
+        history_len = len(history)
+        if history_len == 0:
+            current_segment = "Opening Monologue"
+        elif history_len <= 2:
+            current_segment = "Guest Introduction & Warm-up"
+        else:
+            current_segment = "Main Discussion"
+
+        # Build the system prompt with structured show format
         system_parts = [
-            f'You are a talk show host named "{host_name}". You are interviewing {guest_name} about the topic: {topic}.',
+            f"You are a talk show host named \"{host_name}\". You are interviewing {guest_name} about the topic: {topic}.",
             "",
-            "HOST STYLE:",
+            "── SHOW STRUCTURE ──",
+            "The show follows a clear arc. Know which segment you're in and play that role:",
+            "",
+            "🎬 [Opening Monologue] — Greet the audience, introduce TODAY'S TOPIC with energy,",
+            "   tease what's coming, then introduce the guest and welcome them on stage.",
+            "   End with a warm ice-breaker question.",
+            "",
+            "👋 [Guest Introduction & Warm-up] — Ask 2-3 easy questions to help the guest relax.",
+            "   This is about RAPPORT BUILDING. Light, fun, personal questions.",
+            "",
+            "🎯 [Main Discussion] — Deep dive into the background materials and key topics.",
+            "   Ask substantive questions. Challenge ideas respectfully. Connect dots.",
+            "   After each guest answer, ask ONE follow-up before moving to the next topic.",
+            "   Reference specific facts from the background materials.",
+            "",
+            "🎬 [Closing] — Thank the guest, summarize key takeaways, sign off to the audience.",
+            "",
+            f"CURRENT SEGMENT: {current_segment}",
+            f"Play the role of the host in the {current_segment} segment. Don't skip ahead.",
+            "",
+            "── HOST STYLE ──",
             style_desc,
             "",
-            "RULES:",
-            "- You are the HOST. Ask questions, follow up, and keep the conversation flowing.",
-            f"- Your guest is {guest_name}. Address them by name and make them feel welcome.",
+            "── EMOTIONAL DYNAMICS ──",
+            "Vary your tone throughout the show — don't stay flat:",
+            "- Opening: ENERGETIC, welcoming, excited about the topic",
+            "- Warm-up: WARM, curious, playful — build connection",
+            "- Main discussion: THOUGHTFUL, probing, occasionally surprised",
+            "- When guest shares insight: Show genuine interest (\"That's fascinating!\")",
+            "- When exploring: Curious and engaged (\"I want to dig deeper into that...\")",
+            "- Closing: WARM, GRATEFUL, reflective — looking back at highlights",
+            "",
+            "── SHOWMANSHIP ──",
+            "- Use occasional audience-facing remarks (\"Isn't that fascinating?\")",
+            "- Build anticipation (\"Now this is where it gets really interesting...\")",
+            "- Use natural transitions (\"Speaking of which...\", \"That reminds me...\")",
+            "- Sound like a real person hosting a show, not an AI answering questions",
+            "",
+            "── FOLLOW-UP STRATEGY ──",
+            "- After the guest answers, always ask ONE follow-up before moving on",
+            "- A good follow-up digs deeper into something the guest JUST SAID",
+            "- Patterns: \"You mentioned [X], can you elaborate?\" / \"What led you to that conclusion?\"",
+            "  / \"How does [X] connect to what you said earlier about [Y]?\"",
+            "- Only move to the next question when you've fully explored the current thread",
+            "",
+            "── RULES ──",
+            f"- Address {guest_name} by name. Make them feel welcome and heard.",
             "- All responses must be in English.",
-            "- Keep responses conversational, natural, and engaging — like a real interview.",
-            "- Ask follow-up questions based on what the guest says.",
-            "- Sound genuinely interested and professional.",
+            "- Keep responses conversational and natural — spoken word, not essay.",
+            "- Vary response length: some short reactions, some thoughtful questions.",
+            "- Sound genuinely interested. Listen to what the guest says and react to it.",
         ]
 
         if background.strip():
             system_parts.append("")
-            system_parts.append("BACKGROUND MATERIALS (use these to inform your questions and responses):")
+            system_parts.append("── BACKGROUND MATERIALS ──")
+            system_parts.append("Use these to inform your questions and responses. Strategy:")
+            system_parts.append("- Extract 2-3 KEY POINTS to discuss with the guest")
+            system_parts.append("- Reference specific facts: \"As mentioned in the article...\"")
+            system_parts.append("- Ask questions that explore or challenge these points")
+            system_parts.append("- When the guest says something new, connect it back to the materials")
+            system_parts.append("")
             system_parts.append(background.strip())
 
         if questions.strip():
             system_parts.append("")
-            system_parts.append("INTERVIEW QUESTIONS / OUTLINE (follow these during the show):")
+            system_parts.append("── INTERVIEW QUESTIONS / OUTLINE ──")
+            system_parts.append("Follow these during the show, but stay flexible — let the conversation breathe:")
             system_parts.append(questions.strip())
 
         system_prompt = "\n".join(system_parts)
@@ -637,11 +694,19 @@ def create_app() -> FastAPI:
         # Build messages for the LLM
         messages = [{"role": "system", "content": system_prompt}]
 
-        # First message from host (opening)
+        # First message from host (opening) — structured script
         if not history:
             messages.append({
                 "role": "user",
-                "content": f"Open the show. Introduce yourself as {host_name}, welcome {guest_name}, and introduce the topic: {topic}. Be warm and engaging."
+                "content": (
+                    f"Open the show with energy. Follow this script:\n"
+                    f"1. Greet the audience warmly\n"
+                    f"2. Introduce today's topic: {topic} — build excitement\n"
+                    f"3. Tease what's coming (\"We have a fantastic conversation ahead\")\n"
+                    f"4. Introduce your guest {guest_name} with a brief, warm welcome\n"
+                    f"5. Start with a friendly ice-breaker question to get the conversation flowing\n\n"
+                    f"Be warm, energetic, and natural — like a real late-night host."
+                )
             })
         else:
             # Add conversation history
@@ -707,6 +772,105 @@ def create_app() -> FastAPI:
                     reply = e.content.parts[0].text or ""
                     break
             return {"reply": reply}
+
+    @app.post("/api/talk-show/suggest")
+    async def talk_show_suggest(
+        topic: str = Form(""),
+        guest_name: str = Form("Guest"),
+        host_name: str = Form(""),
+        background: str = Form(""),
+        history_json: str = Form("[]"),
+        language: str = Form("en"),
+    ):
+        """Generate 3 suggested responses for the guest to choose from, based on current conversation context."""
+        import json
+        try:
+            history: list = json.loads(history_json)
+        except (json.JSONDecodeError, TypeError):
+            history = []
+
+        suggest_prompt = (
+            f"You are {guest_name}, a guest on {host_name}'s talk show about '{topic}'.\n\n"
+            f"Based on the conversation so far, suggest 3 short, natural things {guest_name} might say next.\n"
+            f"Each suggestion should:\n"
+            f"- Be a realistic spoken response (1-2 sentences)\n"
+            f"- Reflect the guest's perspective on the topic\n"
+            f"- Give the host something interesting to respond to\n\n"
+            f"Return ONLY a JSON array of 3 strings, no other text.\n"
+            f'Example format: ["Suggestion one", "Suggestion two", "Suggestion three"]\n'
+        )
+
+        if background.strip():
+            suggest_prompt += f"\nBackground context: {background}\n"
+
+        if history:
+            suggest_prompt += "\nRecent conversation:\n"
+            for h in history[-4:]:
+                role_label = f"{host_name} (Host)" if h.get("role") == "host" else f"{guest_name} (Guest)"
+                suggest_prompt += f"{role_label}: {h.get('content', '')}\n"
+
+        # Route to the active model
+        model_id = _get_model_for_session("talk_show_session")
+        info = MODEL_CATALOG.get(model_id)
+
+        if not info:
+            return {"suggestions": ["Tell me more about that.", "That's really interesting!", "I have a different perspective on that."]}
+
+        if info.get("backend") == "openai":
+            client = get_openai_client(model_id)
+            if not client:
+                return {"suggestions": []}
+            try:
+                resp = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        client.chat.completions.create,
+                        model=info["model"],
+                        messages=[{"role": "user", "content": suggest_prompt}],
+                        temperature=0.8,
+                        max_tokens=300,
+                    ),
+                    timeout=30,
+                )
+                text = resp.choices[0].message.content or "[]"
+                try:
+                    suggestions = json.loads(text)
+                    if isinstance(suggestions, list) and len(suggestions) >= 1:
+                        return {"suggestions": suggestions[:3]}
+                except json.JSONDecodeError:
+                    pass
+                return {"suggestions": []}
+            except Exception as exc:
+                logger.error("Talk show suggest error: %s", exc)
+                return {"suggestions": []}
+        else:
+            # ADK (Gemini) route — simple fallback
+            runner = _get_adk_runner(model_id)
+            svc = _get_adk_session_service(model_id)
+            if not runner or not svc:
+                return {"suggestions": []}
+            try:
+                new_msg = types.Content(role="user", parts=[types.Part(text=suggest_prompt)])
+                events = []
+                async for event in runner.run_async(
+                    user_id="default_user",
+                    session_id="talk_show_session",
+                    new_message=new_msg,
+                ):
+                    events.append(event)
+                text = ""
+                for e in reversed(events):
+                    if e.author != "user" and e.content and e.content.parts and not e.partial:
+                        text = e.content.parts[0].text or ""
+                        break
+                try:
+                    suggestions = json.loads(text)
+                    if isinstance(suggestions, list) and len(suggestions) >= 1:
+                        return {"suggestions": suggestions[:3]}
+                except json.JSONDecodeError:
+                    pass
+                return {"suggestions": []}
+            except Exception:
+                return {"suggestions": []}
 
     @app.get("/api/voices")
     async def get_voices():
