@@ -580,13 +580,14 @@ def create_app() -> FastAPI:
         host_name: str = Form(""),
         background: str = Form(""),
         questions: str = Form(""),
+        personality: str = Form("professional-humorous"),
         message: str = Form(""),
         history_json: str = Form("[]"),
         language: str = Form("en"),
     ):
         """Talk Show: host responds as a talk show host, grounded in background materials.
 
-        Returns JSON: {\"reply\": \"Host's spoken response\"}
+        Returns JSON: {"reply": "Host's spoken response"}
         """
         try:
             import json
@@ -594,9 +595,23 @@ def create_app() -> FastAPI:
         except (json.JSONDecodeError, TypeError):
             history = []
 
+        # Personality descriptions
+        PERSONALITY_MAP = {
+            "professional-humorous": "Professional with a touch of humor — witty yet polished, like a late-night talk show host who respects their guests but keeps the energy light and engaging.",
+            "professional": "Professional, formal, and serious. Uses formal language, stays on-topic, and maintains a business-like demeanor.",
+            "humorous": "Humorous, playful, and lighthearted. Jokes around, keeps the mood fun, and makes the guest laugh.",
+            "friendly": "Warm, approachable, and casual. Creates a cozy atmosphere like chatting with an old friend.",
+            "intellectual": "Intellectual, thoughtful, and deep. Asks insightful questions, references concepts, and pursues thorough understanding.",
+        }
+
+        style_desc = PERSONALITY_MAP.get(personality, personality)
+
         # Build the system prompt
         system_parts = [
             f'You are a talk show host named "{host_name}". You are interviewing {guest_name} about the topic: {topic}.',
+            "",
+            "HOST STYLE:",
+            style_desc,
             "",
             "RULES:",
             "- You are the HOST. Ask questions, follow up, and keep the conversation flowing.",

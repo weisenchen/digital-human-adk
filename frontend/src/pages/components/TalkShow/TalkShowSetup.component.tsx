@@ -3,12 +3,21 @@
 import React, { useState } from 'react';
 import { X, Play, FileText } from 'lucide-react';
 
+const PERSONALITY_PRESETS = [
+  { id: 'professional-humorous', label: 'Professional + Humorous', desc: 'Witty yet polished — like a late-night talk show host' },
+  { id: 'professional', label: 'Professional', desc: 'Formal, serious, and business-like' },
+  { id: 'humorous', label: 'Humorous', desc: 'Lighthearted, funny, and playful' },
+  { id: 'friendly', label: 'Friendly', desc: 'Warm, approachable, and casual' },
+  { id: 'intellectual', label: 'Intellectual', desc: 'Deep, thoughtful, and insightful' },
+] as const;
+
 interface TalkShowConfig {
   topic: string;
   guestName: string;
   hostName: string;
   background: string;
   questions: string;
+  personality: string;
 }
 
 interface TalkShowSetupProps {
@@ -23,6 +32,8 @@ export default function TalkShowSetup({ defaultHostName, onStart, onClose }: Tal
   const [hostName, setHostName] = useState(defaultHostName || 'Toxo');
   const [background, setBackground] = useState('');
   const [questions, setQuestions] = useState('');
+  const [personality, setPersonality] = useState('professional-humorous');
+  const [customPersonality, setCustomPersonality] = useState('');
 
   const canStart = topic.trim() || guestName.trim() || background.trim();
 
@@ -33,6 +44,7 @@ export default function TalkShowSetup({ defaultHostName, onStart, onClose }: Tal
       hostName: hostName.trim() || defaultHostName || 'Toxo',
       background: background.trim(),
       questions: questions.trim(),
+      personality: personality === 'custom' ? customPersonality.trim() : personality,
     });
   };
 
@@ -85,6 +97,56 @@ export default function TalkShowSetup({ defaultHostName, onStart, onClose }: Tal
               onChange={(e) => setHostName(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
             />
+          </div>
+
+          {/* Host Style */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Host Style</label>
+            <div className="grid grid-cols-2 gap-2">
+              {PERSONALITY_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setPersonality(p.id)}
+                  className={`text-left p-2.5 rounded-lg border text-sm transition-all ${
+                    personality === p.id
+                      ? 'bg-gray-900 text-white border-gray-900 shadow-sm'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className={`text-xs font-medium ${personality === p.id ? 'text-white' : 'text-gray-900'}`}>
+                    {p.label}
+                  </div>
+                  <div className={`text-[10px] mt-0.5 ${personality === p.id ? 'text-gray-300' : 'text-gray-400'}`}>
+                    {p.desc}
+                  </div>
+                </button>
+              ))}
+            </div>
+            {/* Custom */}
+            <button
+              onClick={() => setPersonality('custom')}
+              className={`w-full text-left p-2.5 rounded-lg border text-sm transition-all mt-2 ${
+                personality === 'custom'
+                  ? 'bg-gray-900 text-white border-gray-900 shadow-sm'
+                  : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <div className={`text-xs font-medium ${personality === 'custom' ? 'text-white' : 'text-gray-900'}`}>
+                Custom
+              </div>
+              <div className={`text-[10px] mt-0.5 ${personality === 'custom' ? 'text-gray-300' : 'text-gray-400'}`}>
+                Write your own style description
+              </div>
+            </button>
+            {personality === 'custom' && (
+              <input
+                type="text"
+                value={customPersonality}
+                onChange={(e) => setCustomPersonality(e.target.value)}
+                placeholder="e.g., Sarcastic but caring, like a British butler"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 mt-2"
+              />
+            )}
           </div>
 
           {/* Background Materials */}

@@ -15,6 +15,7 @@ interface TalkShowConfig {
   hostName: string;
   background: string;
   questions: string;
+  personality: string;
 }
 
 export default function Home() {
@@ -77,6 +78,7 @@ export default function Home() {
             hostName={talkShowConfig.hostName}
             background={talkShowConfig.background}
             questions={talkShowConfig.questions}
+            personality={talkShowConfig.personality}
             onEnd={() => setTalkShowConfig(null)}
           />
         )}

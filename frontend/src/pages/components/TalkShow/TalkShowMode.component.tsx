@@ -18,6 +18,7 @@ interface TalkShowModeProps {
   hostName: string;
   background: string;
   questions: string;
+  personality: string;
   onEnd: () => void;
 }
 
@@ -27,6 +28,7 @@ export default function TalkShowMode({
   hostName,
   background,
   questions,
+  personality,
   onEnd,
 }: TalkShowModeProps) {
   const { selectedLanguage, setMouthOpen, characterName } = useContext(VoiceAssistantContext);
@@ -133,6 +135,7 @@ export default function TalkShowMode({
         hostName,
         background,
         questions,
+        personality,
         message: '',
         history: [],
         language: 'en',
@@ -147,7 +150,7 @@ export default function TalkShowMode({
     } finally {
       setIsWaiting(false);
     }
-  }, [topic, guestName, hostName, background, questions]);
+  }, [topic, guestName, hostName, background, questions, personality]);
 
   useEffect(() => {
     startShow();
@@ -172,6 +175,7 @@ export default function TalkShowMode({
         hostName,
         background,
         questions,
+        personality,
         message: text,
         history,
         language: 'en',
@@ -184,7 +188,7 @@ export default function TalkShowMode({
     } finally {
       setIsWaiting(false);
     }
-  }, [input, isWaiting, topic, guestName, hostName, background, questions]);
+  }, [input, isWaiting, topic, guestName, hostName, background, questions, personality, isPaused]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

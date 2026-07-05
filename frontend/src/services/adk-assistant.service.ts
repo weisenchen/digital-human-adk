@@ -115,6 +115,7 @@ export const sendTalkShowMessage = async (params: {
   hostName: string;
   background: string;
   questions: string;
+  personality?: string;
   message: string;
   history: Array<{role: string; content: string}>;
   language?: string;
@@ -125,6 +126,7 @@ export const sendTalkShowMessage = async (params: {
   formData.append('host_name', params.hostName);
   formData.append('background', params.background);
   formData.append('questions', params.questions);
+  formData.append('personality', params.personality || 'professional-humorous');
   formData.append('message', params.message);
   formData.append('history_json', JSON.stringify(params.history));
   formData.append('language', params.language || 'en');
