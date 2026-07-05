@@ -193,11 +193,13 @@ async def periodic_cleanup(interval: int = 600):
 
 def get_default_voice(language: str = "en", gender: str = "female") -> str:
     """Return default voice for a given language code and gender."""
+    # Normalize: "en-US", "en-GB" → "en";  "cmn-CN" → "zh"; "Yue-HK" → "yue"
+    lang_code = language.split("-")[0].lower() if language else "en"
     locale_map = {
         "en": "en-US", "zh": "cmn-CN", "yue": "Yue-HK",
         "ja": "ja-JP", "ko": "ko-KR", "fr": "fr-FR",
     }
-    locale = locale_map.get(language, "en-US")
+    locale = locale_map.get(lang_code, "en-US")
     voices = VOICE_CATALOG.get(locale, {}).get(gender, [])
     return voices[0][0] if voices else "en-US-JennyNeural"
 

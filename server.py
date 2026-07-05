@@ -291,7 +291,14 @@ def create_app() -> FastAPI:
 
     def _build_slide_prompt(script: str, num_slides: int, language: str) -> str:
         """Build the slide generation prompt."""
-        lang = "English" if language == "en" else "Chinese"
+        # Normalize language: "en-US", "en-GB" → "en",  "cmn-CN", "zh" → "zh"
+        lang_code = language.split("-")[0] if language else "en"
+        if lang_code == "en":
+            lang = "English"
+        elif lang_code == "zh" or lang_code == "cmn":
+            lang = "Chinese"
+        else:
+            lang = "English"  # fallback
         return (
             f"You are a professional presentation designer. Convert the following "
             f"raw script into exactly {num_slides} well-structured slides.\n\n"
