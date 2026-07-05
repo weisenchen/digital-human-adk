@@ -157,7 +157,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
               ? "bg-[var(--md-error)] text-white shadow-elevation-3"
               : "bg-[var(--md-primary)] text-white"
           }`}
-          aria-label={isRecording ? "Release to send" : "Hold to record"}
+          aria-label={isRecording ? (toggleMode ? 'Tap to stop' : 'Release to send') : (toggleMode ? 'Tap to speak' : 'Hold to record')}
         >
           <Mic className="w-5 h-5" />
         </button>
@@ -166,7 +166,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       {/* "Hold to record" / release label */}
       {isRecording && (
         <div className="mt-1.5 text-label-sm text-[var(--md-error)] animate-pulse whitespace-nowrap">
-          Release to send
+          {toggleMode ? 'Tap to stop' : 'Release to send'}
         </div>
       )}
     </div>
