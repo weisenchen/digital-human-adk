@@ -111,6 +111,7 @@ export const getAIAudioFromText = async (text: string, language: string, voice?:
   formData.append('language', language);
   if (voice) formData.append('voice', voice);
   const res = await fetch(`${BASE_URL}/audio/tts`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`TTS request failed: ${res.status}`);
   return await res.blob();
 };
 
