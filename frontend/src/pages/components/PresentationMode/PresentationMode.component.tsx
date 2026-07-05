@@ -155,7 +155,11 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
 
   const stopReading = useCallback(() => {
     if (currentSourceRef.current) {
-      try { currentSourceRef.current.stop(); } catch {}
+      try {
+        const el = currentSourceRef.current as any;
+        if (typeof el.stop === 'function') el.stop();
+        else if (typeof el.pause === 'function') el.pause();
+      } catch {}
       currentSourceRef.current = null;
     }
     setIsReading(false);
@@ -173,26 +177,22 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
       setReadingSlide(slideIndex);
       setIsReading(true);
 
-      const audioContext = audioContextRef.current || new AudioContext();
-      audioContextRef.current = audioContext;
+      // Use HTMLAudioElement (better autoplay support than AudioContext)
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      currentSourceRef.current = audio as any;
 
-      // Resume if suspended (browser autoplay policy)
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
-
-      const arrayBuffer = await blob.arrayBuffer();
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-      const source = audioContext.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContext.destination);
-      currentSourceRef.current = source;
-
-      source.start(0);
+      await audio.play();
 
       await new Promise<void>((resolve) => {
-        source.onended = () => resolve();
+        audio.onended = () => {
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+        audio.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve();
+        };
       });
 
       if (mountedRef.current) {
