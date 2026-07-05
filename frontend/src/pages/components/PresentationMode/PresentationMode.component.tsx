@@ -88,6 +88,24 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   const slideTimeRef = useRef(0);
   const remainingRef = useRef(0);
 
+  // AudioContext (reusable, same approach as main voice chat TTS)
+  const [audioContextReady, setAudioContextReady] = useState(false);
+
+  const getAudioContext = useCallback((): AudioContext => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
+    }
+    return audioContextRef.current;
+  }, []);
+
+  const ensureAudioContextResumed = useCallback(async () => {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') {
+      try { await ctx.resume(); } catch {}
+    }
+    if (!audioContextReady) setAudioContextReady(true);
+  }, [getAudioContext, audioContextReady]);
+
   // Track if component is mounted
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -156,9 +174,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
   const stopReading = useCallback(() => {
     if (currentSourceRef.current) {
       try {
-        const el = currentSourceRef.current as any;
-        if (typeof el.stop === 'function') el.stop();
-        else if (typeof el.pause === 'function') el.pause();
+        (currentSourceRef.current as AudioBufferSourceNode).stop();
       } catch {}
       currentSourceRef.current = null;
     }
@@ -170,9 +186,9 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
     if (!text.trim()) return;
     stopReading();
 
-    // Create audio element immediately (within user gesture chain)
-    const audio = new Audio();
-    currentSourceRef.current = audio as any;
+    // Ensure AudioContext is alive (resume if suspended from user interaction)
+    await ensureAudioContextResumed();
+
     setReadingSlide(slideIndex);
     setIsReading(true);
 
@@ -180,20 +196,19 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
       const blob = await getAIAudioFromText(text, language, voiceId);
       if (!mountedRef.current) return;
 
-      const url = URL.createObjectURL(blob);
-      audio.src = url;
+      const ctx = getAudioContext();
+      const arrayBuffer = await blob.arrayBuffer();
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
 
-      await audio.play();
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(ctx.destination);
+      source.start(0);
+
+      currentSourceRef.current = source;
 
       await new Promise<void>((resolve) => {
-        audio.onended = () => {
-          URL.revokeObjectURL(url);
-          resolve();
-        };
-        audio.onerror = () => {
-          URL.revokeObjectURL(url);
-          resolve();
-        };
+        source.onended = () => resolve();
       });
 
       if (mountedRef.current) {
@@ -212,7 +227,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
         setReadingSlide(null);
       }
     }
-  }, [language, voiceId, stopReading, autoAdvance, slides.length]);
+  }, [language, voiceId, stopReading, autoAdvance, slides.length, ensureAudioContextResumed, getAudioContext]);
 
   const handleAIGenerate = async () => {
     if (!script.trim()) return;
@@ -286,7 +301,10 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
       stopReading();
     } else {
       const slide = slides[currentSlide];
-      if (slide) speakText(slide.speech, currentSlide);
+      if (slide) {
+        // Resume AudioContext within user gesture, THEN speak
+        ensureAudioContextResumed().then(() => speakText(slide.speech, currentSlide));
+      }
     }
   };
 
