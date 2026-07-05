@@ -119,6 +119,7 @@ export const sendTalkShowMessage = async (params: {
   message: string;
   history: Array<{role: string; content: string}>;
   language?: string;
+  durationMinutes?: number;
 }): Promise<string> => {
   const formData = new FormData();
   formData.append('topic', params.topic);
@@ -130,6 +131,7 @@ export const sendTalkShowMessage = async (params: {
   formData.append('message', params.message);
   formData.append('history_json', JSON.stringify(params.history));
   formData.append('language', params.language || 'en');
+  formData.append('duration_minutes', String(params.durationMinutes ?? 10));
   const res = await fetch(`${BASE_URL}/api/talk-show/ask`, { method: 'POST', body: formData });
   if (!res.ok) throw new Error(`Talk show request failed: ${res.status}`);
   const data = await res.json();

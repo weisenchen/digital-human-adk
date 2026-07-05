@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { X, Send, Volume2, Pause, Play } from 'lucide-react';
+import { X, Send, Volume2, Pause, Play, Mic } from 'lucide-react';
 import DigitalHumanContainer from '../DigitalHumanContainer/DigitalHumanContainer.component';
+import VoiceRecorder from '../VoiceRecorder/VoiceRecorder.component';
 import { sendTalkShowMessage, getAIAudioFromText, getTalkShowSuggestions } from '@/services/adk-assistant.service';
 import { getSharedAudioContext } from '@/lib/audio-context';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
@@ -19,6 +20,7 @@ interface TalkShowModeProps {
   background: string;
   questions: string;
   personality: string;
+  durationMinutes: number;
   onEnd: () => void;
 }
 
@@ -29,6 +31,7 @@ export default function TalkShowMode({
   background,
   questions,
   personality,
+  durationMinutes,
   onEnd,
 }: TalkShowModeProps) {
   const { selectedLanguage, setMouthOpen, selectedVoice } = useContext(VoiceAssistantContext);
@@ -171,6 +174,7 @@ export default function TalkShowMode({
         background,
         questions,
         personality,
+        durationMinutes,
         message: '',
         history: [],
         language: 'en',
@@ -183,7 +187,7 @@ export default function TalkShowMode({
     } finally {
       setIsWaiting(false);
     }
-  }, [topic, guestName, hostName, background, questions, personality]);
+  }, [topic, guestName, hostName, background, questions, personality, durationMinutes]);
 
   useEffect(() => {
     startShow();
@@ -210,6 +214,7 @@ export default function TalkShowMode({
         background,
         questions,
         personality,
+        durationMinutes,
         message: text,
         history,
         language: 'en',
@@ -415,6 +420,32 @@ export default function TalkShowMode({
                 placeholder={`Reply as ${guestName}...`}
                 disabled={isWaiting || isPaused}
                 className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 disabled:bg-gray-50 disabled:text-gray-400"
+              />
+              <VoiceRecorder
+                language="en"
+                onSpeechRecognized={(text) => {
+                  setInput(text);
+                  // Auto-send after brief delay so user sees what was recognized
+                  setTimeout(() => {
+                    setInput('');
+                    setSuggestions([]);
+                    const guestMsg: TalkShowMessage = { role: 'guest', content: text };
+                    const updated = [...messagesRef.current, guestMsg];
+                    setMessages(updated);
+                    setIsWaiting(true);
+                    const history = updated.map(m => ({ role: m.role, content: m.content }));
+                    sendTalkShowMessage({
+                      topic, guestName, hostName, background, questions, personality,
+                      durationMinutes, message: text, history, language: 'en',
+                    }).then(reply => {
+                      setMessages(prev => [...prev, { role: 'host', content: reply }]);
+                    }).catch(err => {
+                      console.error('Talk show voice error:', err);
+                      setMessages(prev => [...prev, { role: 'host', content: '(Error getting response)' }]);
+                    }).finally(() => setIsWaiting(false));
+                  }, 300);
+                }}
+                onInterimText={(text) => setInput(text)}
               />
               <button
                 onClick={handleSend}

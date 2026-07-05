@@ -611,6 +611,7 @@ def create_app() -> FastAPI:
         message: str = Form(""),
         history_json: str = Form("[]"),
         language: str = Form("en"),
+        duration_minutes: int = Form(10),
     ):
         """Talk Show: host responds as a talk show host, grounded in background materials.
 
@@ -633,38 +634,75 @@ def create_app() -> FastAPI:
 
         style_desc = PERSONALITY_MAP.get(personality, personality)
 
-        # Determine which show segment we're in
-        history_len = len(history)
-        if history_len == 0:
+        # Time budget: calculate exchange counts based on total duration
+        # Opening: ~5%, Warm-up: ~15%, Discussion: ~70%, Closing: ~10%
+        # Each exchange (host + guest) takes roughly 30-60 seconds in speech
+        total_minutes = max(5, min(60, duration_minutes))
+        budget_parts = {
+            "🎬 Opening": max(1, int(total_minutes * 0.05)),
+            "👋 Warm-up": max(1, int(total_minutes * 0.15)),
+            "🎯 Discussion": max(2, int(total_minutes * 0.70)),
+            "🎬 Closing": max(1, int(total_minutes * 0.10)),
+        }
+        total_exchanges = sum(budget_parts.values())
+        # Track spent exchanges
+        host_count = len([h for h in history if h.get("role") == "host"])
+        guest_count = len([h for h in history if h.get("role") == "guest"])
+        spent = host_count + guest_count
+        remaining = max(1, total_exchanges - spent)
+
+        # Determine which segment we're in based on budget
+        warmup_threshold = budget_parts["🎬 Opening"] + budget_parts["👋 Warm-up"]
+        disc_threshold = warmup_threshold + budget_parts["🎯 Discussion"]
+        if host_count <= budget_parts["🎬 Opening"]:
             current_segment = "Opening Monologue"
-        elif history_len <= 2:
+        elif host_count <= warmup_threshold:
             current_segment = "Guest Introduction & Warm-up"
-        else:
+        elif host_count <= disc_threshold:
             current_segment = "Main Discussion"
+        else:
+            current_segment = "Closing"
+
+        # Build time-budget guide
+        time_guide = (
+            f"── TOTAL SHOW TIME: {total_minutes} MINUTES ──\n"
+            f"Plan your responses so the show fits roughly {total_minutes} minutes.\n"
+            f"Segment budget (in host speaking turns):\n"
+            f"  🎬 Opening: {budget_parts['🎬 Opening']} turn(s) — short & punchy (~30 sec)\n"
+            f"  👋 Warm-up: {budget_parts['👋 Warm-up']} turns — brief rapport, then MOVE ON\n"
+            f"  🎯 Discussion: {budget_parts['🎯 Discussion']} turns — THIS IS THE MAIN EVENT\n"
+            f"  🎬 Closing: {budget_parts['🎬 Closing']} turn(s) — quick wrap-up\n"
+            f"Remaining exchanges (host+guest): ~{remaining}\n"
+            f"So keep responses tight — especially in Opening and Warm-up. Save depth for Discussion."
+        )
 
         # Build the system prompt with structured show format
         system_parts = [
             f"You are a talk show host named \"{host_name}\". You are interviewing {guest_name} about the topic: {topic}.",
             "",
+            time_guide,
+            "",
             "── SHOW STRUCTURE ──",
             "The show follows a clear arc. Know which segment you're in and play that role:",
             "",
-            "🎬 [Opening Monologue] — Greet the audience, introduce TODAY'S TOPIC with energy,",
-            "   tease what's coming, then introduce the guest and welcome them on stage.",
-            "   End with a warm ice-breaker question.",
+            "🎬 [Opening Monologue] — BRIEF. Greet the audience, introduce the topic in 2-3 sentences,",
+            "   introduce the guest, and ask ONE ice-breaker. Move on fast.",
             "",
-            "👋 [Guest Introduction & Warm-up] — Ask 2-3 easy questions to help the guest relax.",
-            "   This is about RAPPORT BUILDING. Light, fun, personal questions.",
+            "👋 [Guest Introduction & Warm-up] — Keep this SHORT. Ask 1-2 light questions,",
+            "   then pivot quickly to the main topic. Don't linger.",
             "",
-            "🎯 [Main Discussion] — Deep dive into the background materials and key topics.",
+            "🎯 [Main Discussion] — THIS IS THE BULK OF THE SHOW. Spend most of your time here.",
+            "   Deep dive into the background materials and key topics.",
             "   Ask substantive questions. Challenge ideas respectfully. Connect dots.",
             "   After each guest answer, ask ONE follow-up before moving to the next topic.",
             "   Reference specific facts from the background materials.",
             "",
-            "🎬 [Closing] — Thank the guest, summarize key takeaways, sign off to the audience.",
+            "🎬 [Closing] — BRIEF. Thank the guest, one key takeaway, one sentence sign-off.",
+            "   Do NOT start a new topic here.",
             "",
             f"CURRENT SEGMENT: {current_segment}",
             f"Play the role of the host in the {current_segment} segment. Don't skip ahead.",
+            f"You have ~{remaining} remaining host+guest exchanges — pace yourself.",
             "",
             "── HOST STYLE ──",
             style_desc,
@@ -672,7 +710,7 @@ def create_app() -> FastAPI:
             "── EMOTIONAL DYNAMICS ──",
             "Vary your tone throughout the show — don't stay flat:",
             "- Opening: ENERGETIC, welcoming, excited about the topic",
-            "- Warm-up: WARM, curious, playful — build connection",
+            "- Warm-up: WARM, curious, playful — build connection, but keep it brief",
             "- Main discussion: THOUGHTFUL, probing, occasionally surprised",
             "- When guest shares insight: Show genuine interest (\"That's fascinating!\")",
             "- When exploring: Curious and engaged (\"I want to dig deeper into that...\")",

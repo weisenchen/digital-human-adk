@@ -18,6 +18,7 @@ interface TalkShowConfig {
   background: string;
   questions: string;
   personality: string;
+  durationMinutes: number;
 }
 
 interface TalkShowSetupProps {
@@ -34,6 +35,7 @@ export default function TalkShowSetup({ defaultHostName, onStart, onClose }: Tal
   const [questions, setQuestions] = useState('');
   const [personality, setPersonality] = useState('professional-humorous');
   const [customPersonality, setCustomPersonality] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState(10);
 
   const canStart = topic.trim() || guestName.trim() || background.trim();
 
@@ -45,6 +47,7 @@ export default function TalkShowSetup({ defaultHostName, onStart, onClose }: Tal
       background: background.trim(),
       questions: questions.trim(),
       personality: personality === 'custom' ? customPersonality.trim() : personality,
+      durationMinutes,
     });
   };
 
@@ -178,6 +181,30 @@ export default function TalkShowSetup({ defaultHostName, onStart, onClose }: Tal
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 resize-none"
             />
           </div>
+
+          {/* Duration */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Show Duration</label>
+            <div className="flex gap-2">
+              {[5, 10, 15, 30].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setDurationMinutes(m)}
+                  className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
+                    durationMinutes === m
+                      ? 'bg-gray-900 text-white border-gray-900 shadow-sm'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  {m} min
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-gray-400 mt-1">
+              Opening &amp; Warm-up will be brief. Most time goes to Discussion.
+            </p>
+          </div>
+
         </div>
 
         {/* Footer */}
