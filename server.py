@@ -735,6 +735,9 @@ def create_app() -> FastAPI:
             "- Keep responses conversational and natural — spoken word, not essay.",
             "- Vary response length: some short reactions, some thoughtful questions.",
             "- Sound genuinely interested. Listen to what the guest says and react to it.",
+            "- CRITICAL: Speak directly. NEVER include stage directions, action descriptions,",
+            "  or any text in asterisks or brackets like *walks on stage*, [smiles], or (waves).",
+            "  Just say your lines — as if you're live on air and the audience only hears your voice.",
         ]
 
         if background.strip():
