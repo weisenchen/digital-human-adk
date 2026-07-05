@@ -385,7 +385,7 @@ const PresentationMode: React.FC<PresentationModeProps> = ({
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--md-outline)]">
             <div className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-[var(--md-primary)]" />
-              <h2 className="text-title-md text-[var(--md-on-surface)]">Presentation 演示</h2>
+              <h2 className="text-title-md text-[var(--md-on-surface)]">Presentation</h2>
             </div>
             <button
               onClick={onClose}

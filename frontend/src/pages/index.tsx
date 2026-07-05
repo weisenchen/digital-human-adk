@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Menu } from 'lucide-react';
 import ConversationContainer from './components/ConversationContainer/ConversationContainer.component';
 import DigitalHumanContainer from './components/DigitalHumanContainer/DigitalHumanContainer.component';
 import CyborgSidebar from './components/CyborgSidebar/CyborgSidebar.component';
 import VoiceAssistantProvider from './context/VoiceAssistantProvider';
+import VoiceAssistantContext from './context/VoiceAssistantContext';
 import TalkShowSetup from './components/TalkShow/TalkShowSetup.component';
 import TalkShowMode from './components/TalkShow/TalkShowMode.component';
 
@@ -34,20 +35,7 @@ export default function Home() {
     <VoiceAssistantProvider>
       <div className="h-screen flex flex-col bg-[var(--md-background)]">
         {/* ===== Top Bar ===== */}
-        <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--md-outline)] bg-white/80 backdrop-blur-md shrink-0 z-20">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowCyborg(prev => !prev)}
-              className="state-layer p-2 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] transition-colors"
-              title="Open Sidebar"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <span className="text-title-sm text-[var(--md-on-surface)] font-[family-name:var(--font-serif)] text-lg hidden sm:inline">
-              Xiao Wei
-            </span>
-          </div>
-        </header>
+        <TopBar showCyborg={showCyborg} onToggleCyborg={() => setShowCyborg(prev => !prev)} />
 
         {/* ===== Main Content ===== */}
         {!talkShowConfig ? (
@@ -97,5 +85,27 @@ export default function Home() {
         />
       )}
     </VoiceAssistantProvider>
+  );
+}
+
+function TopBar({ showCyborg, onToggleCyborg }: { showCyborg: boolean; onToggleCyborg: () => void }) {
+  const context = useContext(VoiceAssistantContext);
+  const name = context?.characterName || 'Xiao Wei';
+
+  return (
+    <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--md-outline)] bg-white/80 backdrop-blur-md shrink-0 z-20">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onToggleCyborg}
+          className="state-layer p-2 rounded-[var(--shape-full)] text-[var(--md-on-surface-variant)] hover:bg-[var(--md-surface-variant)] transition-colors"
+          title="Open Sidebar"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <span className="text-title-sm text-[var(--md-on-surface)] font-[family-name:var(--font-serif)] text-lg hidden sm:inline">
+          {name}
+        </span>
+      </div>
+    </header>
   );
 }
