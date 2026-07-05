@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useContext } from 'react';
-import { X, Brains } from 'lucide-react';
+import { X, Brain } from 'lucide-react';
 import CharacterSelector from '../CharacterSelector/CharacterSelector.component';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 
@@ -36,7 +36,7 @@ export default function SettingsSidebar({ onClose }: SettingsSidebarProps) {
         {/* Model Selection */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <Brains className="w-4 h-4 text-gray-500" />
+            <Brain className="w-4 h-4 text-gray-500" />
             <span className="text-sm font-medium text-gray-700">Model</span>
           </div>
 
