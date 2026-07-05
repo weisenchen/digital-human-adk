@@ -1,47 +1,36 @@
 "use client";
 
 import React, { useRef, useState, useCallback, useEffect } from "react";
-import { Mic, MicOff } from "lucide-react";
+import { Mic } from "lucide-react";
 
 export interface VoiceRecorderProps {
   onSpeechRecognized: (text: string) => void;
+  onInterimText?: (text: string) => void;
   language: string;
 }
 
 const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   onSpeechRecognized,
+  onInterimText,
   language,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
-  const [interimText, setInterimText] = useState("");
   // @ts-ignore - SpeechRecognition is a browser API not in TS types
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const finalRef = useRef<string>("");
+  const pressedRef = useRef(false);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       recognitionRef.current?.stop();
     };
   }, []);
 
-  // Listen for global Space key shortcut
-  useEffect(() => {
-    const handler = () => {
-      if (!isRecording) {
-        // Only start if not already recording — delegate to toggle
-        handleRecordToggle();
-      }
-    };
-    window.addEventListener('toggle-recording', handler);
-    return () => window.removeEventListener('toggle-recording', handler);
-  }, [isRecording]);
-
-  const handleRecordToggle = useCallback(async () => {
-    if (isRecording) {
-      recognitionRef.current?.stop();
-      setIsRecording(false);
-      setInterimText("");
-      return;
-    }
+  const startRecording = useCallback(() => {
+    if (pressedRef.current) return; // already pressed
+    pressedRef.current = true;
+    finalRef.current = "";
 
     const SpeechRecognitionAPI =
       (window as any).SpeechRecognition ||
@@ -49,6 +38,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
     if (!SpeechRecognitionAPI) {
       alert("Speech recognition is not supported in this browser. Please use Chrome.");
+      pressedRef.current = false;
       return;
     }
 
@@ -59,41 +49,78 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (event: any) => {
-      let finalTranscript = "";
       let interimTranscript = "";
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         if (result.isFinal) {
-          finalTranscript += result[0].transcript;
+          finalRef.current += result[0].transcript;
         } else {
           interimTranscript += result[0].transcript;
         }
       }
 
-      setInterimText(interimTranscript);
-
-      if (finalTranscript.trim()) {
-        onSpeechRecognized(finalTranscript.trim());
+      // Show interim + accumulated final in input box
+      const displayText = finalRef.current + interimTranscript;
+      if (onInterimText && displayText) {
+        onInterimText(displayText);
       }
     };
 
     recognition.onerror = (event: any) => {
       console.error("Speech recognition error:", event.error);
+      pressedRef.current = false;
       setIsRecording(false);
-      setInterimText("");
     };
 
     recognition.onend = () => {
       setIsRecording(false);
-      setInterimText("");
     };
 
     recognitionRef.current = recognition;
     setIsRecording(true);
-    setInterimText("");
     recognition.start();
-  }, [isRecording, onSpeechRecognized, language]);
+  }, [language, onInterimText]);
+
+  const stopRecording = useCallback(() => {
+    if (!pressedRef.current) return;
+    pressedRef.current = false;
+
+    try {
+      recognitionRef.current?.stop();
+    } catch {}
+
+    setIsRecording(false);
+
+    // Submit final text
+    const final = finalRef.current.trim();
+    finalRef.current = "";
+    if (final) {
+      onSpeechRecognized(final);
+    }
+  }, [onSpeechRecognized]);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    startRecording();
+  }, [startRecording]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    stopRecording();
+  }, [stopRecording]);
+
+  const handlePointerLeave = useCallback((e: React.PointerEvent) => {
+    // Only cancel if button is pressed (pointer is held and moved away)
+    if (pressedRef.current) {
+      // Cancel — don't submit
+      pressedRef.current = false;
+      try { recognitionRef.current?.stop(); } catch {}
+      setIsRecording(false);
+      finalRef.current = "";
+      if (onInterimText) onInterimText("");
+    }
+  }, [onInterimText]);
 
   return (
     <div className="relative flex flex-col items-center">
@@ -110,29 +137,25 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
         <button
           type="button"
-          onClick={handleRecordToggle}
-          className={`state-layer rounded-[var(--shape-full)] p-2.5 transition-all duration-[var(--motion-md)] ease-emphasized shadow-elevation-1 relative z-10 ${
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerLeave}
+          onContextMenu={(e) => e.preventDefault()}
+          className={`state-layer rounded-[var(--shape-full)] p-2.5 transition-all duration-[var(--motion-md)] ease-emphasized shadow-elevation-1 relative z-10 select-none touch-none ${
             isRecording
               ? "bg-[var(--md-error)] text-white shadow-elevation-3"
               : "bg-[var(--md-primary)] text-white"
           }`}
-          aria-label={isRecording ? "Stop Listening" : "Start Listening"}
+          aria-label={isRecording ? "Release to send" : "Hold to record"}
         >
-          {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+          <Mic className="w-5 h-5" />
         </button>
       </div>
 
-      {/* "Listening..." label */}
+      {/* "Hold to record" / release label */}
       {isRecording && (
-        <div className="mt-1.5 text-label-sm text-[var(--md-error)] animate-pulse">
-          Listening...
-        </div>
-      )}
-
-      {/* Transcription bubble */}
-      {isRecording && interimText && (
-        <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-white bg-opacity-95 backdrop-blur-sm text-[var(--md-on-surface-variant)] text-body-sm px-3 py-1.5 rounded-[var(--shape-lg)] shadow-elevation-3 border border-[var(--md-outline)] whitespace-nowrap max-w-[200px] overflow-hidden text-ellipsis z-10">
-          🎤 {interimText}
+        <div className="mt-1.5 text-label-sm text-[var(--md-error)] animate-pulse whitespace-nowrap">
+          Release to send
         </div>
       )}
     </div>

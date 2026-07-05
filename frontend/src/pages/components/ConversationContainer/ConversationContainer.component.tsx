@@ -144,6 +144,7 @@ export default function ConversationContainer() {
           <VoiceRecorder
             language={speechRecognitionLang}
             onSpeechRecognized={handleSpeechRecognized}
+            onInterimText={(text) => setInputText(text)}
           />
           <button
             type="submit"
