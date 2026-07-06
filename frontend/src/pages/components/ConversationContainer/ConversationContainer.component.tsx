@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useContext, useRef, useEffect } from 'react';
-import { Send, Sparkles, MessageSquare, FileText, Plus, Monitor, Podcast, FilePlus, Paperclip } from 'lucide-react';
+import { Send, Sparkles, MessageSquare, FileText, Plus, Monitor, Podcast, Target, FilePlus, Paperclip } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
@@ -165,6 +165,14 @@ export default function ConversationContainer() {
                 >
                   <Podcast className="w-4 h-4 text-[var(--md-tertiary)]" />
                   Start New TalkShow
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowPlusMenu(false); window.dispatchEvent(new CustomEvent('open-meeting')); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[var(--md-surface-variant)] text-label-sm text-[var(--md-on-surface)] transition-colors"
+                >
+                  <Target className="w-4 h-4 text-[var(--md-tertiary)]" />
+                  Start New Meeting
                 </button>
                 <button
                   type="button"
