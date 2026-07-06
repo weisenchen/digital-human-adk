@@ -1755,10 +1755,10 @@ def create_app() -> FastAPI:
         slides_json: str = Form(...),
         title: str = Form("Work Report"),
     ):
-        """Generate and return a self-contained interactive HTML presentation file.
-        Follows the interactive-explainer-video-html format (htmlslide.md).
-        Each slide becomes a scene with Web Speech API narration + controls.
-        """
+        """Generate a self-contained visual-only HTML presentation.
+        Each slide is static HTML with navigation controls. No audio —
+        the WorkReport mode handles TTS separately."""
+        
         try:
             import json
             slides = json.loads(slides_json)

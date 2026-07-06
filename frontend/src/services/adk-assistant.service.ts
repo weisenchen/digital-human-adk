@@ -429,7 +429,7 @@ export const sendWorkReportMessage = async (params: {
 
 /** Generate slides for a work report from an outline */
 export const generateReportSlides = async (params: {
-  outline: string;
+  outline?: string;
   background: string;
   personality: string;
   numSlides: number;
@@ -437,7 +437,7 @@ export const generateReportSlides = async (params: {
   reportToRole?: string;
 }): Promise<any> => {
   const formData = new FormData();
-  formData.append('outline', params.outline);
+  formData.append('outline', params.outline || '');
   formData.append('background', params.background);
   formData.append('personality', params.personality);
   formData.append('num_slides', String(params.numSlides));

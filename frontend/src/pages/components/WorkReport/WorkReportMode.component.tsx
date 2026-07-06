@@ -267,7 +267,7 @@ export default function WorkReportMode({
   const initComponent = useCallback(async () => {
     let loadedSlides: SlideData[] = [];
 
-    if (config.slideMethod === 'ai-generate' && config.slideOutline) {
+    if (config.slideMethod === 'ai-generate') {
       setIsGenerating(true);
       try {
         const result = await generateReportSlides({
