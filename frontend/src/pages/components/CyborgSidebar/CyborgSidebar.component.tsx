@@ -70,7 +70,7 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
           className="w-full flex items-center gap-2 px-3 py-2.5 text-label-sm text-[var(--md-on-surface)] hover:bg-[var(--md-surface-variant)] rounded-[var(--shape-md)] border border-[var(--md-outline)] transition-colors"
         >
           <FileText className="w-4 h-4 text-[var(--md-tertiary)]" />
-          <span>Presentation</span>
+          <span>New Presentation</span>
         </button>
 
         {/* ── New Section (3rd) ── */}
