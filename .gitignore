@@ -32,3 +32,4 @@ tmp/
 *.wav
 *.log
 logs/
+frontend/tsconfig.tsbuildinfo
