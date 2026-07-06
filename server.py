@@ -375,12 +375,9 @@ def create_app() -> FastAPI:
         return {"slides": slides}
 
     def _build_html_presentation(slides: list, title: str = "Work Report") -> str:
-        """Build a self-contained interactive HTML presentation from slide data.
-        Follows the interactive-explainer-video-html format (htmlslide.md):
-        - Each slide = one scene with Web Speech API narration
-        - Controls: play/pause, prev/next, seek, volume, captions
-        - Keyboard shortcuts, scene dots navigation
-        """
+        """Build a self-contained visual-only HTML presentation from slide data.
+        No audio — the WorkReport mode handles TTS playback separately.
+        Each slide renders inline as static HTML with navigation controls."""
         import re
         _re_bold = re.compile(r'\*\*(.+?)\*\*')
 
@@ -398,7 +395,7 @@ def create_app() -> FastAPI:
                     if in_list: html_parts.append("</ul>"); in_list = False
                     html_parts.append(f"<h2>{_esc(stripped[3:])}</h2>")
                 elif stripped.startswith("##"):
-                    # Skip type markers (##TITLE, ##DATA, ##CONTENT, ##SECTION, ##QUOTE, ##COMPARE, ##CLOSE)
+                    # Skip type markers (##TITLE, ##DATA, ##CONTENT, etc.)
                     pass
                 elif stripped.startswith("# "):
                     if in_list: html_parts.append("</ul>"); in_list = False
@@ -419,7 +416,6 @@ def create_app() -> FastAPI:
                     html_parts.append("<br/>")
                 else:
                     if in_list: html_parts.append("</ul>"); in_list = False
-                    # Render **bold** inline
                     text = _esc(stripped)
                     text = _re_bold.sub(r'<strong>\1</strong>', text)
                     html_parts.append(f"<p>{text}</p>")
@@ -429,215 +425,93 @@ def create_app() -> FastAPI:
 
         def _esc(t: str) -> str:
             return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        scenes_json = []
+
+        slide_html = ""
         for i, s in enumerate(slides):
             display = s.get("display", "")
-            speech = s.get("speech", display)
-            # Extract a title from display (first line or first ## heading)
-            lines = [l.strip() for l in display.split("\n") if l.strip()]
-            scene_title = lines[0].replace("##", "").strip() if lines else f"Slide {i+1}"
-            # Estimate narration duration (~150 words/min)
-            word_count = len(speech.split())
-            duration = max(8, word_count // 3)  # ~180 wpm, min 8s
-            html_content = _md_to_html(display)
-            scenes_json.append({
-                "id": f"scene-{i}",
-                "title": scene_title,
-                "html_content": html_content.replace("\\", "\\\\").replace('"', '&quot;'),
-                "narration": speech.replace('"', '\\"').replace("\n", "\\n"),
-                "duration": duration,
-            })
-
-        scenes_str = ",\n    ".join(
-            f"""{{\n      id: "{s["id"]}",\n      title: "{s["title"]}",\n      narration: "{s["narration"]}",\n      duration: {s["duration"]}\n    }}"""
-            for s in scenes_json
-        )
-        total_dur = sum(s["duration"] for s in scenes_json)
+            content_html = _md_to_html(display)
+            slide_html += f'''<div class="slide{" active" if i == 0 else ""}" data-idx="{i}">
+  <div class="slide-number">{i + 1} / {len(slides)}</div>
+  <div class="slide-body">{content_html}</div>
+</div>\n'''
 
         html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{title} — Interactive Presentation</title>
+<title>{title}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
   body {{ background: #f8f9fc; color: #1a1a2e; font-family: 'DM Sans', -apple-system, sans-serif; overflow: hidden; height: 100vh; }}
-  #player {{ display: flex; flex-direction: column; height: 100vh; background: linear-gradient(135deg, #f0f2f8 0%, #e8ecf4 100%); }}
-  #brand-logo {{ position: fixed; top: 20px; left: 24px; z-index: 100; font-size: 13px; font-weight: 600; color: #6366f1; letter-spacing: 0.5px; }}
-  #duration-badge {{ position: fixed; top: 20px; right: 24px; z-index: 100; font-size: 12px; font-family: 'DM Mono', monospace; color: #6366f1; background: rgba(99,102,241,0.1); padding: 4px 12px; border-radius: 20px; }}
-  #stage {{ flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 60px 48px 80px; }}
-  .scene {{ position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 48px 100px; opacity: 0; transition: opacity 0.6s ease; pointer-events: none; }}
-  .scene.active {{ opacity: 1; pointer-events: auto; }}
-  .scene-content {{ max-width: 800px; width: 100%; text-align: center; }}
-  .scene-content h1 {{ font-size: clamp(1.8rem, 4vw, 3.2rem); font-weight: 700; line-height: 1.2; margin-bottom: 12px; color: #1a1a2e; }}
-  .scene-content h2 {{ font-size: clamp(1.3rem, 3vw, 2rem); font-weight: 600; line-height: 1.3; margin-bottom: 10px; color: #1a1a2e; }}
-  .scene-content h3 {{ font-size: 1.1rem; font-weight: 500; margin-bottom: 8px; color: #2d2d44; }}
-  .scene-content p {{ font-size: clamp(0.95rem, 1.5vw, 1.15rem); line-height: 1.7; color: #2d2d44; margin-bottom: 8px; }}
-  .scene-content li {{ text-align: left; font-size: clamp(0.9rem, 1.4vw, 1.1rem); line-height: 1.6; color: #2d2d44; margin: 4px 0; list-style: none; padding-left: 20px; position: relative; }}
-  .scene-content li::before {{ content: "▸"; position: absolute; left: 0; color: #6366f1; }}
-  .scene-content blockquote {{ border-left: 3px solid #6366f1; padding: 8px 16px; margin: 12px 0; font-style: italic; color: #b0b0c0; text-align: left; font-size: 1.05rem; }}
-  .scene-content .big-number {{ font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 700; color: #818cf8; margin: 8px 0; }}
-  .scene-content .cta {{ display: inline-block; margin-top: 16px; padding: 10px 28px; background: #6366f1; color: #fff; border-radius: 8px; font-weight: 600; font-size: 0.95rem; }}
-  #scene-title-overlay {{ position: absolute; bottom: 76px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #9ca3af; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 1px; }}
-  #subtitle-bar {{ position: absolute; bottom: 48px; left: 50%; transform: translateX(-50%); max-width: 80%; text-align: center; font-size: 0.95rem; color: #1a1a2e; background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); padding: 8px 20px; border-radius: 12px; opacity: 0; transition: opacity 0.3s; }}
-  #subtitle-bar.visible {{ opacity: 1; }}
-  #voice-indicator, #voice-badge, #wait-indicator {{ display: none; }}
-  #controls {{ height: 56px; background: rgba(255,255,255,0.8); backdrop-filter: blur(12px); border-top: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 24px; shrink: 0; }}
+  #app {{ display: flex; flex-direction: column; height: 100vh; background: linear-gradient(135deg, #f8f9fc 0%, #e8ecf4 100%); }}
+  #header {{ padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.06); }}
+  #header h1 {{ font-size: 15px; font-weight: 600; color: #6366f1; }}
+  #header span {{ font-size: 12px; color: #9ca3af; font-family: monospace; }}
+  #stage {{ flex: 1; position: relative; overflow: hidden; }}
+  .slide {{ position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 48px 80px; opacity: 0; transition: opacity 0.4s ease; pointer-events: none; }}
+  .slide.active {{ opacity: 1; pointer-events: auto; }}
+  .slide-number {{ position: absolute; top: 16px; right: 20px; font-size: 11px; font-family: monospace; color: #9ca3af; }}
+  .slide-body {{ max-width: 800px; width: 100%; text-align: center; }}
+  .slide-body h1 {{ font-size: clamp(1.8rem, 4vw, 3rem); font-weight: 700; line-height: 1.2; margin-bottom: 12px; color: #1a1a2e; }}
+  .slide-body h2 {{ font-size: clamp(1.3rem, 3vw, 2rem); font-weight: 600; line-height: 1.3; margin-bottom: 10px; color: #1a1a2e; }}
+  .slide-body h3 {{ font-size: 1.1rem; font-weight: 500; margin-bottom: 8px; color: #2d2d44; }}
+  .slide-body p {{ font-size: clamp(0.95rem, 1.5vw, 1.15rem); line-height: 1.7; color: #2d2d44; margin-bottom: 8px; }}
+  .slide-body li {{ text-align: left; font-size: clamp(0.9rem, 1.4vw, 1.1rem); line-height: 1.6; color: #2d2d44; margin: 4px 0; list-style: none; padding-left: 20px; position: relative; }}
+  .slide-body li::before {{ content: "▸"; position: absolute; left: 0; color: #6366f1; }}
+  .slide-body blockquote {{ border-left: 3px solid #6366f1; padding: 8px 16px; margin: 12px 0; font-style: italic; color: #6366f1; text-align: left; }}
+  .slide-body .cta {{ display: inline-block; margin-top: 16px; padding: 10px 28px; background: #6366f1; color: #fff; border-radius: 8px; font-weight: 600; font-size: 0.95rem; }}
+  #controls {{ height: 56px; background: rgba(255,255,255,0.9); border-top: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 24px; flex-shrink: 0; }}
   #controls button {{ background: none; border: none; color: #6b7280; cursor: pointer; padding: 8px; border-radius: 6px; transition: all 0.15s; font-size: 14px; display: flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; }}
   #controls button:hover {{ background: rgba(99,102,241,0.1); color: #6366f1; }}
   #controls button:disabled {{ opacity: 0.2; cursor: default; }}
-  #controls .active {{ color: #6366f1; }}
-  .progress-wrap {{ flex: 1; max-width: 400px; margin: 0 12px; position: relative; }}
-  .progress-wrap input[type=range] {{ width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: rgba(0,0,0,0.08); border-radius: 2px; outline: none; cursor: pointer; }}
-  .progress-wrap input[type=range]::-webkit-slider-thumb {{ -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #6366f1; cursor: pointer; }}
-  .progress-wrap input[type=range]::-moz-range-thumb {{ width: 12px; height: 12px; border-radius: 50%; background: #6366f1; border: none; cursor: pointer; }}
-  .scene-dots {{ display: flex; gap: 4px; margin: 0 8px; }}
-  .scene-dots button {{ width: 8px; height: 8px; border-radius: 50%; background: rgba(0,0,0,0.12); border: none; padding: 0; min-width: unset; cursor: pointer; transition: all 0.2s; }}
-  .scene-dots button.active {{ background: #6366f1; transform: scale(1.3); }}
-  .time-display {{ font-family: 'DM Mono', monospace; font-size: 12px; color: #9ca3af; min-width: 50px; text-align: center; }}
-  .volume-wrap {{ display: flex; align-items: center; gap: 4px; }}
-  .volume-wrap input[type=range] {{ width: 60px; height: 3px; -webkit-appearance: none; appearance: none; background: rgba(0,0,0,0.08); border-radius: 2px; outline: none; cursor: pointer; }}
-  .volume-wrap input[type=range]::-webkit-slider-thumb {{ -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #6b7280; cursor: pointer; }}
+  .dots {{ display: flex; gap: 4px; margin: 0 8px; }}
+  .dots button {{ width: 8px; height: 8px; border-radius: 50%; background: rgba(0,0,0,0.15); border: none; padding: 0; min-width: 8px; cursor: pointer; transition: all 0.2s; }}
+  .dots button.active {{ background: #6366f1; transform: scale(1.3); }}
 </style>
 </head>
 <body>
-<div id="player">
-  <div id="brand-logo">{title}</div>
-  <div id="duration-badge">{total_dur // 60}:{total_dur % 60:02d}</div>
+<div id="app">
+  <div id="header">
+    <h1>{title}</h1>
+    <span>{len(slides)} slides</span>
+  </div>
   <div id="stage">
-    {"".join(f'''<div class="scene{" active" if i == 0 else ""}" id="{s["id"]}">
-      <div class="scene-content">{s["html_content"]}</div>
-    </div>''' for i, s in enumerate(scenes_json))}
-    <div id="scene-title-overlay"></div>
-    <div id="subtitle-bar"></div>
+    {slide_html}
   </div>
   <div id="controls">
-    <button id="play-btn" title="Play / Pause (Space)" onclick="togglePlay()">▶</button>
-    <button id="prev-btn" title="Previous scene (Left)" onclick="prevScene()" {"disabled" if len(scenes_json) <= 1 else ""}>⏮</button>
-    <button id="next-btn" title="Next scene (Right)" onclick="nextScene()" {"disabled" if len(scenes_json) <= 1 else ""}>⏭</button>
-    <div class="scene-dots">
-      {"".join(f'<button class="dot{" active" if i == 0 else ""}" data-idx="{i}" onclick="jumpTo({i})"></button>' for i in range(len(scenes_json)))}
+    <button id="prev-btn" onclick="prevSlide()" {"disabled" if len(slides) <= 1 else ""}>◀</button>
+    <div class="dots" id="dots">
+      {"".join(f'<button class="dot{" active" if i == 0 else ""}" data-idx="{i}" onclick="goTo({i})"></button>' for i in range(len(slides)))}
     </div>
-    <div class="progress-wrap">
-      <input type="range" id="seek-bar" min="0" max="100" value="0" step="0.1" oninput="seekTo(this.value)">
-    </div>
-    <span class="time-display" id="time-display">0:00 / {total_dur // 60}:{total_dur % 60:02d}</span>
-    <button id="cc-btn" title="Toggle captions (C)" onclick="toggleCaptions()" class="active">CC</button>
-    <div class="volume-wrap">
-      <button id="vol-btn" title="Toggle mute (M)" onclick="toggleMute()">🔊</button>
-      <input type="range" id="vol-bar" min="0" max="1" value="0.7" step="0.05" oninput="setVolume(this.value)">
-    </div>
+    <button id="next-btn" onclick="nextSlide()" {"disabled" if len(slides) <= 1 else ""}>▶</button>
   </div>
 </div>
-
 <script>
-  const SCENES = [{scenes_str}];
-  const MIN_DURATIONS = [{", ".join(str(s["duration"]) for s in scenes_json)}];
-  const TOTAL_DURATION = {total_dur};
-  let currentScene = 0, sceneElapsed = 0, totalElapsed = 0, playing = false, muted = false;
-  let captionsOn = true, volume = 0.7, animId = null, utterance = null, voicesLoaded = false;
-  const stage = document.getElementById('stage');
-  const scenes = document.querySelectorAll('.scene');
+  let idx = 0;
+  const total = {len(slides)};
+  const slides = document.querySelectorAll('.slide');
   const dots = document.querySelectorAll('.dot');
-  const seekBar = document.getElementById('seek-bar');
-  const timeDisplay = document.getElementById('time-display');
-  const subtitleBar = document.getElementById('subtitle-bar');
-  const sceneTitle = document.getElementById('scene-title-overlay');
-  const playBtn = document.getElementById('play-btn');
-  const volBar = document.getElementById('vol-bar');
-  const volBtn = document.getElementById('vol-btn');
-  const ccBtn = document.getElementById('cc-btn');
 
-  function formatTime(s) {{ const m = Math.floor(s/60); return m + ':' + String(Math.floor(s%60)).padStart(2,'0'); }}
-
-  function updateUI() {{
-    scenes.forEach((s, i) => s.classList.toggle('active', i === currentScene));
-    dots.forEach((d, i) => d.classList.toggle('active', i === currentScene));
-    sceneTitle.textContent = SCENES[currentScene].title;
-    const pct = totalElapsed > 0 ? (totalElapsed / TOTAL_DURATION) * 100 : 0;
-    seekBar.value = Math.min(pct, 100);
-    timeDisplay.textContent = formatTime(totalElapsed) + ' / ' + formatTime(TOTAL_DURATION);
-    playBtn.textContent = playing ? '⏸' : '▶';
+  function show(i) {{
+    if (i < 0 || i >= total) return;
+    slides.forEach((s, n) => s.classList.toggle('active', n === i));
+    dots.forEach((d, n) => d.classList.toggle('active', n === i));
+    idx = i;
   }}
 
-  function activateScene(idx) {{
-    currentScene = idx; sceneElapsed = 0;
-    updateUI(); subtitleBar.classList.remove('visible');
-    subtitleBar.textContent = '';
-    if (utterance) {{ window.speechSynthesis.cancel(); utterance = null; }}
-  }}
+  function nextSlide() {{ show(Math.min(idx + 1, total - 1)); }}
+  function prevSlide() {{ show(Math.max(idx - 1, 0)); }}
+  function goTo(i) {{ show(i); }}
 
-  function speakScene(idx) {{
-    if (utterance) {{ window.speechSynthesis.cancel(); }}
-    const text = SCENES[idx].narration;
-    if (!text) return;
-    utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95; utterance.pitch = 1.05; utterance.volume = muted ? 0 : volume;
-    const voices = window.speechSynthesis.getVoices();
-    const engVoice = voices.find(v => /(Aria|Jenny|Sonia|Libby|en-US|en-GB)/i.test(v.name)) || voices.find(v => v.lang.startsWith('en'));
-    if (engVoice) utterance.voice = engVoice;
-    utterance.onboundary = (e) => {{
-      if (e.name === 'word' && captionsOn) {{
-        subtitleBar.textContent = text.substring(0, e.charIndex + e.charLength);
-        subtitleBar.classList.add('visible');
-      }}
-    }};
-    utterance.onend = () => {{ utterance = null; }};
-    window.speechSynthesis.speak(utterance);
-  }}
-
-  function togglePlay() {{
-    playing = !playing;
-    if (playing) {{
-      if (totalElapsed === 0) activateScene(0);
-      speakScene(currentScene);
-      if (!animId) {{
-        const step = (ts) => {{
-          if (!playing) {{ animId = null; return; }}
-          const dt = 0.05;
-          sceneElapsed += dt; totalElapsed += dt;
-          if (sceneElapsed >= MIN_DURATIONS[currentScene]) {{
-            if (currentScene < SCENES.length - 1) {{
-              activateScene(currentScene + 1); speakScene(currentScene + 1);
-            }} else {{ playing = false; playBtn.textContent = '▶'; }}
-          }}
-          updateUI();
-          animId = requestAnimationFrame(step);
-        }};
-        animId = requestAnimationFrame(step);
-      }}
-    }} else {{
-      if (animId) {{ cancelAnimationFrame(animId); animId = null; }}
-      if (utterance) {{ window.speechSynthesis.cancel(); utterance = null; }}
-    }}
-    updateUI();
-  }}
-
-  function prevScene() {{ if (currentScene > 0) {{ playing = false; if (animId) {{ cancelAnimationFrame(animId); animId = null; }} activateScene(currentScene - 1); }} }}
-  function nextScene() {{ if (currentScene < SCENES.length - 1) {{ playing = false; if (animId) {{ cancelAnimationFrame(animId); animId = null; }} activateScene(currentScene + 1); }} }}
-  function jumpTo(idx) {{ if (idx >= 0 && idx < SCENES.length) {{ playing = false; if (animId) {{ cancelAnimationFrame(animId); animId = null; }} activateScene(idx); }} }}
-  function seekTo(pct) {{ totalElapsed = (pct / 100) * TOTAL_DURATION; let cum = 0; for (let i = 0; i < SCENES.length; i++) {{ cum += MIN_DURATIONS[i]; if (totalElapsed < cum) {{ if (currentScene !== i) activateScene(i); sceneElapsed = MIN_DURATIONS[i] - (cum - totalElapsed); break; }} }} updateUI(); }}
-  function toggleCaptions() {{ captionsOn = !captionsOn; ccBtn.classList.toggle('active', captionsOn); if (!captionsOn) subtitleBar.classList.remove('visible'); }}
-  function toggleMute() {{ muted = !muted; volBtn.textContent = muted ? '🔇' : (volume < 0.3 ? '🔈' : volume > 0.7 ? '🔊' : '🔉'); if (utterance) utterance.volume = muted ? 0 : volume; }}
-  function setVolume(v) {{ volume = v; volBar.value = v; muted = false; volBtn.textContent = v < 0.3 ? '🔈' : v > 0.7 ? '🔊' : '🔉'; if (utterance) utterance.volume = v; }}
-
-  document.addEventListener('keydown', e => {{
-    if (e.target.tagName === 'INPUT') return;
-    if (e.key === ' ') {{ e.preventDefault(); togglePlay(); }}
-    else if (e.key === 'ArrowLeft') prevScene();
-    else if (e.key === 'ArrowRight') nextScene();
-    else if (e.key === 'c' || e.key === 'C') toggleCaptions();
-    else if (e.key === 'm' || e.key === 'M') toggleMute();
+  document.addEventListener('keydown', function(e) {{
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {{ e.preventDefault(); nextSlide(); }}
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {{ e.preventDefault(); prevSlide(); }}
+    else if (e.key === 'Home') {{ e.preventDefault(); show(0); }}
+    else if (e.key === 'End') {{ e.preventDefault(); show(total - 1); }}
   }});
-
-  // Load voices and show ready
-  if (window.speechSynthesis) {{
-    window.speechSynthesis.onvoiceschanged = () => {{ voicesLoaded = true; }};
-    window.speechSynthesis.getVoices();
-  }}
 </script>
 </body>
 </html>"""
