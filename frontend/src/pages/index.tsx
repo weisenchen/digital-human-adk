@@ -11,6 +11,10 @@ import TalkShowMode from './components/TalkShow/TalkShowMode.component';
 import MeetingSetup from './components/MeetingMode/MeetingSetup.component';
 import MeetingMode from './components/MeetingMode/MeetingMode.component';
 import type { MeetingConfig } from './components/MeetingMode/MeetingSetup.component';
+import PresentationSetup from './components/PresentationMode/PresentationSetup.component';
+import type { WorkReportConfig } from './components/PresentationMode/PresentationSetup.component';
+import WorkReportMode from './components/WorkReport/WorkReportMode.component';
+import PresentationMode from './components/PresentationMode/PresentationMode.component';
 
 interface TalkShowConfig {
   topic: string;
@@ -29,6 +33,9 @@ export default function Home() {
   const [talkShowConfig, setTalkShowConfig] = useState<TalkShowConfig | null>(null);
   const [showMeetingSetup, setShowMeetingSetup] = useState(false);
   const [meetingConfig, setMeetingConfig] = useState<MeetingConfig | null>(null);
+  const [showPresentationSetup, setShowPresentationSetup] = useState(false);
+  const [workReportConfig, setWorkReportConfig] = useState<WorkReportConfig | null>(null);
+  const [showClassicPresentation, setShowClassicPresentation] = useState(false);
 
   // Listen for open-talk-show event from sidebar
   useEffect(() => {
@@ -44,6 +51,13 @@ export default function Home() {
     return () => window.removeEventListener('open-meeting', handler);
   }, []);
 
+  // Listen for open-presentation event from sidebar
+  useEffect(() => {
+    const handler = () => setShowPresentationSetup(true);
+    window.addEventListener('open-presentation', handler);
+    return () => window.removeEventListener('open-presentation', handler);
+  }, []);
+
   return (
     <VoiceAssistantProvider>
       <div className="h-screen flex flex-col bg-[var(--md-background)]">
@@ -55,6 +69,19 @@ export default function Home() {
           <MeetingMode
             config={meetingConfig}
             onEnd={() => setMeetingConfig(null)}
+          />
+        ) : workReportConfig ? (
+          <WorkReportMode
+            config={workReportConfig}
+            characterName=""
+            onEnd={() => setWorkReportConfig(null)}
+          />
+        ) : showClassicPresentation ? (
+          <PresentationMode
+            characterName=""
+            voiceId=""
+            language="en"
+            onClose={() => setShowClassicPresentation(false)}
           />
         ) : !talkShowConfig ? (
           <div className="flex-1 flex min-h-0">
@@ -114,6 +141,23 @@ export default function Home() {
             setShowCyborg(false);
           }}
           onClose={() => setShowMeetingSetup(false)}
+        />
+      )}
+
+      {/* Presentation Setup modal — choose WorkReport or Classic */}
+      {showPresentationSetup && (
+        <PresentationSetup
+          onStartWorkReport={(config) => {
+            setWorkReportConfig(config);
+            setShowPresentationSetup(false);
+            setShowCyborg(false);
+          }}
+          onStartClassic={() => {
+            setShowClassicPresentation(true);
+            setShowPresentationSetup(false);
+            setShowCyborg(false);
+          }}
+          onClose={() => setShowPresentationSetup(false)}
         />
       )}
     </VoiceAssistantProvider>

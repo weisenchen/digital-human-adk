@@ -1223,6 +1223,384 @@ def create_app() -> FastAPI:
             except Exception as exc:
                 return {"summary": f"(Error: {exc})"}
 
+    # ── Work Report (工作汇报) ──────────────────────────────────────────────
+
+    @app.post("/api/work-report/ask")
+    async def work_report_ask(
+        mode: str = Form("present"),
+        slide_content: str = Form(""),
+        background: str = Form(""),
+        ai_personality: str = Form("data-driven"),
+        message: str = Form(""),
+        history_json: str = Form("[]"),
+        preset_questions: str = Form("[]"),
+        asked_questions: str = Form("[]"),
+        language: str = Form("en"),
+        current_slide_index: int = Form(0),
+    ):
+        """Work Report: AI plays a local team lead reporting to the CTO.
+
+        Returns JSON: {"reply": "...", "sound_effect": "...",
+                       "slide_transition": "next"|"stay"|null,
+                       "next_slide_index": int}
+        """
+        import json
+        import re as _re
+        try:
+            history: list = json.loads(history_json)
+        except (json.JSONDecodeError, TypeError):
+            history = []
+        try:
+            preset_qs: list = json.loads(preset_questions)
+        except (json.JSONDecodeError, TypeError):
+            preset_qs = []
+        try:
+            asked_qs: list = json.loads(asked_questions)
+        except (json.JSONDecodeError, TypeError):
+            asked_qs = []
+
+        # Personality descriptions (工作汇报 style)
+        PERSONALITY_MAP = {
+            "data-driven": "数据汇报型 — You are a data-driven team lead. You back every statement with metrics, KPIs, and concrete numbers. You present trends, growth rates, and quantitative progress clearly. (Communication style: professional, precise, numbers-first.)",
+            "engineering": "技术深耕型 — You are an engineering-focused team lead. You emphasize technical depth, architecture decisions, code quality, and system reliability. You communicate trade-offs and technical rationale. (Communication style: analytical, detailed, technically precise.)",
+            "visionary": "市场激情型 — You are a market-visionary team lead. You focus on user impact, market opportunities, competitive advantages, and strategic direction. You're passionate about the product and its users. (Communication style: energetic, inspiring, big-picture.)",
+            "cautious": "谨慎保守型 — You are a cautious, risk-aware team lead. You highlight potential risks, bottlenecks, and concerns before celebrating wins. You present mitigations alongside progress. (Communication style: measured, thorough, risk-conscious.)",
+            "results-driven": "目标导向型 — You are a results-oriented team lead. You anchor every update to OKRs, milestones, deadlines, and deliverables. You clearly communicate what was achieved vs. what's at risk. (Communication style: direct, concise, outcome-focused.)",
+        }
+
+        style_desc = PERSONALITY_MAP.get(
+            ai_personality,
+            "You are a professional, data-oriented team lead reporting to the CTO.",
+        )
+
+        # Build system prompt
+        lang_label = "English" if language.split("-")[0] == "en" else "Chinese"
+        system_parts = [
+            f"You are a local team lead (本地项目负责人) reporting work progress to the CTO. You are presenting a slide deck.",
+            "",
+            f"── YOUR PERSONALITY ──",
+            style_desc,
+            "",
+            f"── COMMUNICATION STYLE ──",
+            f"- Professional, respectful, and data-oriented",
+            f"- Address the CTO as '您' (formal You) or 'CTO' depending on {lang_label} context",
+            f"- Be concise and structured — the CTO has limited time",
+            f"- Show ownership: use 'we' (our team, we've achieved) not impersonal statements",
+            f"- When reporting problems, also present proposed solutions",
+            f"- CRITICAL: Never include stage directions, action descriptions, or any text in asterisks",
+            f"  or brackets like *presents slide*, [nods], or (gestures). Just speak your lines directly.",
+            "",
+            f"── MODE HANDLING ──",
+        ]
+
+        if mode == "present":
+            system_parts.extend([
+                f"CURRENT MODE: Presenting slide #{current_slide_index}",
+                f"You are presenting a slide to the CTO. Speak naturally about what the slide shows.",
+                f"Explain the key data points, insights, and implications.",
+                f"After finishing the slide content, transition naturally by saying you can move to the next",
+                f"slide or take questions.",
+            ])
+        elif mode == "cto_question":
+            system_parts.extend([
+                f"CURRENT MODE: Answering a question from the CTO",
+                f"The CTO has asked you something. Answer professionally with data and facts.",
+                f"Be direct and thorough. If you don't know something, say so honestly.",
+            ])
+        elif mode == "ai_question":
+            system_parts.extend([
+                f"CURRENT MODE: Asking a preset question to the CTO",
+                f"You have prepared questions to ask the CTO. Ask one of your preset questions naturally",
+                f"in the context of the current discussion. Do not ask a question that has already been asked.",
+            ])
+
+        if slide_content.strip():
+            system_parts.append("")
+            system_parts.append("── CURRENT SLIDE CONTENT ──")
+            system_parts.append(slide_content.strip())
+
+        if background.strip():
+            system_parts.append("")
+            system_parts.append("── BACKGROUND / STRATEGIC CONTEXT ──")
+            system_parts.append(background.strip())
+
+        if preset_qs and mode == "ai_question":
+            # Find an unasked question
+            unasked = [q for q in preset_qs if q not in asked_qs]
+            if unasked:
+                system_parts.append("")
+                system_parts.append("── PRESET QUESTIONS FOR CTO ──")
+                system_parts.append("Pick ONE of these questions to ask the CTO. Do NOT ask one that has already been asked:")
+                for i, q in enumerate(unasked):
+                    marker = "✅" if q in asked_qs else "⬜"
+                    system_parts.append(f"  {marker} {q}")
+                system_parts.append("")
+                system_parts.append(f"Already asked: {len(asked_qs)}/{len(preset_qs)} questions used.")
+
+        system_parts.append("")
+        system_parts.append("── SOUND EFFECTS ──")
+        system_parts.append("You can use {{SOUND}} tags to trigger subtle sound effects. Available tags:")
+        system_parts.append("- {{SOUND}} — Use when transitioning between slides or key moments (e.g., slide transition, emphasis point)")
+        system_parts.append("- Place {{SOUND}} at the END of your response, after your last sentence.")
+        system_parts.append("- Do NOT overuse — at most one sound tag per response.")
+        system_parts.append("- Do NOT describe sounds in words — use ONLY the {{SOUND}} tag.")
+
+        system_prompt = "\n".join(system_parts)
+
+        # Build messages
+        messages = [{"role": "system", "content": system_prompt}]
+
+        if mode == "present" and not history:
+            messages.append({
+                "role": "user",
+                "content": (
+                    f"Present slide #{current_slide_index} to the CTO. Explain what's on the slide, "
+                    f"highlight key data points, and state the implications. Be professional and concise. "
+                    f"If the slide_content is empty, just introduce the current section of the report."
+                ),
+            })
+        elif mode == "cto_question" and message.strip():
+            for h in history:
+                role = "assistant" if h.get("role") == "ai" else "user"
+                messages.append({"role": role, "content": h.get("content", "")})
+            messages.append({"role": "user", "content": f"[CTO Question]: {message}"})
+        elif mode == "ai_question":
+            for h in history:
+                role = "assistant" if h.get("role") == "ai" else "user"
+                messages.append({"role": role, "content": h.get("content", "")})
+            messages.append({"role": "user", "content": "Ask one of your prepared questions to the CTO now."})
+        else:
+            if history:
+                for h in history:
+                    role = "assistant" if h.get("role") == "ai" else "user"
+                    messages.append({"role": role, "content": h.get("content", "")})
+            if message.strip():
+                messages.append({"role": "user", "content": message})
+            else:
+                messages.append({"role": "user", "content": f"Continue presenting slide #{current_slide_index}."})
+
+        # Route to the active model
+        model_id = _get_model_for_session("work_report_session")
+        info = MODEL_CATALOG.get(model_id)
+
+        if not info:
+            return {"reply": "Work Report is not available. Please select a model in Settings.", "sound_effect": None, "slide_transition": None, "next_slide_index": current_slide_index}
+
+        if info.get("backend") == "openai":
+            client = get_openai_client(model_id)
+            if not client:
+                return {"reply": "AI client not available.", "sound_effect": None, "slide_transition": None, "next_slide_index": current_slide_index}
+            try:
+                resp = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        client.chat.completions.create,
+                        model=info["model"],
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=600,
+                    ),
+                    timeout=60,
+                )
+                reply = resp.choices[0].message.content or ""
+            except Exception as exc:
+                logger.error("Work report error: %s", exc, exc_info=True)
+                return {"reply": f"(Error: {exc})", "sound_effect": None, "slide_transition": None, "next_slide_index": current_slide_index}
+        else:
+            # ADK (Gemini) route
+            runner = _get_adk_runner(model_id)
+            svc = _get_adk_session_service(model_id)
+            if not runner or not svc:
+                return {"reply": f"(Error: Model '{model_id}' not available)", "sound_effect": None, "slide_transition": None, "next_slide_index": current_slide_index}
+            try:
+                await svc.create_session(
+                    app_name="digital_human",
+                    user_id="default_user",
+                    session_id="work_report_session",
+                )
+            except Exception:
+                pass
+
+            prompt_text = "\n\n".join([f"{m['role']}: {m['content']}" for m in messages])
+            new_msg = types.Content(role="user", parts=[types.Part(text=prompt_text)])
+            events = []
+            async for event in runner.run_async(
+                user_id="default_user",
+                session_id="work_report_session",
+                new_message=new_msg,
+            ):
+                events.append(event)
+            reply = ""
+            for e in reversed(events):
+                if e.author != "user" and e.content and e.content.parts and not e.partial:
+                    reply = e.content.parts[0].text or ""
+                    break
+
+        # Parse sound effect
+        sound_effect = None
+        m = _re.search(r'\{\{(\w+)\}\}', reply)
+        if m and m.group(1) in ('SOUND', 'APPLAUSE'):
+            sound_effect = m.group(1).lower()
+            reply = _re.sub(r'\s*\{\{\w+\}\}\s*', '', reply).strip()
+
+        # Determine slide transition based on reply content
+        slide_transition = None
+        next_slide_index = current_slide_index
+        lower_reply = reply.lower()
+        if any(phrase in lower_reply for phrase in ["next slide", "move to the next", "let's move on", "next slide please", "go to the next"]):
+            slide_transition = "next"
+            next_slide_index = current_slide_index + 1
+
+        return {
+            "reply": reply,
+            "sound_effect": sound_effect,
+            "slide_transition": slide_transition,
+            "next_slide_index": next_slide_index,
+        }
+
+    @app.post("/api/work-report/generate-slides")
+    async def work_report_generate_slides(
+        outline: str = Form(""),
+        background: str = Form(""),
+        personality: str = Form("data-driven"),
+        num_slides: int = Form(5),
+        language: str = Form("en"),
+    ):
+        """Generate work report slides from an outline with background context.
+
+        Returns JSON: {"slides": [{"display": "...", "speech": "..."}, ...]}
+        """
+        try:
+            # Build personality description for slide generation
+            PERSONALITY_DESC = {
+                "data-driven": "Data-driven: slides focus on metrics, KPIs, charts, and quantitative progress. Use DATA slide types prominently.",
+                "engineering": "Engineering: slides focus on technical architecture, system design, code quality, and engineering milestones. Use CONTENT and DATA types.",
+                "visionary": "Visionary: slides focus on market impact, user growth, competitive positioning, and strategic vision. Use QUOTE and DATA types.",
+                "cautious": "Cautious: slides present both progress AND risks/mitigations. Use COMPARE and CONTENT types to show balanced perspective.",
+                "results-driven": "Results-driven: slides are structured around OKRs, milestones, deliverables, and outcomes. Use DATA and CONTENT types.",
+            }
+            style = PERSONALITY_DESC.get(personality, "Professional work report format.")
+
+            # Normalize language
+            lang_code = language.split("-")[0] if language else "en"
+            lang = "Chinese" if lang_code in ("zh", "cmn") else "English"
+
+            prompt = (
+                f"You are a professional presentation designer creating a WORK REPORT (工作汇报) for a local team lead "
+                f"to present to the CTO.\n\n"
+                f"Personality: {style}\n\n"
+                f"Generate exactly {num_slides} well-structured slides based on the outline below.\n\n"
+                f"Each slide has TWO parts separated by '===SPEECH===':\n"
+                f"  1. DISPLAY content — what appears on screen (markdown, presentation-ready)\n"
+                f"  2. SPEECH script — what the team lead says aloud (conversational narration)\n\n"
+                f"── SLIDE TYPE SYSTEM ──\n"
+                f"Start every slide with its type marker:\n"
+                f"##TITLE — Opening slide, large centered heading + subtitle\n"
+                f"##SECTION — Chapter divider between main sections\n"
+                f"##CONTENT — Standard content with title and bullet points (DEFAULT)\n"
+                f"##QUOTE — Highlight a key quote or testimony\n"
+                f"##DATA — Emphasize a statistic or key number\n"
+                f"##COMPARE — Side-by-side comparison\n"
+                f"##CLOSE — Summary or call to action\n\n"
+                f"── RULES ──\n"
+                f"- VARY the types across {num_slides} slides. Don't use CONTENT for every slide.\n"
+                f"- First slide should be TITLE. Last slide should be CLOSE.\n"
+                f"- Use SECTION between major topic transitions.\n"
+                f"- Use DATA when a statistic or number is the star of the slide.\n"
+                f"- DISPLAY: concise, scannable, presentation-ready markdown.\n"
+                f"- SPEECH: conversational narration covering the same key points in more detail.\n"
+                f"- Speech can rephrase, expand, or explain — it does NOT need to match display verbatim.\n"
+                f"- Use `---` to separate slides.\n"
+                f"- Use {lang} for all content.\n"
+            )
+
+            if background.strip():
+                prompt += f"\n── BACKGROUND / STRATEGIC CONTEXT ──\n{background}\n\n"
+
+            prompt += f"\n── OUTLINE ──\n{outline}\n\n"
+
+            prompt += (
+                f"EXAMPLE OUTPUT (2 slides):\n"
+                f"##TITLE\n## Q2 Progress Report\nKey achievements and roadmap update\n\n"
+                f"===SPEECH===\nGood morning, CTO. Let me walk you through our Q2 progress...\n\n"
+                f"---\n\n"
+                f"##DATA\n## Revenue Growth\n**32%** increase in MRR\n- Exceeded target by 8%\n- $2.4M new ARR added\n\n"
+                f"===SPEECH===\nLet's start with the numbers. Our revenue grew 32% this quarter...\n"
+            )
+
+            model_id = _get_model_for_session("work_report_session")
+            info = MODEL_CATALOG.get(model_id)
+
+            if not info:
+                return {"slides": [{"display": outline, "speech": outline}]}
+
+            if info.get("backend") == "openai":
+                client = get_openai_client(model_id)
+                if not client:
+                    return {"slides": [{"display": outline, "speech": outline}]}
+                try:
+                    resp = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            client.chat.completions.create,
+                            model=info["model"],
+                            messages=[{"role": "user", "content": prompt}],
+                            temperature=0.3,
+                        ),
+                        timeout=120,
+                    )
+                    reply = resp.choices[0].message.content or ""
+                except Exception as exc:
+                    logger.error("Work report slide gen error: %s", exc, exc_info=True)
+                    return {"slides": [{"display": outline, "speech": outline}], "error": str(exc)}
+            else:
+                # ADK (Gemini) route
+                runner = _get_adk_runner(model_id)
+                svc = _get_adk_session_service(model_id)
+                if not runner or not svc:
+                    return {"slides": [{"display": outline, "speech": outline}]}
+                try:
+                    await svc.create_session(
+                        app_name="digital_human",
+                        user_id="default_user",
+                        session_id="work_report_session",
+                    )
+                except Exception:
+                    pass
+                new_msg = types.Content(role="user", parts=[types.Part(text=prompt)])
+                events = []
+                async for event in runner.run_async(
+                    user_id="default_user",
+                    session_id="work_report_session",
+                    new_message=new_msg,
+                ):
+                    events.append(event)
+                reply = ""
+                for e in reversed(events):
+                    if e.author != "user" and e.content and e.content.parts and not e.partial:
+                        reply = e.content.parts[0].text or ""
+                        break
+
+            # Parse slides using the same logic as _parse_slides
+            if not reply.strip():
+                return {"slides": [{"display": outline, "speech": outline}]}
+            raw_slides = [s.strip() for s in reply.split("---") if s.strip()]
+            slides = []
+            for slide_text in raw_slides:
+                if "===SPEECH===" in slide_text:
+                    parts = slide_text.split("===SPEECH===", 1)
+                    display = parts[0].strip()
+                    speech = parts[1].strip()
+                else:
+                    display = slide_text
+                    speech = slide_text
+                slides.append({"display": display, "speech": speech})
+            if not slides:
+                slides = [{"display": reply.strip(), "speech": reply.strip()}]
+            return {"slides": slides}
+
+        except Exception as exc:
+            logger.error("Work report slide gen error: %s", exc, exc_info=True)
+            return {"slides": [{"display": outline, "speech": outline}], "error": str(exc)}
+
     @app.get("/api/voices")
     async def get_voices():
         """Return available TTS voices with locale, gender, and popular names."""

@@ -394,3 +394,52 @@ export const getMeetingSummary = async (params: {
   if (!res.ok) throw new Error(`Meeting summary request failed: ${res.status}`);
   return res.json();
 };
+
+/** Send a message to the Work Report AI host */
+export const sendWorkReportMessage = async (params: {
+  mode: 'present' | 'cto_question' | 'ai_question';
+  slideContent: string;
+  background: string;
+  aiPersonality: string;
+  message: string;
+  history: Array<{role: string; content: string}>;
+  presetQuestions: string[];
+  askedQuestions: string[];
+  language: string;
+  currentSlideIndex: number;
+}): Promise<{reply: string}> => {
+  const formData = new FormData();
+  formData.append('mode', params.mode);
+  formData.append('slide_content', params.slideContent);
+  formData.append('background', params.background);
+  formData.append('ai_personality', params.aiPersonality);
+  formData.append('message', params.message);
+  formData.append('history_json', JSON.stringify(params.history));
+  formData.append('preset_questions', JSON.stringify(params.presetQuestions));
+  formData.append('asked_questions', JSON.stringify(params.askedQuestions));
+  formData.append('language', params.language);
+  formData.append('current_slide_index', String(params.currentSlideIndex));
+  const res = await fetch(`${BASE_URL}/api/work-report/ask`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`Work report request failed: ${res.status}`);
+  const data = await res.json();
+  return { reply: data.reply as string };
+};
+
+/** Generate slides for a work report from an outline */
+export const generateReportSlides = async (params: {
+  outline: string;
+  background: string;
+  personality: string;
+  numSlides: number;
+  language: string;
+}): Promise<any> => {
+  const formData = new FormData();
+  formData.append('outline', params.outline);
+  formData.append('background', params.background);
+  formData.append('personality', params.personality);
+  formData.append('num_slides', String(params.numSlides));
+  formData.append('language', params.language);
+  const res = await fetch(`${BASE_URL}/api/work-report/generate-slides`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`Report slide generation failed: ${res.status}`);
+  return res.json();
+};
