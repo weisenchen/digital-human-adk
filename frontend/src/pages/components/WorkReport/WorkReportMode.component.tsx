@@ -247,10 +247,12 @@ export default function WorkReportMode({
             // Auto-advance to next slide
             goToSlide(slideIndex + 1);
           } else {
-            // All slides done → transition to CTO Q&A phase
-            setPhase('cto-qa');
-            // Ask "Any questions?"
-            askCTOQuestionOpen();
+            // All slides done → transition to AI questions phase directly
+            setPhase('ai-questions');
+            // Start asking preset questions
+            setTimeout(() => {
+              askNextQuestion();
+            }, 500);
           }
         }
       };
@@ -447,14 +449,14 @@ export default function WorkReportMode({
       .filter(({ i }) => !askedQuestions.includes(i));
 
     if (unanswered.length === 0) {
-      // All questions done
-      setPhase('ended');
-      const endMsg: ChatMessage = {
+      // All questions done → transition to CTO Q&A
+      setPhase('cto-qa');
+      const openMsg: ChatMessage = {
         role: 'ai',
-        content: `Thank you for your time, ${config.reportToRole}. The work report is complete. I'll prepare the summary document for you.`,
+        content: `That covers all my questions. Do you have any questions or comments, ${config.reportToRole}?`,
       };
-      setMessages(prev => [...prev, endMsg]);
-      speakText(`Thank you for your time, ${config.reportToRole}! The work report is complete.`, currentSlide);
+      setMessages(prev => [...prev, openMsg]);
+      speakText(`That covers all my questions. Do you have any questions or comments, ${config.reportToRole}?`, currentSlide);
       return;
     }
 
