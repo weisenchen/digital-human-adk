@@ -18,6 +18,17 @@ interface MeetingModeProps {
   onEnd: () => void;
 }
 
+/** Highlight question sentences ending with ? */
+function highlightQuestions(text: string): React.ReactNode {
+  const parts = text.split(/(?<=[.!?])\s+/);
+  return parts.map((part, i) => {
+    const isQuestion = part.trim().endsWith('?');
+    return isQuestion
+      ? <span key={i} className="font-bold text-purple-700 bg-purple-50 px-1 -mx-1 rounded">{part} </span>
+      : <span key={i}>{part} </span>;
+  });
+}
+
 export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
   const { selectedLanguage, selectedVoice, setMouthOpen } = useContext(VoiceAssistantContext);
   const [messages, setMessages] = useState<MeetingMessage[]>([]);
@@ -359,7 +370,7 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
                       <span className="ml-1.5 inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                     )}
                   </span>
-                  <span className="whitespace-pre-wrap">{msg.content}</span>
+                  <span className="whitespace-pre-wrap">{highlightQuestions(msg.content)}</span>
                 </div>
               </div>
             ))}
