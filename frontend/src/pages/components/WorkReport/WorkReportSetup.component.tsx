@@ -162,7 +162,7 @@ export default function WorkReportSetup({ onStart, onClose }: WorkReportSetupPro
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Background Materials
               <span className="text-gray-400 font-normal ml-1">
-                (context for the AI lead)
+                (data & context — fills slide content with real facts)
               </span>
             </label>
             <textarea
@@ -268,7 +268,14 @@ export default function WorkReportSetup({ onStart, onClose }: WorkReportSetupPro
             </div>
 
             {slideMethod === 'ai-generate' ? (
-              <textarea
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Slide Outline
+                  <span className="text-gray-400 font-normal ml-1">
+                    (structure — defines what each slide covers)
+                  </span>
+                </label>
+                <textarea
                 value={slideOutline}
                 onChange={(e) => setSlideOutline(e.target.value)}
                 placeholder="Describe the slide outline. e.g.:
@@ -279,6 +286,7 @@ export default function WorkReportSetup({ onStart, onClose }: WorkReportSetupPro
                 rows={6}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 resize-none"
               />
+              </div>
             ) : (
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
                 <input
