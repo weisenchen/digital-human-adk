@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { X, Send, Volume2, Clock, Target, ChevronRight, Mic, Square } from 'lucide-react';
-import { sendMeetingMessage } from '@/services/adk-assistant.service';
+import { X, Send, Volume2, Clock, Target, Mic, Square } from 'lucide-react';
+import { sendMeetingMessage, getAIAudioFromText } from '@/services/adk-assistant.service';
+import { getSharedAudioContext } from '@/lib/audio-context';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 import type { MeetingConfig } from './MeetingSetup.component';
 
@@ -18,16 +19,24 @@ interface MeetingModeProps {
 }
 
 export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
-  const { selectedLanguage } = useContext(VoiceAssistantContext);
+  const { selectedLanguage, selectedVoice, setMouthOpen } = useContext(VoiceAssistantContext);
   const [messages, setMessages] = useState<MeetingMessage[]>([]);
   const [input, setInput] = useState('');
   const [isWaiting, setIsWaiting] = useState(false);
   const [currentItemIdx, setCurrentItemIdx] = useState(0);
   const [timerSeconds, setTimerSeconds] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesRef = useRef<MeetingMessage[]>([]);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isPausedRef = useRef(false);
+  const spokenIdsRef = useRef<Set<number>>(new Set());
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const voiceRecogRef = useRef<any>(null);
+  const voiceFinalRef = useRef<string>('');
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
@@ -35,19 +44,15 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Timer countdown per agenda item
+  // Timer
   useEffect(() => {
     if (currentItemIdx >= config.agenda.length) return;
     const item = config.agenda[currentItemIdx];
-    const totalSec = item.durationMinutes * 60;
-    setTimerSeconds(totalSec);
+    setTimerSeconds(item.durationMinutes * 60);
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     timerIntervalRef.current = setInterval(() => {
       setTimerSeconds(prev => {
-        if (prev <= 1) {
-          if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-          return 0;
-        }
+        if (prev <= 1) { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); return 0; }
         return prev - 1;
       });
     }, 1000);
@@ -59,6 +64,73 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
     const s = sec % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
+
+  // Audio setup
+  const getAudioCtx = useCallback((): AudioContext => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = getSharedAudioContext();
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.connect(audioContextRef.current.destination);
+    }
+    return audioContextRef.current;
+  }, []);
+
+  const stopSpeaking = useCallback(() => {
+    if (currentSourceRef.current) {
+      try { currentSourceRef.current.stop(); } catch {}
+      currentSourceRef.current = null;
+    }
+    if (rafIdRef.current) { cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; }
+    setIsSpeaking(false);
+    setMouthOpen(0);
+  }, [setMouthOpen]);
+
+  // Speak host response via TTS
+  const speakHostResponse = useCallback(async (text: string) => {
+    stopSpeaking();
+    if (!selectedVoice) return;
+    setIsSpeaking(true);
+    try {
+      const blob = await getAIAudioFromText(text, 'en', selectedVoice);
+      const audioCtx = getAudioCtx();
+      const arrayBuffer = await blob.arrayBuffer();
+      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+      const source = audioCtx.createBufferSource();
+      currentSourceRef.current = source;
+      source.buffer = audioBuffer;
+      const analyser = analyserRef.current!;
+      source.connect(analyser);
+      source.start(0);
+      const updateMouth = () => {
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(dataArray);
+        const volume = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        setMouthOpen(Math.min(1, volume / 50));
+        if (audioCtx.state !== 'closed') rafIdRef.current = requestAnimationFrame(updateMouth);
+      };
+      updateMouth();
+      source.onended = () => {
+        rafIdRef.current = null;
+        setIsSpeaking(false);
+        setMouthOpen(0);
+      };
+    } catch {
+      setIsSpeaking(false);
+      setMouthOpen(0);
+    }
+  }, [getAudioCtx, stopSpeaking, setMouthOpen, selectedVoice]);
+
+  // Auto-play TTS for new host messages
+  useEffect(() => {
+    if (isWaiting || !selectedVoice) return;
+    const lastIdx = messages.length - 1;
+    if (lastIdx < 0) return;
+    const lastMsg = messages[lastIdx];
+    if (lastMsg.role !== 'host' || spokenIdsRef.current.has(lastIdx)) return;
+    if (lastMsg.content.startsWith('(Error')) return;
+    spokenIdsRef.current.add(lastIdx);
+    speakHostResponse(lastMsg.content);
+  }, [messages, isWaiting, selectedVoice, speakHostResponse]);
 
   const callHost = useCallback(async (history: MeetingMessage[], msg: string) => {
     setIsWaiting(true);
@@ -89,30 +161,73 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
     startMeeting();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSend = async () => {
-    const text = input.trim();
-    if (!text || isWaiting) return;
+  const handleSend = async (text: string) => {
+    if (!text.trim() || isWaiting) return;
     setInput('');
 
-    const userMsg: MeetingMessage = { role: 'participant', content: text, author: 'You' };
+    const userMsg: MeetingMessage = { role: 'participant', content: text.trim(), author: 'You' };
     const updated = [...messagesRef.current, userMsg];
     setMessages(updated);
 
-    const reply = await callHost(updated, text);
+    const reply = await callHost(updated, text.trim());
     const hostMsg: MeetingMessage = { role: 'host', content: reply, author: 'Meeting Host' };
     const final = [...updated, hostMsg];
     setMessages(final);
 
-    // Auto-advance agenda after ~3 host responses per item
     const hostCount = final.filter(m => m.role === 'host').length;
     const newIdx = Math.min(Math.floor(hostCount / 3), config.agenda.length - 1);
     setCurrentItemIdx(newIdx);
   };
 
+  // Voice recording (tap-to-record)
+  const toggleRecording = () => {
+    if (isRecording) {
+      // Stop recording
+      if (voiceRecogRef.current) {
+        voiceRecogRef.current.stop();
+        voiceRecogRef.current = null;
+      }
+      setIsRecording(false);
+      const text = voiceFinalRef.current.trim();
+      voiceFinalRef.current = '';
+      if (text) handleSend(text);
+    } else {
+      // Start recording
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert('Voice input is not supported in this browser.');
+        return;
+      }
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        voiceFinalRef.current = transcript;
+      };
+      recognition.onerror = () => { setIsRecording(false); };
+      recognition.onend = () => {
+        setIsRecording(false);
+        const text = voiceFinalRef.current.trim();
+        voiceFinalRef.current = '';
+        if (text) handleSend(text);
+      };
+      voiceRecogRef.current = recognition;
+      voiceFinalRef.current = '';
+      recognition.start();
+      setIsRecording(true);
+    }
+  };
+
+  const handleTextSend = () => {
+    handleSend(input);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleTextSend();
     }
   };
 
@@ -126,11 +241,11 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
         <div className="flex items-center gap-2">
           <Target className="w-4 h-4 text-[var(--md-tertiary)]" />
           <span className="text-sm font-semibold text-gray-900">{config.title}</span>
+          {isSpeaking && <Volume2 className="w-3.5 h-3.5 text-green-500 animate-pulse" />}
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
-              // Generate meeting summary
               const summary = messages.map(m =>
                 `[${m.role === 'host' ? 'Host' : m.author}]: ${m.content}`
               ).join('\n\n');
@@ -166,47 +281,30 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
                 const done = idx < currentItemIdx;
                 const active = idx === currentItemIdx;
                 return (
-                  <div
-                    key={item.id}
-                    className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all ${
-                      active
-                        ? 'bg-[var(--md-tertiary)]/10 border border-[var(--md-tertiary)]/20'
-                        : done
-                        ? 'text-gray-400'
-                        : 'text-gray-600'
-                    }`}
-                  >
+                  <div key={item.id} className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs transition-all ${
+                    active ? 'bg-[var(--md-tertiary)]/10 border border-[var(--md-tertiary)]/20' : done ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                      done ? 'bg-green-100 text-green-600' :
-                      active ? 'bg-[var(--md-tertiary)] text-white' :
-                      'bg-gray-200 text-gray-500'
+                      done ? 'bg-green-100 text-green-600' : active ? 'bg-[var(--md-tertiary)] text-white' : 'bg-gray-200 text-gray-500'
                     }`}>
                       {done ? '✓' : idx + 1}
                     </span>
-                    <span className={`flex-1 truncate ${done ? 'line-through' : ''}`}>
-                      {item.title}
-                    </span>
+                    <span className={`flex-1 truncate ${done ? 'line-through' : ''}`}>{item.title}</span>
                     <span className="text-[10px] opacity-60">{item.durationMinutes}m</span>
                   </div>
                 );
               })}
             </div>
           </div>
-
-          {/* Timer */}
           <div className="px-3 py-3 border-b border-gray-200">
             <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Timer</div>
             <div className={`text-center py-3 rounded-lg text-lg font-bold font-mono ${
-              timerCritical ? 'text-red-600 bg-red-50' :
-              timerWarning ? 'text-amber-600 bg-amber-50' :
-              'text-gray-700 bg-white'
+              timerCritical ? 'text-red-600 bg-red-50' : timerWarning ? 'text-amber-600 bg-amber-50' : 'text-gray-700 bg-white'
             }`}>
               <Clock className="w-4 h-4 inline mr-1" />
               {formatTime(timerSeconds)}
             </div>
           </div>
-
-          {/* Participants */}
           <div className="px-3 py-3 flex-1">
             <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Participants</div>
             <div className="space-y-1">
@@ -225,30 +323,23 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
         <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
             {messages.length === 0 && isWaiting && (
-              <div className="text-center text-sm text-gray-400 py-12">
-                Meeting Host is opening the meeting...
-              </div>
+              <div className="text-center text-sm text-gray-400 py-12">Meeting Host is opening the meeting...</div>
             )}
-
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'participant' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                    msg.role === 'participant'
-                      ? 'bg-gray-900 text-white rounded-br-md'
-                      : 'bg-gray-100 text-gray-800 rounded-bl-md'
-                  }`}
-                >
-                  <span className={`text-xs font-semibold block mb-1 ${
-                    msg.role === 'participant' ? 'text-gray-400' : 'text-[var(--md-tertiary)]'
-                  }`}>
+                <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                  msg.role === 'participant' ? 'bg-gray-900 text-white rounded-br-md' : 'bg-gray-100 text-gray-800 rounded-bl-md'
+                }`}>
+                  <span className={`text-xs font-semibold block mb-1 ${msg.role === 'participant' ? 'text-gray-400' : 'text-[var(--md-tertiary)]'}`}>
                     {msg.author}
+                    {msg.role === 'host' && isSpeaking && i === messages.length - 1 && (
+                      <span className="ml-1.5 inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    )}
                   </span>
                   <span className="whitespace-pre-wrap">{msg.content}</span>
                 </div>
               </div>
             ))}
-
             {isWaiting && (
               <div className="flex justify-start">
                 <div className="max-w-[75%] rounded-2xl px-4 py-3 bg-gray-100 rounded-bl-md">
@@ -261,24 +352,34 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
                 </div>
               </div>
             )}
-
             <div ref={messagesEndRef} />
           </div>
 
           {/* ── Input ── */}
           <div className="shrink-0 border-t border-gray-200 px-4 py-3 bg-white">
             <div className="flex items-center gap-2">
+              <button
+                onClick={toggleRecording}
+                className={`p-2.5 rounded-xl transition-all ${
+                  isRecording
+                    ? 'bg-red-500 text-white animate-pulse'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+                title={isRecording ? 'Tap to stop recording' : 'Tap to record voice'}
+              >
+                {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </button>
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Type your response..."
-                disabled={isWaiting}
+                placeholder={isRecording ? 'Recording... tap 🟥 to stop' : 'Type your response...'}
+                disabled={isWaiting || isRecording}
                 className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 disabled:bg-gray-50 disabled:text-gray-400"
               />
               <button
-                onClick={handleSend}
+                onClick={handleTextSend}
                 disabled={!input.trim() || isWaiting}
                 className="p-2.5 rounded-xl bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-colors"
               >
