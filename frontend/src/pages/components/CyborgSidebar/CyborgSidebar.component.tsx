@@ -76,10 +76,10 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
         {/* ── New Talk Show ── */}
         <button
           onClick={handleTalkShow}
-          className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors"
+          className="w-full flex items-center gap-2 px-3 py-2.5 text-label-sm text-[var(--md-on-surface)] hover:bg-[var(--md-surface-variant)] rounded-[var(--shape-md)] border border-[var(--md-outline)] transition-colors"
         >
-          <Mic className="w-4 h-4 text-gray-400" />
-          New Talk Show
+          <Mic className="w-4 h-4 text-[var(--md-tertiary)]" />
+          <span>New Talk Show</span>
         </button>
 
         {/* ── Settings (collapsible) ── */}

@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
 import ConversationContainer from './components/ConversationContainer/ConversationContainer.component';
 import DigitalHumanContainer from './components/DigitalHumanContainer/DigitalHumanContainer.component';
 import CyborgSidebar from './components/CyborgSidebar/CyborgSidebar.component';
 import VoiceAssistantProvider from './context/VoiceAssistantProvider';
-import VoiceAssistantContext from './context/VoiceAssistantContext';
 import TalkShowSetup from './components/TalkShow/TalkShowSetup.component';
 import TalkShowMode from './components/TalkShow/TalkShowMode.component';
 
@@ -91,9 +90,6 @@ export default function Home() {
 }
 
 function TopBar({ showCyborg, onToggleCyborg }: { showCyborg: boolean; onToggleCyborg: () => void }) {
-  const context = useContext(VoiceAssistantContext);
-  const name = context?.characterName || 'Xiao Wei';
-
   return (
     <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--md-outline)] bg-white/80 backdrop-blur-md shrink-0 z-20">
       <div className="flex items-center gap-3">
@@ -105,9 +101,6 @@ function TopBar({ showCyborg, onToggleCyborg }: { showCyborg: boolean; onToggleC
           <Menu className="w-5 h-5" />
         </button>
         <img src="/logo.svg" alt="NOVA" className="h-6 w-auto hidden sm:block" />
-        <span className="text-title-sm text-[var(--md-on-surface)] font-[family-name:var(--font-serif)] text-lg">
-          {name}
-        </span>
       </div>
     </header>
   );
