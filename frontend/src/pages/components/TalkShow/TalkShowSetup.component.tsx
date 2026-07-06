@@ -171,7 +171,7 @@ export default function TalkShowSetup({ defaultHostName, onStart, onClose }: Tal
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Interview Questions / Outline
-              <span className="text-gray-400 font-normal ml-1">(optional)</span>
+              <span className="text-[var(--md-tertiary)] font-normal ml-1">(required)</span>
             </label>
             <textarea
               value={questions}

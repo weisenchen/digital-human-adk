@@ -769,8 +769,12 @@ def create_app() -> FastAPI:
 
         if questions.strip():
             system_parts.append("")
-            system_parts.append("── INTERVIEW QUESTIONS / OUTLINE ──")
-            system_parts.append("Follow these during the show, but stay flexible — let the conversation breathe:")
+            system_parts.append("── INTERVIEW QUESTIONS (MANDATORY) ──")
+            system_parts.append("IMPORTANT: You MUST ask ALL of the following questions during the show.")
+            system_parts.append("Do NOT skip any. Work through them systematically — tick each one off as you go.")
+            system_parts.append("If the guest's answer naturally leads to a follow-up, ask it, then return to the next question on the list.")
+            system_parts.append("These questions are the core of the show — build the conversation around them, not away from them.")
+            system_parts.append("")
             system_parts.append(questions.strip())
 
         system_prompt = "\n".join(system_parts)
