@@ -241,24 +241,27 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
     }
   };
 
-  const RESPONSE_TIME_SEC = 60; // seconds allowed for response
+  const RESPONSE_TIME_SEC = config.responseTimeSeconds;
 
   const startAutoRecord = () => {
     if (isRecording || isWaiting || isSpeaking) return;
-    // Start response timer
     setAutoMicActive(true);
-    setResponseTimeLeft(RESPONSE_TIME_SEC);
-    if (responseTimerRef.current) clearInterval(responseTimerRef.current);
-    responseTimerRef.current = setInterval(() => {
-      setResponseTimeLeft(prev => {
-        if (prev <= 1) {
-          if (responseTimerRef.current) clearInterval(responseTimerRef.current);
-          stopAutoRecord();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    if (RESPONSE_TIME_SEC > 0) {
+      setResponseTimeLeft(RESPONSE_TIME_SEC);
+      if (responseTimerRef.current) clearInterval(responseTimerRef.current);
+      responseTimerRef.current = setInterval(() => {
+        setResponseTimeLeft(prev => {
+          if (prev <= 1) {
+            if (responseTimerRef.current) clearInterval(responseTimerRef.current);
+            stopAutoRecord();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setResponseTimeLeft(0);
+    }
     // Start voice recording
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -459,12 +462,14 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
                   <Mic className="w-3.5 h-3.5 animate-pulse" />
                   Recording your response...
                 </div>
-                <div className={`flex items-center gap-1 text-xs font-mono font-bold ${
-                  responseTimeLeft <= 10 ? 'text-red-600' : 'text-purple-600'
-                }`}>
-                  <Clock className="w-3 h-3" />
-                  {responseTimeLeft}s
-                </div>
+                {RESPONSE_TIME_SEC > 0 && (
+                  <div className={`flex items-center gap-1 text-xs font-mono font-bold ${
+                    responseTimeLeft <= 10 ? 'text-red-600' : 'text-purple-600'
+                  }`}>
+                    <Clock className="w-3 h-3" />
+                    {responseTimeLeft}s
+                  </div>
+                )}
               </div>
             )}
             <div className="flex items-center gap-2">

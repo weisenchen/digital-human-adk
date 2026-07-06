@@ -11,6 +11,15 @@ const PERSONALITY_PRESETS = [
   { id: 'intellectual', label: 'Intellectual', desc: 'Deep, thoughtful, and insightful' },
 ] as const;
 
+const RESPONSE_TIME_OPTIONS = [
+  { value: 20, label: '20s' },
+  { value: 30, label: '30s' },
+  { value: 60, label: '60s' },
+  { value: 90, label: '90s' },
+  { value: 120, label: '120s' },
+  { value: 0, label: 'Unlimited' },
+] as const;
+
 interface TalkShowConfig {
   topic: string;
   guestName: string;
@@ -19,6 +28,7 @@ interface TalkShowConfig {
   questions: string;
   personality: string;
   durationMinutes: number;
+  responseTimeSeconds: number;
 }
 
 interface TalkShowSetupProps {
@@ -36,6 +46,7 @@ export default function TalkShowSetup({ defaultHostName, onStart, onClose }: Tal
   const [personality, setPersonality] = useState('professional-humorous');
   const [customPersonality, setCustomPersonality] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(10);
+  const [responseTime, setResponseTime] = useState(60);
 
   const canStart = topic.trim() || guestName.trim() || background.trim();
 
@@ -48,6 +59,7 @@ export default function TalkShowSetup({ defaultHostName, onStart, onClose }: Tal
       questions: questions.trim(),
       personality: personality === 'custom' ? customPersonality.trim() : personality,
       durationMinutes,
+      responseTimeSeconds: responseTime,
     });
   };
 
@@ -203,6 +215,27 @@ export default function TalkShowSetup({ defaultHostName, onStart, onClose }: Tal
             <p className="text-[11px] text-gray-400 mt-1">
               Opening &amp; Warm-up will be brief. Most time goes to Discussion.
             </p>
+          </div>
+
+          {/* Response Time */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Response Time</label>
+            <p className="text-xs text-gray-400 mb-2">How long the mic stays open after host asks a question</p>
+            <div className="flex flex-wrap gap-2">
+              {RESPONSE_TIME_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setResponseTime(opt.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    responseTime === opt.value
+                      ? 'bg-gray-900 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
         </div>

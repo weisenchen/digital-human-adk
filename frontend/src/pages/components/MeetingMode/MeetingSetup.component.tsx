@@ -15,11 +15,21 @@ interface Participant {
   role: string;
 }
 
+const RESPONSE_TIME_OPTIONS = [
+  { value: 20, label: '20s' },
+  { value: 30, label: '30s' },
+  { value: 60, label: '60s' },
+  { value: 90, label: '90s' },
+  { value: 120, label: '120s' },
+  { value: 0, label: 'Unlimited' },
+] as const;
+
 export interface MeetingConfig {
   title: string;
   agenda: AgendaItem[];
   participants: Participant[];
   background: string;
+  responseTimeSeconds: number;
 }
 
 interface MeetingSetupProps {
@@ -41,6 +51,7 @@ export default function MeetingSetup({ onStart, onClose }: MeetingSetupProps) {
     { id: uid(), name: '', role: '' },
   ]);
   const [background, setBackground] = useState('');
+  const [responseTime, setResponseTime] = useState(60);
 
   const totalTime = agenda.reduce((sum, a) => sum + a.durationMinutes, 0);
 
@@ -76,6 +87,7 @@ export default function MeetingSetup({ onStart, onClose }: MeetingSetupProps) {
       agenda: agenda.filter(a => a.title.trim()).map(a => ({ ...a, title: a.title.trim() })),
       participants: participants.filter(p => p.name.trim()).map(p => ({ ...p, name: p.name.trim(), role: p.role.trim() })),
       background: background.trim(),
+      responseTimeSeconds: responseTime,
     });
   };
 
@@ -199,6 +211,27 @@ export default function MeetingSetup({ onStart, onClose }: MeetingSetupProps) {
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 resize-none"
             />
+          </div>
+
+          {/* Response Time */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Response Time</label>
+            <p className="text-xs text-gray-400 mb-2">How long the mic stays open after the host asks a question</p>
+            <div className="flex flex-wrap gap-2">
+              {RESPONSE_TIME_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setResponseTime(opt.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    responseTime === opt.value
+                      ? 'bg-[var(--md-tertiary)] text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

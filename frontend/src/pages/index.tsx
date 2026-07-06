@@ -20,6 +20,7 @@ interface TalkShowConfig {
   questions: string;
   personality: string;
   durationMinutes: number;
+  responseTimeSeconds: number;
 }
 
 export default function Home() {
@@ -85,6 +86,7 @@ export default function Home() {
             questions={talkShowConfig.questions}
             personality={talkShowConfig.personality}
             durationMinutes={talkShowConfig.durationMinutes}
+            responseTimeSeconds={talkShowConfig.responseTimeSeconds}
             onEnd={() => setTalkShowConfig(null)}
           />
         )}

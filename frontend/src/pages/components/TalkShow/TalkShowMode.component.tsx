@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { X, Send, Volume2, Pause, Play, Mic } from 'lucide-react';
+import { X, Send, Volume2, Pause, Play, Mic, Square, Clock } from 'lucide-react';
 import DigitalHumanContainer from '../DigitalHumanContainer/DigitalHumanContainer.component';
 import { sendTalkShowMessage, getAIAudioFromText, getTalkShowSuggestions } from '@/services/adk-assistant.service';
 import { getSharedAudioContext } from '@/lib/audio-context';
@@ -20,6 +20,7 @@ interface TalkShowModeProps {
   questions: string;
   personality: string;
   durationMinutes: number;
+  responseTimeSeconds: number;
   onEnd: () => void;
 }
 
@@ -44,6 +45,7 @@ export default function TalkShowMode({
   questions,
   personality,
   durationMinutes,
+  responseTimeSeconds,
   onEnd,
 }: TalkShowModeProps) {
   const { selectedLanguage, setMouthOpen, selectedVoice } = useContext(VoiceAssistantContext);
@@ -55,10 +57,13 @@ export default function TalkShowMode({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [voiceRecording, setVoiceRecording] = useState(false);
   const [soundLabel, setSoundLabel] = useState<string | null>(null);
+  const [autoMicActive, setAutoMicActive] = useState(false);
+  const [responseTimeLeft, setResponseTimeLeft] = useState(0);
   const soundTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playedAutoSoundsRef = useRef<Set<string>>(new Set());
   const voiceRecogRef = useRef<any>(null);
   const voiceFinalRef = useRef<string>('');
+  const responseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -182,6 +187,12 @@ export default function TalkShowMode({
         rafIdRef.current = null;
         setIsSpeaking(false);
         setMouthOpen(0);
+        // Auto-record: if host message asks a question, open mic for guest
+        const msgs = messagesRef.current;
+        const lastHost = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+        if (lastHost && lastHost.role === 'host' && lastHost.content.includes('?')) {
+          startAutoRecord();
+        }
       };
     } catch (err) {
       console.error('Talk show TTS error:', err);
@@ -304,6 +315,82 @@ export default function TalkShowMode({
     }).finally(() => { setIsWaiting(false); setInput(''); });
   }, [isWaiting, topic, guestName, hostName, background, questions, personality, durationMinutes, playSound]);
 
+  const RESPONSE_TIME_SEC = responseTimeSeconds;
+
+  const startAutoRecord = useCallback(() => {
+    if (voiceRecording || isWaiting) return;
+    setAutoMicActive(true);
+    if (RESPONSE_TIME_SEC > 0) {
+      setResponseTimeLeft(RESPONSE_TIME_SEC);
+      if (responseTimerRef.current) clearInterval(responseTimerRef.current);
+      responseTimerRef.current = setInterval(() => {
+        setResponseTimeLeft(prev => {
+          if (prev <= 1) {
+            if (responseTimerRef.current) clearInterval(responseTimerRef.current);
+            stopAutoRecord();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setResponseTimeLeft(0);
+    }
+    // Start voice recognition
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    const recog = new SR();
+    recog.lang = 'en';
+    recog.continuous = false;
+    recog.interimResults = false;
+    recog.maxAlternatives = 1;
+    recog.onresult = (event: any) => {
+      voiceFinalRef.current = event.results[0][0].transcript;
+    };
+    recog.onerror = () => { stopAutoRecord(); };
+    recog.onend = () => {
+      setVoiceRecording(false);
+      setAutoMicActive(false);
+      if (responseTimerRef.current) clearInterval(responseTimerRef.current);
+      const text = voiceFinalRef.current.trim();
+      voiceFinalRef.current = '';
+      if (text) {
+        // Auto-send as guest response
+        setSuggestions([]);
+        const guestMsg: TalkShowMessage = { role: 'guest', content: text };
+        const updated = [...messagesRef.current, guestMsg];
+        setMessages(updated);
+        setIsWaiting(true);
+        const history = updated.map(m => ({ role: m.role, content: m.content }));
+        sendTalkShowMessage({
+          topic, guestName, hostName, background, questions, personality,
+          durationMinutes, message: text, history, language: 'en',
+        }).then(({ reply, soundEffect }: {reply: string; soundEffect: string | null}) => {
+          setMessages(prev => [...prev, { role: 'host', content: reply }]);
+          if (soundEffect) playSound(soundEffect);
+        }).catch(err => {
+          console.error('Talk show auto-mic error:', err);
+          setMessages(prev => [...prev, { role: 'host', content: '(Error getting response)' }]);
+        }).finally(() => { setIsWaiting(false); });
+      }
+    };
+    voiceRecogRef.current = recog;
+    voiceFinalRef.current = '';
+    recog.start();
+    setVoiceRecording(true);
+  }, [voiceRecording, isWaiting, topic, guestName, hostName, background, questions, personality, durationMinutes, playSound]);
+
+  const stopAutoRecord = useCallback(() => {
+    if (responseTimerRef.current) { clearInterval(responseTimerRef.current); responseTimerRef.current = null; }
+    setAutoMicActive(false);
+    setResponseTimeLeft(0);
+    if (voiceRecogRef.current) {
+      try { voiceRecogRef.current.stop(); } catch {}
+      voiceRecogRef.current = null;
+    }
+    setVoiceRecording(false);
+  }, []);
+
   const handleSend = useCallback(async () => {
     const text = input.trim();
     if (!text || isWaiting || isPaused) return;
@@ -380,6 +467,24 @@ export default function TalkShowMode({
           >
             {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
             {isPaused ? 'Resume' : 'Pause'}
+          </button>
+          <button
+            onClick={() => {
+              const transcript = messages.map(m =>
+                `[${m.role === 'host' ? hostName : guestName}]: ${m.content}`
+              ).join('\n\n');
+              const blob = new Blob([transcript], { type: 'text/plain' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `talkshow-${(topic || 'show').replace(/\s+/g, '-')}.txt`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <Volume2 className="w-3.5 h-3.5" />
+            Transcript
           </button>
           <button
             onClick={() => { stopSpeaking(); onEnd(); }}
@@ -529,6 +634,22 @@ export default function TalkShowMode({
           )}
           {!isPaused && (
           <div className="shrink-0 border-t border-gray-200 px-4 py-3 bg-white">
+            {autoMicActive && (
+              <div className="flex items-center justify-between mb-2 px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg">
+                <div className="flex items-center gap-2 text-xs font-medium text-purple-700">
+                  <Mic className="w-3.5 h-3.5 animate-pulse" />
+                  Recording your response...
+                </div>
+                {RESPONSE_TIME_SEC > 0 && (
+                  <div className={`flex items-center gap-1 text-xs font-mono font-bold ${
+                    responseTimeLeft <= 10 ? 'text-red-600' : 'text-purple-600'
+                  }`}>
+                    <Clock className="w-3 h-3" />
+                    {responseTimeLeft}s
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -546,7 +667,7 @@ export default function TalkShowMode({
                 <button
                   type="button"
                   onClick={() => { if (voiceRecording) voiceStopRecording(); else voiceStartRecording(); }}
-                  disabled={isWaiting || isPaused}
+                  disabled={isWaiting || isPaused || autoMicActive}
                   className={`p-2.5 rounded-xl transition-colors ${
                     voiceRecording
                       ? 'bg-red-500 text-white animate-pulse'
