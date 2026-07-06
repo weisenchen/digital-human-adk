@@ -13,6 +13,7 @@ import MeetingMode from './components/MeetingMode/MeetingMode.component';
 import type { MeetingConfig } from './components/MeetingMode/MeetingSetup.component';
 import PresentationSetup from './components/PresentationMode/PresentationSetup.component';
 import type { WorkReportConfig } from './components/PresentationMode/PresentationSetup.component';
+import WorkReportSetup from './components/WorkReport/WorkReportSetup.component';
 import WorkReportMode from './components/WorkReport/WorkReportMode.component';
 import PresentationMode from './components/PresentationMode/PresentationMode.component';
 
@@ -34,6 +35,7 @@ export default function Home() {
   const [showMeetingSetup, setShowMeetingSetup] = useState(false);
   const [meetingConfig, setMeetingConfig] = useState<MeetingConfig | null>(null);
   const [showPresentationSetup, setShowPresentationSetup] = useState(false);
+  const [showWorkReportSetup, setShowWorkReportSetup] = useState(false);
   const [workReportConfig, setWorkReportConfig] = useState<WorkReportConfig | null>(null);
   const [showClassicPresentation, setShowClassicPresentation] = useState(false);
 
@@ -144,13 +146,11 @@ export default function Home() {
         />
       )}
 
-      {/* Presentation Setup modal — choose WorkReport or Classic */}
-      {showPresentationSetup && (
+        {showPresentationSetup && (
         <PresentationSetup
-          onStartWorkReport={(config) => {
-            setWorkReportConfig(config);
+          onStartWorkReport={() => {
             setShowPresentationSetup(false);
-            setShowCyborg(false);
+            setShowWorkReportSetup(true);
           }}
           onStartClassic={() => {
             setShowClassicPresentation(true);
@@ -158,6 +158,18 @@ export default function Home() {
             setShowCyborg(false);
           }}
           onClose={() => setShowPresentationSetup(false)}
+        />
+      )}
+
+      {/* Work Report Setup — configure personality, background, slides */}
+      {showWorkReportSetup && (
+        <WorkReportSetup
+          onStart={(config) => {
+            setWorkReportConfig(config);
+            setShowWorkReportSetup(false);
+            setShowCyborg(false);
+          }}
+          onClose={() => setShowWorkReportSetup(false)}
         />
       )}
     </VoiceAssistantProvider>

@@ -20,7 +20,7 @@ export interface WorkReportConfig {
 }
 
 interface PresentationSetupProps {
-  onStartWorkReport: (config: WorkReportConfig) => void;
+  onStartWorkReport: () => void;
   onStartClassic: () => void;
   onClose: () => void;
 }
@@ -53,16 +53,7 @@ export default function PresentationSetup({
 
   const handleContinue = () => {
     if (selectedMode === 'work-report') {
-      // Call onStartWorkReport with a default config — real values filled in WorkReportSetup
-      onStartWorkReport({
-        mode: 'work-report',
-        personality: 'data-driven',
-        background: '',
-        presetQuestions: ['', '', ''],
-        slideMethod: 'ai-generate',
-        slideOutline: '',
-        totalMinutes: 15,
-      });
+      onStartWorkReport();
     } else if (selectedMode === 'classic') {
       onStartClassic();
     }
