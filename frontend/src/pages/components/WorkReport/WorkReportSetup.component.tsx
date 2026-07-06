@@ -157,23 +157,6 @@ export default function WorkReportSetup({ onStart, onClose }: WorkReportSetupPro
             </div>
           </div>
 
-          {/* Background Materials */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Background Materials
-              <span className="text-gray-400 font-normal ml-1">
-                (data & context — fills slide content with real facts)
-              </span>
-            </label>
-            <textarea
-              value={background}
-              onChange={(e) => setBackground(e.target.value)}
-              placeholder="Project timelines, team updates, blockers, achievements, or any context the CTO should know..."
-              rows={5}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 resize-none"
-            />
-          </div>
-
           {/* Preset Questions */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -310,6 +293,23 @@ export default function WorkReportSetup({ onStart, onClose }: WorkReportSetupPro
                 </label>
               </div>
             )}
+          </div>
+
+          {/* Background Materials — fills slide content */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Background Materials
+              <span className="text-gray-400 font-normal ml-1">
+                (data & context — fills slide content with real facts)
+              </span>
+            </label>
+            <textarea
+              value={background}
+              onChange={(e) => setBackground(e.target.value)}
+              placeholder="Project timelines, team updates, blockers, achievements, or any context the CTO should know..."
+              rows={5}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 resize-none"
+            />
           </div>
 
           {/* Duration */}
