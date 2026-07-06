@@ -19,7 +19,7 @@ interface TeamRetroModeProps {
 }
 
 const CATEGORIES = [
-  { id: 'all', label: 'All', icon: Layout },
+  { id: 'all', label: 'All', icon: Layout, color: '' },
   { id: 'improvement', label: 'Improvement', icon: Lightbulb, color: 'text-green-500 bg-green-50' },
   { id: 'bug', label: 'Bug', icon: Bug, color: 'text-red-500 bg-red-50' },
   { id: 'feature', label: 'Feature', icon: Star, color: 'text-amber-500 bg-amber-50' },

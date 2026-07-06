@@ -7,7 +7,7 @@ import {
   Download, CheckCircle2, Loader2,
 } from 'lucide-react';
 import DigitalHumanContainer from '../DigitalHumanContainer/DigitalHumanContainer.component';
-import { sendWorkReportMessage, generateReportSlides, getAIAudioFromText } from '@/services/adk-assistant.service';
+import { sendWorkReportMessage, generateReportSlides, getAIAudioFromText, downloadHtmlPresentation } from '@/services/adk-assistant.service';
 import { getSharedAudioContext, resumeSharedAudioContext } from '@/lib/audio-context';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 import type { WorkReportConfig, SlideData } from '../WorkReport/WorkReportSetup.component';
@@ -701,6 +701,23 @@ export default function WorkReportMode({
     URL.revokeObjectURL(url);
   }, [messages, characterName]);
 
+  // ── Download HTML interactive presentation ───────────
+
+  const downloadHtmlPresentationFile = useCallback(async () => {
+    if (slides.length === 0) return;
+    try {
+      const blob = await downloadHtmlPresentation(slides, 'Work Report');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `work-report-presentation-${new Date().toISOString().slice(0, 10)}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download HTML presentation error:', err);
+    }
+  }, [slides]);
+
   // ── Transition to AI questions phase ────────────────
 
   const startAIQuestions = useCallback(() => {
@@ -780,6 +797,14 @@ export default function WorkReportMode({
           >
             <Download className="w-3.5 h-3.5" />
             Transcript
+          </button>
+          <button
+            onClick={downloadHtmlPresentationFile}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+            title="Download interactive HTML presentation"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            HTML Slide
           </button>
           <button
             onClick={handleEnd}

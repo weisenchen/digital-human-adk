@@ -590,3 +590,23 @@ export const summarizeRetro = async (params: {
   if (!res.ok) throw new Error(`Retro summarize failed: ${res.status}`);
   return res.json();
 };
+
+/** Download an interactive HTML presentation file.
+ * The generated HTML is self-contained with Web Speech API narration,
+ * scene-by-scene playback, controls, and keyboard shortcuts.
+ * Returns the response (which is a file download).
+ */
+export const downloadHtmlPresentation = async (
+  slides: {display: string; speech: string}[],
+  title: string = 'Work Report',
+): Promise<Blob> => {
+  const formData = new FormData();
+  formData.append('slides_json', JSON.stringify(slides));
+  formData.append('title', title);
+  const res = await fetch(`${BASE_URL}/api/work-report/download-html-presentation`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) throw new Error(`HTML presentation download failed: ${res.status}`);
+  return res.blob();
+};
