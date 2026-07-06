@@ -381,6 +381,50 @@ def create_app() -> FastAPI:
         - Controls: play/pause, prev/next, seek, volume, captions
         - Keyboard shortcuts, scene dots navigation
         """
+        def _md_to_html(md: str) -> str:
+            """Convert simple markdown (##, -, **bold**, >) to HTML."""
+            lines = md.split("\n")
+            html_parts = []
+            in_list = False
+            for line in lines:
+                stripped = line.strip()
+                if stripped.startswith("### "):
+                    if in_list: html_parts.append("</ul>"); in_list = False
+                    html_parts.append(f"<h3>{_esc(stripped[4:])}</h3>")
+                elif stripped.startswith("## "):
+                    if in_list: html_parts.append("</ul>"); in_list = False
+                    html_parts.append(f"<h2>{_esc(stripped[3:])}</h2>")
+                elif stripped.startswith("##"):
+                    # Skip type markers (##TITLE, ##DATA, ##CONTENT, ##SECTION, ##QUOTE, ##COMPARE, ##CLOSE)
+                    pass
+                elif stripped.startswith("# "):
+                    if in_list: html_parts.append("</ul>"); in_list = False
+                    html_parts.append(f"<h1>{_esc(stripped[2:])}</h1>")
+                elif stripped.startswith("> "):
+                    if in_list: html_parts.append("</ul>"); in_list = False
+                    html_parts.append(f"<blockquote>{_esc(stripped[2:])}</blockquote>")
+                elif stripped.startswith("- ") or stripped.startswith("* "):
+                    if not in_list: html_parts.append("<ul>"); in_list = True
+                    html_parts.append(f"<li>{_esc(stripped[2:])}</li>")
+                elif stripped.startswith("**") and stripped.endswith("**"):
+                    if in_list: html_parts.append("</ul>"); in_list = False
+                    html_parts.append(f'<p class="cta">{_esc(stripped[2:-2])}</p>')
+                elif stripped == "":
+                    if in_list: html_parts.append("</ul>"); in_list = False
+                    html_parts.append("<br/>")
+                else:
+                    if in_list: html_parts.append("</ul>"); in_list = False
+                    # Render **bold** inline
+                    text = _esc(stripped)
+                    import re
+                    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+                    html_parts.append(f"<p>{text}</p>")
+            if in_list:
+                html_parts.append("</ul>")
+            return "".join(html_parts)
+
+        def _esc(t: str) -> str:
+            return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         scenes_json = []
         for i, s in enumerate(slides):
             display = s.get("display", "")
@@ -394,7 +438,7 @@ def create_app() -> FastAPI:
             scenes_json.append({
                 "id": f"scene-{i}",
                 "title": scene_title,
-                "display": display.replace('"', '\\"').replace("\n", "\\n"),
+                "display": _md_to_html(display).replace('"', '\\"').replace("\n", "\\n"),
                 "narration": speech.replace('"', '\\"').replace("\n", "\\n"),
                 "duration": duration,
             })
