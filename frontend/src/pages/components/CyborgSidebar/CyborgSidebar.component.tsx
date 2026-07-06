@@ -55,16 +55,16 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
       </div>
 
       <div className="flex-1 p-3 space-y-3 flex flex-col">
-        {/* ── New Conversation ── */}
+        {/* ── New Talk Show (1st) ── */}
         <button
-          onClick={handleNewConversation}
+          onClick={handleTalkShow}
           className="w-full flex items-center gap-2 px-3 py-2.5 text-label-sm text-[var(--md-on-surface)] hover:bg-[var(--md-surface-variant)] rounded-[var(--shape-md)] border border-[var(--md-outline)] transition-colors"
         >
-          <MessageSquarePlus className="w-4 h-4 text-[var(--md-tertiary)]" />
-          <span>New Conversation</span>
+          <Mic className="w-4 h-4 text-[var(--md-tertiary)]" />
+          <span>New Talk Show</span>
         </button>
 
-        {/* ── Presentation 演示 ── */}
+        {/* ── Presentation (2nd) ── */}
         <button
           onClick={handleReadScript}
           className="w-full flex items-center gap-2 px-3 py-2.5 text-label-sm text-[var(--md-on-surface)] hover:bg-[var(--md-surface-variant)] rounded-[var(--shape-md)] border border-[var(--md-outline)] transition-colors"
@@ -73,13 +73,13 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
           <span>Presentation</span>
         </button>
 
-        {/* ── New Talk Show ── */}
+        {/* ── New Section (3rd) ── */}
         <button
-          onClick={handleTalkShow}
+          onClick={handleNewConversation}
           className="w-full flex items-center gap-2 px-3 py-2.5 text-label-sm text-[var(--md-on-surface)] hover:bg-[var(--md-surface-variant)] rounded-[var(--shape-md)] border border-[var(--md-outline)] transition-colors"
         >
-          <Mic className="w-4 h-4 text-[var(--md-tertiary)]" />
-          <span>New Talk Show</span>
+          <MessageSquarePlus className="w-4 h-4 text-[var(--md-tertiary)]" />
+          <span>New Section</span>
         </button>
 
         {/* ── Settings (collapsible) ── */}
