@@ -104,7 +104,8 @@ function TopBar({ showCyborg, onToggleCyborg }: { showCyborg: boolean; onToggleC
         >
           <Menu className="w-5 h-5" />
         </button>
-        <span className="text-title-sm text-[var(--md-on-surface)] font-[family-name:var(--font-serif)] text-lg hidden sm:inline">
+        <img src="/logo.svg" alt="NOVA" className="h-6 w-auto hidden sm:block" />
+        <span className="text-title-sm text-[var(--md-on-surface)] font-[family-name:var(--font-serif)] text-lg">
           {name}
         </span>
       </div>
