@@ -8,6 +8,9 @@ import CyborgSidebar from './components/CyborgSidebar/CyborgSidebar.component';
 import VoiceAssistantProvider from './context/VoiceAssistantProvider';
 import TalkShowSetup from './components/TalkShow/TalkShowSetup.component';
 import TalkShowMode from './components/TalkShow/TalkShowMode.component';
+import MeetingSetup from './components/MeetingMode/MeetingSetup.component';
+import MeetingMode from './components/MeetingMode/MeetingMode.component';
+import type { MeetingConfig } from './components/MeetingMode/MeetingSetup.component';
 
 interface TalkShowConfig {
   topic: string;
@@ -23,12 +26,21 @@ export default function Home() {
   const [showCyborg, setShowCyborg] = useState(false);
   const [showTalkShowSetup, setShowTalkShowSetup] = useState(false);
   const [talkShowConfig, setTalkShowConfig] = useState<TalkShowConfig | null>(null);
+  const [showMeetingSetup, setShowMeetingSetup] = useState(false);
+  const [meetingConfig, setMeetingConfig] = useState<MeetingConfig | null>(null);
 
   // Listen for open-talk-show event from sidebar
   useEffect(() => {
     const handler = () => setShowTalkShowSetup(true);
     window.addEventListener('open-talk-show', handler);
     return () => window.removeEventListener('open-talk-show', handler);
+  }, []);
+
+  // Listen for open-meeting event from sidebar
+  useEffect(() => {
+    const handler = () => setShowMeetingSetup(true);
+    window.addEventListener('open-meeting', handler);
+    return () => window.removeEventListener('open-meeting', handler);
   }, []);
 
   return (
@@ -38,7 +50,12 @@ export default function Home() {
         <TopBar showCyborg={showCyborg} onToggleCyborg={() => setShowCyborg(prev => !prev)} />
 
         {/* ===== Main Content ===== */}
-        {!talkShowConfig ? (
+        {meetingConfig ? (
+          <MeetingMode
+            config={meetingConfig}
+            onEnd={() => setMeetingConfig(null)}
+          />
+        ) : !talkShowConfig ? (
           <div className="flex-1 flex min-h-0">
             {/* Cyborg sidebar */}
             {showCyborg && (
@@ -83,6 +100,18 @@ export default function Home() {
             setShowCyborg(false);
           }}
           onClose={() => setShowTalkShowSetup(false)}
+        />
+      )}
+
+      {/* Meeting Setup modal */}
+      {showMeetingSetup && (
+        <MeetingSetup
+          onStart={(config) => {
+            setMeetingConfig(config);
+            setShowMeetingSetup(false);
+            setShowCyborg(false);
+          }}
+          onClose={() => setShowMeetingSetup(false)}
         />
       )}
     </VoiceAssistantProvider>

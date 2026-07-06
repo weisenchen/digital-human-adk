@@ -353,3 +353,27 @@ export const sendChatStream = (
     abortController.abort();
   };
 };
+
+/** Send a message to the Meeting Host */
+export const sendMeetingMessage = async (params: {
+  title: string;
+  agenda: { id: string; title: string; durationMinutes: number }[];
+  participants: { id: string; name: string; role: string }[];
+  background: string;
+  message: string;
+  history: Array<{role: string; content: string}>;
+  language?: string;
+}): Promise<{reply: string}> => {
+  const formData = new FormData();
+  formData.append('title', params.title);
+  formData.append('agenda_json', JSON.stringify(params.agenda));
+  formData.append('participants_json', JSON.stringify(params.participants));
+  formData.append('background', params.background);
+  formData.append('message', params.message);
+  formData.append('history_json', JSON.stringify(params.history));
+  formData.append('language', params.language || 'en');
+  const res = await fetch(`${BASE_URL}/api/meeting/ask`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`Meeting request failed: ${res.status}`);
+  const data = await res.json();
+  return { reply: data.reply as string };
+};

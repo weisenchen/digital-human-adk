@@ -981,6 +981,147 @@ def create_app() -> FastAPI:
             except Exception:
                 return {"suggestions": []}
 
+    @app.post("/api/meeting/ask")
+    async def meeting_ask(
+        title: str = Form(""),
+        agenda_json: str = Form("[]"),
+        participants_json: str = Form("[]"),
+        background: str = Form(""),
+        message: str = Form(""),
+        history_json: str = Form("[]"),
+        language: str = Form("en"),
+    ):
+        """Meeting Host: AI facilitates a structured meeting with agenda and participants."""
+        import json
+        try:
+            history: list = json.loads(history_json)
+        except (json.JSONDecodeError, TypeError):
+            history = []
+        try:
+            agenda: list = json.loads(agenda_json)
+        except (json.JSONDecodeError, TypeError):
+            agenda = []
+        try:
+            participants: list = json.loads(participants_json)
+        except (json.JSONDecodeError, TypeError):
+            participants = []
+
+        total_time = sum(a.get("durationMinutes", 5) for a in agenda)
+        agenda_str = "\n".join(
+            f"  {i+1}. {a.get('title', 'Untitled')} ({a.get('durationMinutes', 5)} min)"
+            for i, a in enumerate(agenda)
+        ) or "  (no agenda set)"
+        participants_str = "\n".join(
+            f"  - {p.get('name', 'Unknown')}" + (f" ({p.get('role', '')})" if p.get('role') else "")
+            for p in participants
+        ) or "  (no participants)"
+
+        # Determine current agenda item from host message count
+        host_count = len([h for h in history if h.get("role") == "host"])
+        current_item_idx = min(host_count // 3, len(agenda) - 1) if agenda else 0
+        agenda_note = ""
+        if current_item_idx < len(agenda):
+            item = agenda[current_item_idx]
+            agenda_note = f"CURRENT AGENDA ITEM #{current_item_idx + 1}: \"{item.get('title', 'Untitled')}\" — focus on this."
+            if current_item_idx > 0:
+                prev = agenda[current_item_idx - 1]
+                agenda_note = f"PREVIOUS ITEM \"{prev.get('title', 'Untitled')}\" should be wrapped up. {agenda_note}"
+
+        system_prompt = (
+            f"You are a professional meeting facilitator. You are running a meeting titled: \"{title}\".\n\n"
+            f"── AGENDA (Total: {total_time} min) ──\n{agenda_str}\n\n"
+            f"── PARTICIPANTS ──\n{participants_str}\n\n"
+            f"── CURRENT STATUS ──\n{agenda_note}\n\n"
+            f"── YOUR ROLE ──\n"
+            f"- Your job is to keep the meeting productive, on-track, and on-time.\n"
+            f"- Address participants by name. Call on specific people to speak.\n"
+            f"- Ensure everyone contributes — if someone hasn't spoken, invite them.\n"
+            f"- When a participant says something notable, acknowledge it and recap decisions.\n\n"
+            f"── TIME MANAGEMENT ──\n"
+            f"- Each agenda item has a time budget. Keep track.\n"
+            f"- If time is running low on an item, say: \"We have about 2 minutes left on this item.\"\n"
+            f"- When time is up for an item, ask: \"We're at time for this item. Would you like to extend by a few minutes, or shall we move on?\"\n"
+            f"- If the group wants to extend, allow it. Otherwise, summarize and move to the next item.\n\n"
+            f"── DECISIONS & ACTIONS ──\n"
+            f"- When a decision is reached, restate it clearly: \"So we've decided to...\"\n"
+            f"- If an action item is assigned, state: \"[Name] will [do what] by [when].\"\n"
+            f"- At the end of the meeting, summarize: decisions, action items, next steps.\n\n"
+            f"── OPENING SCRIPT ──\n"
+            f"If this is the start of the meeting:\n"
+            f"1. Welcome everyone\n"
+            f"2. State the meeting title and goal\n"
+            f"3. Review the agenda: list each item and its time allocation\n"
+            f"4. Introduce the first agenda item and call on the first participant\n\n"
+            f"── RULES ──\n"
+            f"- Speak naturally, like a real facilitator.\n"
+            f"- Do NOT include stage directions or action descriptions in asterisks or brackets.\n"
+            f"- All responses in {'English' if language == 'en' else 'the specified language'}.\n"
+            f"- Be professional, warm, and keep things moving.\n"
+        )
+
+        if background.strip():
+            system_prompt += f"\n── BACKGROUND RESEARCH ──\n{background}\n"
+
+        messages = [{"role": "system", "content": system_prompt}]
+        for h in history:
+            role = "assistant" if h.get("role") == "host" else "user"
+            messages.append({"role": role, "content": h.get("content", "")})
+
+        if message.strip():
+            messages.append({"role": "user", "content": message})
+        elif not history:
+            messages.append({"role": "user", "content": "Open the meeting."})
+        else:
+            messages.append({"role": "user", "content": "Continue facilitating the meeting."})
+
+        model_id = _get_model_for_session("meeting_session")
+        info = MODEL_CATALOG.get(model_id)
+        if not info:
+            return {"reply": "Meeting Host is not available. Please select a model in Settings."}
+
+        if info.get("backend") == "openai":
+            client = get_openai_client(model_id)
+            if not client:
+                return {"reply": "AI client not available."}
+            try:
+                resp = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        client.chat.completions.create,
+                        model=info["model"],
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=600,
+                    ),
+                    timeout=60,
+                )
+                reply = resp.choices[0].message.content or ""
+                return {"reply": reply}
+            except Exception as exc:
+                logger.error("Meeting host error: %s", exc, exc_info=True)
+                return {"reply": f"(Error: {exc})"}
+        else:
+            # ADK backend
+            try:
+                import google.adk.types as _types_adk
+                new_msg = _types_adk.Content(role="user", parts=[_types_adk.Part(text=messages[-1]["content"])])
+                _messages = messages[:-1]
+                events = []
+                async for event in runner.run_async(
+                    user_id="default_user",
+                    session_id="meeting_session",
+                    new_message=new_msg,
+                ):
+                    events.append(event)
+                reply = ""
+                for e in reversed(events):
+                    if e.author != "user" and e.content and e.content.parts and not e.partial:
+                        reply = e.content.parts[0].text or ""
+                        break
+                return {"reply": reply}
+            except Exception as exc:
+                logger.error("Meeting host ADK error: %s", exc, exc_info=True)
+                return {"reply": f"(Error: {exc})"}
+
     @app.get("/api/voices")
     async def get_voices():
         """Return available TTS voices with locale, gender, and popular names."""

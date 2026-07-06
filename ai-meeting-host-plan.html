@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Meeting Host — Spec & Implementation Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f8f9fc;
+    --surface: #ffffff;
+    --border: #e2e5ed;
+    --text: #1a1d25;
+    --text-secondary: #5c6273;
+    --primary: #6c5ce7;
+    --primary-light: #eeeaff;
+    --primary-dark: #4a3db8;
+    --green: #00b894;
+    --green-light: #e6faf5;
+    --amber: #fdcb6e;
+    --amber-light: #fef9e7;
+    --red: #e17055;
+    --red-light: #fdf0ed;
+    --blue: #0984e3;
+    --blue-light: #e8f4fd;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --font: 'Inter', -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 0;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 40px 24px; }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, var(--primary) 0%, #a29bfe 100%);
+    border-radius: var(--radius);
+    padding: 48px 40px;
+    color: #fff;
+    margin-bottom: 40px;
+  }
+  .hero h1 { font-size: 32px; font-weight: 800; letter-spacing: -.5px; }
+  .hero p { font-size: 16px; opacity: .9; margin-top: 8px; max-width: 600px; }
+  .hero .meta { display: flex; gap: 24px; margin-top: 20px; font-size: 13px; opacity: .8; }
+
+  /* Sections */
+  section { margin-bottom: 40px; }
+  .section-title {
+    font-size: 20px; font-weight: 700; color: var(--primary);
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px; padding-bottom: 8px;
+    border-bottom: 2px solid var(--primary-light);
+  }
+  .section-title .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--primary); color: #fff; font-size: 13px; font-weight: 700;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 24px;
+    margin-bottom: 16px; box-shadow: var(--shadow);
+  }
+  .card h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .card p, .card li { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
+  .card ul, .card ol { padding-left: 20px; margin-top: 8px; }
+  .card li { margin-bottom: 4px; }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* Tags */
+  .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; letter-spacing: .3px;
+  }
+  .tag-green { background: var(--green-light); color: var(--green); }
+  .tag-amber { background: var(--amber-light); color: #b8860b; }
+  .tag-red { background: var(--red-light); color: var(--red); }
+  .tag-blue { background: var(--blue-light); color: var(--blue); }
+  .tag-primary { background: var(--primary-light); color: var(--primary); }
+
+  /* Feature table */
+  .feature-grid { display: grid; gap: 12px; }
+  .feature-row {
+    display: grid; grid-template-columns: 140px 1fr;
+    gap: 16px; padding: 12px 16px;
+    background: var(--surface); border-radius: var(--radius-sm);
+    border: 1px solid var(--border); align-items: start;
+  }
+  .feature-row .label { font-weight: 600; font-size: 13px; color: var(--text); }
+  .feature-row .desc { font-size: 13px; color: var(--text-secondary); }
+
+  /* Comparison table */
+  .comparison { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  .comparison th {
+    background: var(--primary-light); color: var(--primary);
+    font-weight: 600; text-align: left; padding: 10px 12px;
+    position: sticky; top: 0;
+  }
+  .comparison th:first-child { border-radius: var(--radius-sm) 0 0 0; }
+  .comparison th:last-child { border-radius: 0 var(--radius-sm) 0 0; }
+  .comparison td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .comparison tr:hover td { background: #f8f7ff; }
+
+  /* Phase cards */
+  .phase { 
+    border-left: 4px solid var(--primary);
+    padding: 16px 20px; margin-bottom: 16px;
+    background: var(--surface); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    box-shadow: var(--shadow);
+  }
+  .phase.phase-1 { border-left-color: var(--green); }
+  .phase.phase-2 { border-left-color: var(--blue); }
+  .phase.phase-3 { border-left-color: var(--amber); }
+  .phase h4 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .phase .est { font-size: 12px; color: var(--text-secondary); margin-left: auto; }
+  .phase ul { margin-top: 8px; padding-left: 20px; }
+  .phase li { font-size: 13px; color: var(--text-secondary); margin-bottom: 3px; }
+
+  /* Callout */
+  .callout {
+    padding: 16px 20px; border-radius: var(--radius-sm);
+    font-size: 13px; line-height: 1.7;
+    margin-bottom: 16px;
+  }
+  .callout.info { background: var(--blue-light); color: var(--blue); border-left: 4px solid var(--blue); }
+  .callout.warn { background: var(--amber-light); color: #b8860b; border-left: 4px solid var(--amber); }
+  .callout.goal { background: var(--green-light); color: var(--green); border-left: 4px solid var(--green); }
+
+  /* File list */
+  .file-list { list-style: none; padding: 0; }
+  .file-list li {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; font-family: var(--mono); font-size: 13px;
+    border-bottom: 1px solid var(--border);
+  }
+  .file-list li:last-child { border: none; }
+  .file-list .arrow { color: var(--primary); }
+
+  /* Steps */
+  .step { display: flex; gap: 12px; margin-bottom: 12px; }
+  .step-num {
+    flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--primary); color: #fff; font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-content { font-size: 14px; color: var(--text-secondary); }
+  .step-content strong { color: var(--text); }
+
+  /* Divider */
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  /* Footer */
+  footer { text-align: center; font-size: 12px; color: var(--text-secondary); padding: 24px; border-top: 1px solid var(--border); }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .feature-row { grid-template-columns: 1fr; }
+    .hero { padding: 32px 24px; }
+    .hero h1 { font-size: 24px; }
+    .comparison { font-size: 12px; }
+    .comparison th, .comparison td { padding: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HERO -->
+<div class="hero">
+  <h1>🎯 AI Meeting Host</h1>
+  <p>An AI-powered meeting moderator that manages agenda, facilitates discussion, keeps time, and produces meeting minutes — purpose-built for the digital human platform.</p>
+  <div class="meta">
+    <span>📅 July 5, 2026</span>
+    <span>⏱ Estimated: 5–7 days</span>
+    <span>📁 digital-human-adk</span>
+  </div>
+</div>
+
+<!-- 1. WHAT IS IT -->
+<section>
+  <div class="section-title"><span class="num">1</span> What Is an AI Meeting Host?</div>
+  <div class="card">
+    <p>Unlike the <strong>Talk Show</strong> (host interviews guest, entertainment-focused), the <strong>Meeting Host</strong> is a productivity tool. It runs structured meetings with multiple participants, follows an agenda, keeps time, records decisions, and outputs meeting notes.</p>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>🎬 Talk Show</h3>
+      <ul>
+        <li>Host + 1 guest</li>
+        <li>Free-form interview</li>
+        <li>Entertainment focus</li>
+        <li>Sound effects, showmanship</li>
+        <li>No output artifact</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🎯 Meeting Host <span class="tag tag-primary">NEW</span></h3>
+      <ul>
+        <li>Host + N participants</li>
+        <li>Structured agenda</li>
+        <li>Productivity focus</li>
+        <li>Time tracking, turn management</li>
+        <li>📋 Meeting minutes output</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 2. SCENARIOS -->
+<section>
+  <div class="section-title"><span class="num">2</span> Use Scenarios</div>
+  <div class="grid-3">
+    <div class="card">
+      <span class="tag tag-blue">Team Standup</span>
+      <h3 style="margin-top:8px">Daily Standup</h3>
+      <p>Each participant reports: what I did yesterday, what I'll do today, blockers. AI tracks who's spoken, reminds late speakers, summarizes at end.</p>
+    </div>
+    <div class="card">
+      <span class="tag tag-green">Brainstorm</span>
+      <h3 style="margin-top:8px">Brainstorm Session</h3>
+      <p>AI presents the problem, calls on each participant for ideas, clusters themes, highlights consensus areas.</p>
+    </div>
+    <div class="card">
+      <span class="tag tag-amber">Decision Meeting</span>
+      <h3 style="margin-top:8px">Decision / Review</h3>
+      <p>AI presents agenda items, facilitates discussion, records pros/cons, states final decision, assigns action items.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 3. KEY FEATURES -->
+<section>
+  <div class="section-title"><span class="num">3</span> Key Features</div>
+
+  <div class="feature-grid">
+    <div class="feature-row">
+      <span class="label">📋 Agenda Management</span>
+      <span class="desc">Add, reorder, time-box agenda items. Each item has a title, duration, and optional notes. AI works through them in order.</span>
+    </div>
+    <div class="feature-row">
+      <span class="label">👥 Participant Management</span>
+      <span class="desc">List of participants with names/roles. AI calls on each person, tracks who's spoken, ensures everyone contributes.</span>
+    </div>
+    <div class="feature-row">
+      <span class="label">⏱ Timer & Timekeeping</span>
+      <span class="desc">Per-item countdown timer. AI warns at thresholds (2min left, 30s left). Auto-moves to next item when time's up.</span>
+    </div>
+    <div class="feature-row">
+      <span class="label">✋ Turn Management</span>
+      <span class="desc">Raise hand queue. AI acknowledges and calls on participants in order. Prevents crosstalk.</span>
+    </div>
+    <div class="feature-row">
+      <span class="label">📝 Decision Recording</span>
+      <span class="desc">AI captures key decisions, action items with assignees, and unresolved topics during the meeting.</span>
+    </div>
+    <div class="feature-row">
+      <span class="label">📄 Meeting Minutes</span>
+      <span class="desc">End-of-meeting summary: agenda covered, decisions made, action items, next steps. Downloadable as text/markdown.</span>
+    </div>
+    <div class="feature-row">
+      <span class="label">🔴 Emergency Controls</span>
+      <span class="desc">Extend item time, skip item, add agenda item on-the-fly, pause meeting.</span>
+    </div>
+  </div>
+</section>
+
+<!-- 4. MEETING FLOW -->
+<section>
+  <div class="section-title"><span class="num">4</span> Meeting Flow</div>
+  <div class="card">
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--primary-light); border-radius:var(--radius-sm);">
+        <span style="font-size:20px;">🎬</span>
+        <div><strong>Opening</strong> — AI greets participants, states meeting goal, reviews agenda, sets expectations</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--green-light); border-radius:var(--radius-sm);">
+        <span style="font-size:20px;">1️⃣</span>
+        <div><strong>Agenda Item 1</strong> — AI introduces topic, calls on participants, moderates discussion, tracks time</div>
+        <span class="tag tag-green">⏱ 5:00</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--green-light); border-radius:var(--radius-sm);">
+        <span style="font-size:20px;">2️⃣</span>
+        <div><strong>Agenda Item 2</strong> — Same flow, AI summarizes decisions before moving on</div>
+        <span class="tag tag-green">⏱ 10:00</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--green-light); border-radius:var(--radius-sm);">
+        <span style="font-size:20px;">3️⃣</span>
+        <div><strong>Agenda Item 3</strong> — Same flow</div>
+        <span class="tag tag-green">⏱ 5:00</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--amber-light); border-radius:var(--radius-sm);">
+        <span style="font-size:20px;">🗣</span>
+        <div><strong>Open Discussion / Q&A</strong> — Optional free-form segment</div>
+        <span class="tag tag-amber">⏱ 5:00</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--primary-light); border-radius:var(--radius-sm);">
+        <span style="font-size:20px;">🎬</span>
+        <div><strong>Closing</strong> — AI summarizes decisions, action items, next meeting date</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. UI MOCKUP -->
+<section>
+  <div class="section-title"><span class="num">5</span> UI Layout</div>
+  <div class="card">
+    <div style="border:2px dashed var(--border); border-radius:var(--radius); overflow:hidden;">
+      <!-- Mockup header -->
+      <div style="background:var(--primary); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:12px;">
+        <span>🎯</span>
+        <span style="font-weight:600; flex:1;">Sprint Review — Q3 Planning</span>
+        <span style="font-size:12px; opacity:.8;">⏱ 15:00</span>
+      </div>
+      <div style="display:grid; grid-template-columns:240px 1fr; min-height:300px;">
+        <!-- Left sidebar -->
+        <div style="border-right:1px solid var(--border); padding:12px; background:#fafafa;">
+          <div style="font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;">Agenda</div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="padding:8px 10px; background:var(--primary-light); border-radius:6px; font-size:12px; font-weight:600; color:var(--primary); display:flex; justify-content:space-between;">
+              <span>1. Opening</span>
+              <span style="font-weight:400; opacity:.7;">2:00</span>
+            </div>
+            <div style="padding:8px 10px; border-radius:6px; font-size:12px; display:flex; justify-content:space-between; color:var(--text-secondary);">
+              <span>2. Progress Review</span>
+              <span>8:00</span>
+            </div>
+            <div style="padding:8px 10px; border-radius:6px; font-size:12px; display:flex; justify-content:space-between; color:var(--text-secondary);">
+              <span>3. Blockers</span>
+              <span>5:00</span>
+            </div>
+            <div style="padding:8px 10px; border-radius:6px; font-size:12px; display:flex; justify-content:space-between; color:var(--text-secondary);">
+              <span>4. Action Items</span>
+              <span>3:00</span>
+            </div>
+          </div>
+          <hr style="margin:12px 0;">
+          <div style="font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;">Participants</div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="display:flex; align-items:center; gap:6px; padding:4px 0; font-size:12px;">
+              <span style="width:8px; height:8px; border-radius:50%; background:var(--green);"></span> Alice (PM)
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; padding:4px 0; font-size:12px;">
+              <span style="width:8px; height:8px; border-radius:50%; background:var(--green);"></span> Bob (Dev)
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; padding:4px 0; font-size:12px;">
+              <span style="width:8px; height:8px; border-radius:50%; background:var(--amber);"></span> Charlie (Design)
+            </div>
+          </div>
+        </div>
+        <!-- Main area -->
+        <div style="padding:16px; display:flex; flex-direction:column;">
+          <div style="background:var(--primary-light); border-radius:var(--radius-sm); padding:14px; flex:1;">
+            <div style="font-size:12px; font-weight:600; color:var(--primary); margin-bottom:6px;">🤖 Meeting Host</div>
+            <div style="font-size:13px; color:var(--text); line-height:1.7;">
+              Welcome everyone to the Sprint Review! Let's start with a quick round — Alice, how's the auth migration looking?
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:8px;">⏱ Agenda item 1 · 6:42 remaining</div>
+          </div>
+          <!-- Guest input area -->
+          <div style="margin-top:12px; display:flex; gap:8px;">
+            <div style="flex:1; border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 14px; font-size:13px; color:var(--text-secondary);">Type your response or tap to speak...</div>
+            <div style="width:40px; height:40px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer;">🎤</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. BACKEND PROMPT -->
+<section>
+  <div class="section-title"><span class="num">6</span> AI Prompt Design</div>
+  <div class="card">
+    <p>The Meeting Host prompt is a new category alongside the Talk Show prompt. Key structural differences:</p>
+    <div class="feature-grid" style="margin-top:12px;">
+      <div class="feature-row">
+        <span class="label">Role</span>
+        <span class="desc">"You are a professional meeting facilitator. Your job is to keep the meeting productive, on-track, and on-time."</span>
+      </div>
+      <div class="feature-row">
+        <span class="label">Agenda</span>
+        <span class="desc">List of items with durations. AI tracks progress and announces transitions.</span>
+      </div>
+      <div class="feature-row">
+        <span class="label">Participants</span>
+        <span class="desc">Named list. AI tracks who's spoken and proactively calls on those who haven't.</span>
+      </div>
+      <div class="feature-row">
+        <span class="label">Timekeeping</span>
+        <span class="desc">Per-item countdown. AI gives warnings: "2 minutes left on this item", "30 seconds — let's wrap up".</span>
+      </div>
+      <div class="feature-row">
+        <span class="label">Decision Capture</span>
+        <span class="desc">AI recaps: "So the decision is to proceed with Option A. Alice will draft the spec by Friday."</span>
+      </div>
+      <div class="feature-row">
+        <span class="label">Output</span>
+        <span class="desc">End-of-meeting structured summary: decisions, action items, next steps.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. IMPLEMENTATION PLAN -->
+<section>
+  <div class="section-title"><span class="num">7</span> Implementation Plan</div>
+
+  <p style="font-size:14px; color:var(--text-secondary); margin-bottom:16px;">5 phases, estimated <strong>5–7 days</strong> total.</p>
+
+  <div class="phase phase-1">
+    <h4>📦 Phase 1: Setup UI <span class="est">~1.5 days</span></h4>
+    <ul>
+      <li>Create <code>MeetingSetup.component.tsx</code> — meeting title, agenda items (add/remove/reorder), participant list, duration</li>
+      <li>Add "🎯 New Meeting" button to sidebar (between New Talk Show and New Presentation)</li>
+      <li>Update <code>index.tsx</code> to handle meeting mode state</li>
+      <li>Add event listener <code>open-meeting</code> in sidebar</li>
+      <li><strong>Files:</strong> <code>MeetingSetup/*.tsx</code>, <code>CyborgSidebar/*.tsx</code>, <code>index.tsx</code></li>
+    </ul>
+  </div>
+
+  <div class="phase phase-2">
+    <h4>⚙️ Phase 2: Backend API <span class="est">~1.5 days</span></h4>
+    <ul>
+      <li>Add <code>POST /api/meeting/ask</code> endpoint (parallel to <code>/api/talk-show/ask</code>)</li>
+      <li>Design Meeting Host prompt with agenda, participants, timekeeping rules</li>
+      <li>Add <code>POST /api/meeting/summarize</code> — generates meeting minutes at end</li>
+      <li>Parse decision/action items from AI response</li>
+      <li><strong>Files:</strong> <code>server.py</code></li>
+    </ul>
+  </div>
+
+  <div class="phase phase-3">
+    <h4>🖥 Phase 3: Meeting Mode UI <span class="est">~2 days</span></h4>
+    <ul>
+      <li>Create <code>MeetingMode.component.tsx</code> — main meeting interface</li>
+      <li>Left sidebar: agenda items (current highlighted, checkmarks for done)</li>
+      <li>Right panel: chat area (AI host + participant messages), timer display</li>
+      <li>Participant list with speaking status indicators</li>
+      <li>Raise hand button, timer warnings, progress indicator</li>
+      <li>End-of-meeting summary overlay with minutes download</li>
+      <li>Add <code>sendMeetingMessage</code> to <code>adk-assistant.service.ts</code></li>
+      <li><strong>Files:</strong> <code>MeetingMode/*.tsx</code>, <code>adk-assistant.service.ts</code></li>
+    </ul>
+  </div>
+
+  <div class="phase phase-4">
+    <h4>🔊 Phase 4: Voice & Sound <span class="est">~1 day</span></h4>
+    <ul>
+      <li>Support TTS for AI meeting host (reuse existing TTS pipeline)</li>
+      <li>Meeting-specific sound effects: gavel/open (🎯), timer warning (🔔), meeting close</li>
+      <li>Guest voice input (tap-to-record, reuse existing)</li>
+      <li><strong>Files:</strong> <code>MeetingMode.component.tsx</code>, <code>server.py</code> (sound prompts)</li>
+    </ul>
+  </div>
+
+  <div class="phase phase-5">
+    <h4>📋 Phase 5: Minutes & Output <span class="est">~1 day</span></h4>
+    <ul>
+      <li>Meeting minutes template: agenda, decisions, action items table</li>
+      <li>Download as <code>.md</code> or <code>.txt</code></li>
+      <li>Option to email minutes or save to local file</li>
+      <li>History/recent meetings list in sidebar</li>
+      <li><strong>Files:</strong> <code>MeetingMode/*.tsx</code>, <code>server.py</code></li>
+    </ul>
+  </div>
+</section>
+
+<!-- 8. FILE CHANGES SUMMARY -->
+<section>
+  <div class="section-title"><span class="num">8</span> Files to Create / Modify</div>
+  <div class="card">
+    <ul class="file-list">
+      <li><span class="tag tag-green">NEW</span> <span class="arrow">→</span> <code>frontend/src/pages/components/MeetingMode/MeetingSetup.component.tsx</code></li>
+      <li><span class="tag tag-green">NEW</span> <span class="arrow">→</span> <code>frontend/src/pages/components/MeetingMode/MeetingMode.component.tsx</code></li>
+      <li><span class="tag tag-primary">MOD</span> <span class="arrow">→</span> <code>server.py</code> — add <code>/api/meeting/ask</code> + <code>/api/meeting/summarize</code></li>
+      <li><span class="tag tag-primary">MOD</span> <span class="arrow">→</span> <code>frontend/src/services/adk-assistant.service.ts</code> — add <code>sendMeetingMessage</code></li>
+      <li><span class="tag tag-primary">MOD</span> <span class="arrow">→</span> <code>frontend/src/pages/index.tsx</code> — add meeting mode routing</li>
+      <li><span class="tag tag-primary">MOD</span> <span class="arrow">→</span> <code>frontend/src/pages/components/CyborgSidebar/CyborgSidebar.component.tsx</code> — add New Meeting button</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 9. OPEN QUESTIONS -->
+<section>
+  <div class="section-title"><span class="num">9</span> Open Questions</div>
+  <div class="callout warn">
+    <ul style="padding-left:20px; margin:0;">
+      <li><strong>Multiple participants:</strong> Should users join as live participants (type/speak), or are participants pre-defined with AI simulating their responses?</li>
+      <li><strong>Meeting minutes format:</strong> Markdown, plain text, or rendered HTML?</li>
+      <li><strong>Real-time clock:</strong> Should the timer be server-side or client-side?</li>
+      <li><strong>Over running:</strong> If discussion is productive but time's up — auto-cut or offer extension?</li>
+      <li><strong>Integration:</strong> Should meeting minutes be savable to a local notes file or sent via email?</li>
+    </ul>
+  </div>
+</section>
+
+<hr>
+<footer>AI Meeting Host — Spec & Implementation Plan · Generated July 5, 2026</footer>
+</div>
+</body>
+</html>
