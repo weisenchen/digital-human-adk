@@ -48,23 +48,23 @@ const CharacterSelector: React.FC = () => {
       <div className="flex gap-1 bg-[var(--md-surface-variant)] rounded-[var(--shape-md)] p-0.5 border border-[var(--md-outline)]">
         <button
           onClick={() => handleGenderChange('female')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-[10px] font-medium transition-all ${
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
             selectedGender === 'female'
               ? 'bg-white text-[var(--md-on-surface)] shadow-sm border border-[var(--md-outline)]'
               : 'text-[var(--md-on-surface-variant)] hover:text-[var(--md-on-surface)]'
           }`}
         >
-          ♀ Female
+          <span className="text-sm leading-none">♀</span> Female
         </button>
         <button
           onClick={() => handleGenderChange('male')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-[10px] font-medium transition-all ${
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
             selectedGender === 'male'
               ? 'bg-white text-[var(--md-on-surface)] shadow-sm border border-[var(--md-outline)]'
               : 'text-[var(--md-on-surface-variant)] hover:text-[var(--md-on-surface)]'
           }`}
         >
-          ♂ Male
+          <span className="text-sm leading-none">♂</span> Male
         </button>
       </div>
 
