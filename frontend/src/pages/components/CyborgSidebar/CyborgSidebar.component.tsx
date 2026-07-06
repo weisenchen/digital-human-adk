@@ -89,7 +89,7 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
             className="w-full flex items-center justify-between gap-2 mb-1 px-1 py-1.5 rounded-[var(--shape-sm)] hover:bg-[var(--md-surface-variant)] transition-colors"
           >
             <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4 text-[var(--md-on-surface-variant)]" />
+              <Settings className="w-4 h-4 text-[var(--md-tertiary)]" />
               <span className="text-label-sm text-[var(--md-on-surface)]">Settings</span>
             </div>
             {settingsOpen ? <ChevronUp className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" />}
@@ -104,7 +104,7 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
                   className="w-full flex items-center justify-between gap-2 px-1 py-1.5 rounded-[var(--shape-sm)] hover:bg-[var(--md-surface-variant)] transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <Brain className="w-4 h-4 text-[var(--md-on-surface-variant)]" />
+                    <Brain className="w-4 h-4 text-[var(--md-tertiary)]" />
                     <span className="text-label-sm text-[var(--md-on-surface)]">Model</span>
                   </div>
                   {modelOpen ? <ChevronUp className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" />}
@@ -161,7 +161,7 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
             className="w-full flex items-center justify-between gap-2 px-1 py-1.5 rounded-[var(--shape-sm)] hover:bg-[var(--md-surface-variant)] transition-colors"
           >
             <div className="flex items-center gap-2">
-              <History className="w-4 h-4 text-[var(--md-on-surface-variant)]" />
+              <History className="w-4 h-4 text-[var(--md-tertiary)]" />
               <span className="text-label-sm text-[var(--md-on-surface)]">Recent</span>
             </div>
             {historyOpen ? <ChevronUp className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" />}
