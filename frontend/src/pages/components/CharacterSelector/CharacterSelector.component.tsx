@@ -37,31 +37,31 @@ const CharacterSelector: React.FC = () => {
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Mic className="w-4 h-4 text-gray-500" />
-        <span className="text-sm font-medium text-gray-700">Voice</span>
-        <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full ml-auto">
+        <Mic className="w-4 h-4 text-[var(--md-tertiary)]" />
+        <span className="text-label-sm text-[var(--md-on-surface)]">Voice</span>
+        <span className="text-[10px] text-[var(--md-on-surface-variant)] bg-[var(--md-surface-variant)] px-1.5 py-0.5 rounded-full ml-auto">
           English
         </span>
       </div>
 
       {/* Gender Toggle */}
-      <div className="flex gap-1 bg-gray-50 rounded-lg p-0.5 border border-gray-200">
+      <div className="flex gap-1 bg-[var(--md-surface-variant)] rounded-[var(--shape-md)] p-0.5 border border-[var(--md-outline)]">
         <button
           onClick={() => handleGenderChange('female')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-[10px] font-medium transition-all ${
             selectedGender === 'female'
-              ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-white text-[var(--md-on-surface)] shadow-sm border border-[var(--md-outline)]'
+              : 'text-[var(--md-on-surface-variant)] hover:text-[var(--md-on-surface)]'
           }`}
         >
           ♀ Female
         </button>
         <button
           onClick={() => handleGenderChange('male')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-[10px] font-medium transition-all ${
             selectedGender === 'male'
-              ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-white text-[var(--md-on-surface)] shadow-sm border border-[var(--md-outline)]'
+              : 'text-[var(--md-on-surface-variant)] hover:text-[var(--md-on-surface)]'
           }`}
         >
           ♂ Male
@@ -77,10 +77,10 @@ const CharacterSelector: React.FC = () => {
             return (
               <label
                 key={v.voice_id}
-                className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all border ${
+                className={`flex items-center gap-2 p-2 rounded-[var(--shape-md)] cursor-pointer transition-all border ${
                   isSelected
-                    ? 'bg-white border-gray-300 shadow-sm'
-                    : 'border-transparent hover:bg-gray-50 hover:border-gray-200'
+                    ? 'bg-white border-[var(--md-outline)] shadow-sm'
+                    : 'border-transparent hover:bg-[var(--md-surface-variant)] hover:border-[var(--md-outline)]'
                 }`}
               >
                 <input
@@ -89,13 +89,13 @@ const CharacterSelector: React.FC = () => {
                   value={v.voice_id}
                   checked={isSelected}
                   onChange={() => handleVoiceSelect(v.voice_id)}
-                  className="accent-gray-900 w-3.5 h-3.5 flex-shrink-0"
+                  className="accent-[var(--md-tertiary)] w-3 h-3 flex-shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">
+                  <div className="text-xs font-medium text-[var(--md-on-surface)] truncate">
                     {charName}
                   </div>
-                  <div className="text-xs text-gray-400 truncate mt-0.5">
+                  <div className="text-[10px] text-[var(--md-on-surface-variant)] truncate mt-0.5">
                     {v.locale}
                   </div>
                 </div>
@@ -104,7 +104,7 @@ const CharacterSelector: React.FC = () => {
           })}
         </div>
       ) : (
-        <div className="text-xs text-gray-400 text-center py-3">
+        <div className="text-[10px] text-[var(--md-on-surface-variant)] text-center py-3">
           No voices available
         </div>
       )}
