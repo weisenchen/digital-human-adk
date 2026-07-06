@@ -459,43 +459,43 @@ def create_app() -> FastAPI:
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-  body {{ background: #0f0f11; color: #e8e8ed; font-family: 'DM Sans', -apple-system, sans-serif; overflow: hidden; height: 100vh; }}
-  #player {{ display: flex; flex-direction: column; height: 100vh; background: linear-gradient(135deg, #0f0f11 0%, #1a1a2e 100%); }}
-  #brand-logo {{ position: fixed; top: 20px; left: 24px; z-index: 100; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.5); letter-spacing: 0.5px; }}
-  #duration-badge {{ position: fixed; top: 20px; right: 24px; z-index: 100; font-size: 12px; font-family: 'DM Mono', monospace; color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.06); padding: 4px 12px; border-radius: 20px; }}
+  body {{ background: #f8f9fc; color: #1a1a2e; font-family: 'DM Sans', -apple-system, sans-serif; overflow: hidden; height: 100vh; }}
+  #player {{ display: flex; flex-direction: column; height: 100vh; background: linear-gradient(135deg, #f0f2f8 0%, #e8ecf4 100%); }}
+  #brand-logo {{ position: fixed; top: 20px; left: 24px; z-index: 100; font-size: 13px; font-weight: 600; color: #6366f1; letter-spacing: 0.5px; }}
+  #duration-badge {{ position: fixed; top: 20px; right: 24px; z-index: 100; font-size: 12px; font-family: 'DM Mono', monospace; color: #6366f1; background: rgba(99,102,241,0.1); padding: 4px 12px; border-radius: 20px; }}
   #stage {{ flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 60px 48px 80px; }}
   .scene {{ position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 48px 100px; opacity: 0; transition: opacity 0.6s ease; pointer-events: none; }}
   .scene.active {{ opacity: 1; pointer-events: auto; }}
   .scene-content {{ max-width: 800px; width: 100%; text-align: center; }}
-  .scene-content h1 {{ font-size: clamp(1.8rem, 4vw, 3.2rem); font-weight: 700; line-height: 1.2; margin-bottom: 12px; color: #fff; }}
-  .scene-content h2 {{ font-size: clamp(1.3rem, 3vw, 2rem); font-weight: 600; line-height: 1.3; margin-bottom: 10px; color: #e0e0e8; }}
-  .scene-content h3 {{ font-size: 1.1rem; font-weight: 500; margin-bottom: 8px; color: #c0c0cc; }}
-  .scene-content p {{ font-size: clamp(0.95rem, 1.5vw, 1.15rem); line-height: 1.7; color: #a0a0b0; margin-bottom: 8px; }}
-  .scene-content li {{ text-align: left; font-size: clamp(0.9rem, 1.4vw, 1.1rem); line-height: 1.6; color: #c0c0cc; margin: 4px 0; list-style: none; padding-left: 20px; position: relative; }}
+  .scene-content h1 {{ font-size: clamp(1.8rem, 4vw, 3.2rem); font-weight: 700; line-height: 1.2; margin-bottom: 12px; color: #1a1a2e; }}
+  .scene-content h2 {{ font-size: clamp(1.3rem, 3vw, 2rem); font-weight: 600; line-height: 1.3; margin-bottom: 10px; color: #1a1a2e; }}
+  .scene-content h3 {{ font-size: 1.1rem; font-weight: 500; margin-bottom: 8px; color: #2d2d44; }}
+  .scene-content p {{ font-size: clamp(0.95rem, 1.5vw, 1.15rem); line-height: 1.7; color: #2d2d44; margin-bottom: 8px; }}
+  .scene-content li {{ text-align: left; font-size: clamp(0.9rem, 1.4vw, 1.1rem); line-height: 1.6; color: #2d2d44; margin: 4px 0; list-style: none; padding-left: 20px; position: relative; }}
   .scene-content li::before {{ content: "▸"; position: absolute; left: 0; color: #6366f1; }}
   .scene-content blockquote {{ border-left: 3px solid #6366f1; padding: 8px 16px; margin: 12px 0; font-style: italic; color: #b0b0c0; text-align: left; font-size: 1.05rem; }}
   .scene-content .big-number {{ font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 700; color: #818cf8; margin: 8px 0; }}
   .scene-content .cta {{ display: inline-block; margin-top: 16px; padding: 10px 28px; background: #6366f1; color: #fff; border-radius: 8px; font-weight: 600; font-size: 0.95rem; }}
-  #scene-title-overlay {{ position: absolute; bottom: 76px; left: 50%; transform: translateX(-50%); font-size: 11px; color: rgba(255,255,255,0.3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 1px; }}
-  #subtitle-bar {{ position: absolute; bottom: 48px; left: 50%; transform: translateX(-50%); max-width: 80%; text-align: center; font-size: 0.95rem; color: rgba(255,255,255,0.7); background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); padding: 8px 20px; border-radius: 12px; opacity: 0; transition: opacity 0.3s; }}
+  #scene-title-overlay {{ position: absolute; bottom: 76px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #9ca3af; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 1px; }}
+  #subtitle-bar {{ position: absolute; bottom: 48px; left: 50%; transform: translateX(-50%); max-width: 80%; text-align: center; font-size: 0.95rem; color: #1a1a2e; background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); padding: 8px 20px; border-radius: 12px; opacity: 0; transition: opacity 0.3s; }}
   #subtitle-bar.visible {{ opacity: 1; }}
   #voice-indicator, #voice-badge, #wait-indicator {{ display: none; }}
-  #controls {{ height: 56px; background: rgba(255,255,255,0.04); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 24px; shrink: 0; }}
-  #controls button {{ background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; padding: 8px; border-radius: 6px; transition: all 0.15s; font-size: 14px; display: flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; }}
-  #controls button:hover {{ background: rgba(255,255,255,0.08); color: #fff; }}
+  #controls {{ height: 56px; background: rgba(255,255,255,0.8); backdrop-filter: blur(12px); border-top: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 24px; shrink: 0; }}
+  #controls button {{ background: none; border: none; color: #6b7280; cursor: pointer; padding: 8px; border-radius: 6px; transition: all 0.15s; font-size: 14px; display: flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; }}
+  #controls button:hover {{ background: rgba(99,102,241,0.1); color: #6366f1; }}
   #controls button:disabled {{ opacity: 0.2; cursor: default; }}
-  #controls .active {{ color: #818cf8; }}
+  #controls .active {{ color: #6366f1; }}
   .progress-wrap {{ flex: 1; max-width: 400px; margin: 0 12px; position: relative; }}
-  .progress-wrap input[type=range] {{ width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: rgba(255,255,255,0.1); border-radius: 2px; outline: none; cursor: pointer; }}
-  .progress-wrap input[type=range]::-webkit-slider-thumb {{ -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #818cf8; cursor: pointer; }}
-  .progress-wrap input[type=range]::-moz-range-thumb {{ width: 12px; height: 12px; border-radius: 50%; background: #818cf8; border: none; cursor: pointer; }}
+  .progress-wrap input[type=range] {{ width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: rgba(0,0,0,0.08); border-radius: 2px; outline: none; cursor: pointer; }}
+  .progress-wrap input[type=range]::-webkit-slider-thumb {{ -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #6366f1; cursor: pointer; }}
+  .progress-wrap input[type=range]::-moz-range-thumb {{ width: 12px; height: 12px; border-radius: 50%; background: #6366f1; border: none; cursor: pointer; }}
   .scene-dots {{ display: flex; gap: 4px; margin: 0 8px; }}
-  .scene-dots button {{ width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); border: none; padding: 0; min-width: unset; cursor: pointer; transition: all 0.2s; }}
-  .scene-dots button.active {{ background: #818cf8; transform: scale(1.3); }}
-  .time-display {{ font-family: 'DM Mono', monospace; font-size: 12px; color: rgba(255,255,255,0.35); min-width: 50px; text-align: center; }}
+  .scene-dots button {{ width: 8px; height: 8px; border-radius: 50%; background: rgba(0,0,0,0.12); border: none; padding: 0; min-width: unset; cursor: pointer; transition: all 0.2s; }}
+  .scene-dots button.active {{ background: #6366f1; transform: scale(1.3); }}
+  .time-display {{ font-family: 'DM Mono', monospace; font-size: 12px; color: #9ca3af; min-width: 50px; text-align: center; }}
   .volume-wrap {{ display: flex; align-items: center; gap: 4px; }}
-  .volume-wrap input[type=range] {{ width: 60px; height: 3px; -webkit-appearance: none; appearance: none; background: rgba(255,255,255,0.1); border-radius: 2px; outline: none; cursor: pointer; }}
-  .volume-wrap input[type=range]::-webkit-slider-thumb {{ -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.5); cursor: pointer; }}
+  .volume-wrap input[type=range] {{ width: 60px; height: 3px; -webkit-appearance: none; appearance: none; background: rgba(0,0,0,0.08); border-radius: 2px; outline: none; cursor: pointer; }}
+  .volume-wrap input[type=range]::-webkit-slider-thumb {{ -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #6b7280; cursor: pointer; }}
 </style>
 </head>
 <body>
