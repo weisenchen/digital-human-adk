@@ -758,12 +758,12 @@ def create_app() -> FastAPI:
 
         if background.strip():
             system_parts.append("")
-            system_parts.append("── BACKGROUND MATERIALS ──")
-            system_parts.append("Use these to inform your questions and responses. Strategy:")
-            system_parts.append("- Extract 2-3 KEY POINTS to discuss with the guest")
-            system_parts.append("- Reference specific facts: \"As mentioned in the article...\"")
-            system_parts.append("- Ask questions that explore or challenge these points")
-            system_parts.append("- When the guest says something new, connect it back to the materials")
+            system_parts.append("── TOPIC BACKGROUND RESEARCH ──")
+            system_parts.append("The following is research material about today's TOPIC. Use it to make the discussion informed and substantive:")
+            system_parts.append("- Reference specific facts from the materials: \"According to...\", \"I read that...\"")
+            system_parts.append("- Ask questions that explore or challenge these points with the guest")
+            system_parts.append("- When the guest offers their perspective, connect it back to the facts")
+            system_parts.append("- If the guest has relevant experience, ask how it relates to these findings")
             system_parts.append("")
             system_parts.append(background.strip())
 
