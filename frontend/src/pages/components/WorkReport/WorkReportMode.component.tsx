@@ -276,6 +276,7 @@ export default function WorkReportMode({
           personality: config.personality,
           numSlides: 5,
           language: selectedLanguage.replace(/-.*$/, ''),
+          reportToRole: config.reportToRole,
         });
         // generateReportSlides may return { slides: [...] } or directly an array
         loadedSlides = Array.isArray(result) ? result : (result.slides || []);
