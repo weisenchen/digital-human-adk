@@ -40,6 +40,8 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [summaryText, setSummaryText] = useState('');
+  const [autoMicActive, setAutoMicActive] = useState(false);
+  const [responseTimeLeft, setResponseTimeLeft] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesRef = useRef<MeetingMessage[]>([]);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -50,6 +52,7 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const voiceRecogRef = useRef<any>(null);
   const voiceFinalRef = useRef<string>('');
+  const responseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
@@ -126,6 +129,11 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
         rafIdRef.current = null;
         setIsSpeaking(false);
         setMouthOpen(0);
+        // Auto-record: if host message has a question, open mic for participant
+        const lastMsg = messagesRef.current[messagesRef.current.length - 1];
+        if (lastMsg && lastMsg.role === 'host' && lastMsg.content.includes('?')) {
+          startAutoRecord();
+        }
       };
     } catch {
       setIsSpeaking(false);
@@ -231,6 +239,60 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
       recognition.start();
       setIsRecording(true);
     }
+  };
+
+  const RESPONSE_TIME_SEC = 60; // seconds allowed for response
+
+  const startAutoRecord = () => {
+    if (isRecording || isWaiting || isSpeaking) return;
+    // Start response timer
+    setAutoMicActive(true);
+    setResponseTimeLeft(RESPONSE_TIME_SEC);
+    if (responseTimerRef.current) clearInterval(responseTimerRef.current);
+    responseTimerRef.current = setInterval(() => {
+      setResponseTimeLeft(prev => {
+        if (prev <= 1) {
+          if (responseTimerRef.current) clearInterval(responseTimerRef.current);
+          stopAutoRecord();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    // Start voice recording
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    recognition.onresult = (event: any) => {
+      voiceFinalRef.current = event.results[0][0].transcript;
+    };
+    recognition.onerror = () => { stopAutoRecord(); };
+    recognition.onend = () => {
+      setIsRecording(false);
+      setAutoMicActive(false);
+      if (responseTimerRef.current) clearInterval(responseTimerRef.current);
+      const text = voiceFinalRef.current.trim();
+      voiceFinalRef.current = '';
+      if (text) handleSend(text);
+    };
+    voiceRecogRef.current = recognition;
+    voiceFinalRef.current = '';
+    recognition.start();
+    setIsRecording(true);
+  };
+
+  const stopAutoRecord = () => {
+    if (responseTimerRef.current) { clearInterval(responseTimerRef.current); responseTimerRef.current = null; }
+    setAutoMicActive(false);
+    setResponseTimeLeft(0);
+    if (voiceRecogRef.current) {
+      try { voiceRecogRef.current.stop(); } catch {}
+      voiceRecogRef.current = null;
+    }
+    setIsRecording(false);
   };
 
   const handleTextSend = () => {
@@ -391,6 +453,20 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
 
           {/* ── Input ── */}
           <div className="shrink-0 border-t border-gray-200 px-4 py-3 bg-white">
+            {autoMicActive && (
+              <div className="flex items-center justify-between mb-2 px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg">
+                <div className="flex items-center gap-2 text-xs font-medium text-purple-700">
+                  <Mic className="w-3.5 h-3.5 animate-pulse" />
+                  Recording your response...
+                </div>
+                <div className={`flex items-center gap-1 text-xs font-mono font-bold ${
+                  responseTimeLeft <= 10 ? 'text-red-600' : 'text-purple-600'
+                }`}>
+                  <Clock className="w-3 h-3" />
+                  {responseTimeLeft}s
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleRecording}
