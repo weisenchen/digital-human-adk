@@ -47,6 +47,7 @@ export interface WorkReportConfig {
   uploadedSlides?: SlideData[];
   slideOutline?: string;
   totalMinutes: number;
+  reportToRole: string;  // e.g. "CTO", "Manager", "Director"
 }
 
 interface WorkReportSetupProps {
@@ -62,6 +63,7 @@ export default function WorkReportSetup({ onStart, onClose }: WorkReportSetupPro
   const [slideOutline, setSlideOutline] = useState('');
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [totalMinutes, setTotalMinutes] = useState(15);
+  const [reportToRole, setReportToRole] = useState('CTO');
 
   const handleAddQuestion = () => {
     setQuestions((prev) => [...prev, '']);
@@ -97,6 +99,7 @@ export default function WorkReportSetup({ onStart, onClose }: WorkReportSetupPro
       uploadedSlides: slideMethod === 'upload' ? [] : undefined,
       slideOutline: slideMethod === 'ai-generate' ? slideOutline.trim() : undefined,
       totalMinutes,
+      reportToRole,
     });
   };
 
@@ -321,6 +324,21 @@ export default function WorkReportSetup({ onStart, onClose }: WorkReportSetupPro
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Report To Role */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Report To (role / name)
+            </label>
+            <input
+              type="text"
+              value={reportToRole}
+              onChange={(e) => setReportToRole(e.target.value)}
+              placeholder="e.g. CTO, Manager, Director Chen"
+              className="w-full px-3.5 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
+            />
+            <p className="text-xs text-gray-400 mt-1">The AI lead will address this person throughout the report</p>
           </div>
         </div>
 

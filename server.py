@@ -381,6 +381,9 @@ def create_app() -> FastAPI:
         - Controls: play/pause, prev/next, seek, volume, captions
         - Keyboard shortcuts, scene dots navigation
         """
+        import re
+        _re_bold = re.compile(r'\*\*(.+?)\*\*')
+
         def _md_to_html(md: str) -> str:
             """Convert simple markdown (##, -, **bold**, >) to HTML."""
             lines = md.split("\n")
@@ -405,7 +408,9 @@ def create_app() -> FastAPI:
                     html_parts.append(f"<blockquote>{_esc(stripped[2:])}</blockquote>")
                 elif stripped.startswith("- ") or stripped.startswith("* "):
                     if not in_list: html_parts.append("<ul>"); in_list = True
-                    html_parts.append(f"<li>{_esc(stripped[2:])}</li>")
+                    text = _esc(stripped[2:])
+                    text = _re_bold.sub(r'<strong>\1</strong>', text)
+                    html_parts.append(f"<li>{text}</li>")
                 elif stripped.startswith("**") and stripped.endswith("**"):
                     if in_list: html_parts.append("</ul>"); in_list = False
                     html_parts.append(f'<p class="cta">{_esc(stripped[2:-2])}</p>')
@@ -416,8 +421,7 @@ def create_app() -> FastAPI:
                     if in_list: html_parts.append("</ul>"); in_list = False
                     # Render **bold** inline
                     text = _esc(stripped)
-                    import re
-                    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+                    text = _re_bold.sub(r'<strong>\1</strong>', text)
                     html_parts.append(f"<p>{text}</p>")
             if in_list:
                 html_parts.append("</ul>")
@@ -435,16 +439,17 @@ def create_app() -> FastAPI:
             # Estimate narration duration (~150 words/min)
             word_count = len(speech.split())
             duration = max(8, word_count // 3)  # ~180 wpm, min 8s
+            html_content = _md_to_html(display)
             scenes_json.append({
                 "id": f"scene-{i}",
                 "title": scene_title,
-                "display": _md_to_html(display).replace('"', '\\"').replace("\n", "\\n"),
+                "html_content": html_content.replace("\\", "\\\\").replace('"', '&quot;'),
                 "narration": speech.replace('"', '\\"').replace("\n", "\\n"),
                 "duration": duration,
             })
 
         scenes_str = ",\n    ".join(
-            f"""{{\n      id: "{s["id"]}",\n      title: "{s["title"]}",\n      display: "{s["display"]}",\n      narration: "{s["narration"]}",\n      duration: {s["duration"]}\n    }}"""
+            f"""{{\n      id: "{s["id"]}",\n      title: "{s["title"]}",\n      narration: "{s["narration"]}",\n      duration: {s["duration"]}\n    }}"""
             for s in scenes_json
         )
         total_dur = sum(s["duration"] for s in scenes_json)
@@ -503,8 +508,8 @@ def create_app() -> FastAPI:
   <div id="brand-logo">{title}</div>
   <div id="duration-badge">{total_dur // 60}:{total_dur % 60:02d}</div>
   <div id="stage">
-    {"".join(f'''<div class="scene{" active" if i == 0 else ""} id="{s["id"]}">
-      <div class="scene-content" id="display-{i}"></div>
+    {"".join(f'''<div class="scene{" active" if i == 0 else ""}" id="{s["id"]}">
+      <div class="scene-content">{s["html_content"]}</div>
     </div>''' for i, s in enumerate(scenes_json))}
     <div id="scene-title-overlay"></div>
     <div id="subtitle-bar"></div>
@@ -545,12 +550,6 @@ def create_app() -> FastAPI:
   const volBar = document.getElementById('vol-bar');
   const volBtn = document.getElementById('vol-btn');
   const ccBtn = document.getElementById('cc-btn');
-
-  // Load display content into scenes
-  for (let i = 0; i < SCENES.length; i++) {{
-    const el = document.getElementById('display-' + i);
-    if (el) el.innerHTML = SCENES[i].display;
-  }}
 
   function formatTime(s) {{ const m = Math.floor(s/60); return m + ':' + String(Math.floor(s%60)).padStart(2,'0'); }}
 
@@ -1507,8 +1506,9 @@ def create_app() -> FastAPI:
         asked_questions: str = Form("[]"),
         language: str = Form("en"),
         current_slide_index: int = Form(0),
+        report_to_role: str = Form("CTO"),
     ):
-        """Work Report: AI plays a local team lead reporting to the CTO.
+        """Work Report: AI plays a local team lead reporting to the given role.
 
         Returns JSON: {"reply": "...", "sound_effect": "...",
                        "slide_transition": "next"|"stay"|null,
@@ -1540,21 +1540,22 @@ def create_app() -> FastAPI:
 
         style_desc = PERSONALITY_MAP.get(
             ai_personality,
-            "You are a professional, data-oriented team lead reporting to the CTO.",
+            f"You are a professional, data-oriented team lead reporting to the {report_to_role}.",
         )
 
         # Build system prompt
         lang_label = "English" if language.split("-")[0] == "en" else "Chinese"
+        role_lower = report_to_role.lower()
         system_parts = [
-            f"You are a local team lead (本地项目负责人) reporting work progress to the CTO. You are presenting a slide deck.",
+            f"You are a local team lead (本地项目负责人) reporting work progress to the {report_to_role}. You are presenting a slide deck.",
             "",
             f"── YOUR PERSONALITY ──",
             style_desc,
             "",
             f"── COMMUNICATION STYLE ──",
             f"- Professional, respectful, and data-oriented",
-            f"- Address the CTO as '您' (formal You) or 'CTO' depending on {lang_label} context",
-            f"- Be concise and structured — the CTO has limited time",
+            f"- Address the {report_to_role} as '{report_to_role}' or use appropriate formal address in {lang_label}",
+            f"- Be concise and structured — the {report_to_role} has limited time",
             f"- Show ownership: use 'we' (our team, we've achieved) not impersonal statements",
             f"- When reporting problems, also present proposed solutions",
             f"- CRITICAL: Never include stage directions, action descriptions, or any text in asterisks",
@@ -1566,21 +1567,21 @@ def create_app() -> FastAPI:
         if mode == "present":
             system_parts.extend([
                 f"CURRENT MODE: Presenting slide #{current_slide_index}",
-                f"You are presenting a slide to the CTO. Speak naturally about what the slide shows.",
+                f"You are presenting a slide to the {report_to_role}. Speak naturally about what the slide shows.",
                 f"Explain the key data points, insights, and implications.",
                 f"After finishing the slide content, transition naturally by saying you can move to the next",
                 f"slide or take questions.",
             ])
         elif mode == "cto_question":
             system_parts.extend([
-                f"CURRENT MODE: Answering a question from the CTO",
-                f"The CTO has asked you something. Answer professionally with data and facts.",
+                f"CURRENT MODE: Answering a question from the {report_to_role}",
+                f"The {report_to_role} has asked you something. Answer professionally with data and facts.",
                 f"Be direct and thorough. If you don't know something, say so honestly.",
             ])
         elif mode == "ai_question":
             system_parts.extend([
-                f"CURRENT MODE: Asking a preset question to the CTO",
-                f"You have prepared questions to ask the CTO. Ask one of your preset questions naturally",
+                f"CURRENT MODE: Asking a preset question to the {report_to_role}",
+                f"You have prepared questions to ask the {report_to_role}. Ask one of your preset questions naturally",
                 f"in the context of the current discussion. Do not ask a question that has already been asked.",
             ])
 
@@ -1599,8 +1600,8 @@ def create_app() -> FastAPI:
             unasked = [q for q in preset_qs if q not in asked_qs]
             if unasked:
                 system_parts.append("")
-                system_parts.append("── PRESET QUESTIONS FOR CTO ──")
-                system_parts.append("Pick ONE of these questions to ask the CTO. Do NOT ask one that has already been asked:")
+                system_parts.append(f"── PRESET QUESTIONS FOR {report_to_role.upper()} ──")
+                system_parts.append(f"Pick ONE of these questions to ask the {report_to_role}. Do NOT ask one that has already been asked:")
                 for i, q in enumerate(unasked):
                     marker = "✅" if q in asked_qs else "⬜"
                     system_parts.append(f"  {marker} {q}")
@@ -1633,12 +1634,12 @@ def create_app() -> FastAPI:
             for h in history:
                 role = "assistant" if h.get("role") == "ai" else "user"
                 messages.append({"role": role, "content": h.get("content", "")})
-            messages.append({"role": "user", "content": f"[CTO Question]: {message}"})
+            messages.append({"role": "user", "content": f"[{report_to_role} Question]: {message}"})
         elif mode == "ai_question":
             for h in history:
                 role = "assistant" if h.get("role") == "ai" else "user"
                 messages.append({"role": role, "content": h.get("content", "")})
-            messages.append({"role": "user", "content": "Ask one of your prepared questions to the CTO now."})
+            messages.append({"role": "user", "content": f"Ask one of your prepared questions to the {report_to_role} now."})
         else:
             if history:
                 for h in history:
@@ -1734,6 +1735,7 @@ def create_app() -> FastAPI:
         personality: str = Form("data-driven"),
         num_slides: int = Form(5),
         language: str = Form("en"),
+        report_to_role: str = Form("CTO"),
     ):
         """Generate work report slides from an outline with background context.
 
@@ -1756,7 +1758,7 @@ def create_app() -> FastAPI:
 
             prompt = (
                 f"You are a professional presentation designer creating a WORK REPORT (工作汇报) for a local team lead "
-                f"to present to the CTO.\n\n"
+                f"to present to the {report_to_role}.\n\n"
                 f"Personality: {style}\n\n"
                 f"Generate exactly {num_slides} well-structured slides based on the outline below.\n\n"
                 f"Each slide has TWO parts separated by '===SPEECH===':\n"
@@ -1791,7 +1793,7 @@ def create_app() -> FastAPI:
             prompt += (
                 f"EXAMPLE OUTPUT (2 slides):\n"
                 f"##TITLE\n## Q2 Progress Report\nKey achievements and roadmap update\n\n"
-                f"===SPEECH===\nGood morning, CTO. Let me walk you through our Q2 progress...\n\n"
+                f"===SPEECH===\nGood morning, {report_to_role}. Let me walk you through our Q2 progress...\n\n"
                 f"---\n\n"
                 f"##DATA\n## Revenue Growth\n**32%** increase in MRR\n- Exceeded target by 8%\n- $2.4M new ARR added\n\n"
                 f"===SPEECH===\nLet's start with the numbers. Our revenue grew 32% this quarter...\n"

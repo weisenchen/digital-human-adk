@@ -407,6 +407,7 @@ export const sendWorkReportMessage = async (params: {
   askedQuestions: string[];
   language: string;
   currentSlideIndex: number;
+  reportToRole: string;
 }): Promise<{reply: string}> => {
   const formData = new FormData();
   formData.append('mode', params.mode);
@@ -419,6 +420,7 @@ export const sendWorkReportMessage = async (params: {
   formData.append('asked_questions', JSON.stringify(params.askedQuestions));
   formData.append('language', params.language);
   formData.append('current_slide_index', String(params.currentSlideIndex));
+  formData.append('report_to_role', params.reportToRole);
   const res = await fetch(`${BASE_URL}/api/work-report/ask`, { method: 'POST', body: formData });
   if (!res.ok) throw new Error(`Work report request failed: ${res.status}`);
   const data = await res.json();
@@ -432,6 +434,7 @@ export const generateReportSlides = async (params: {
   personality: string;
   numSlides: number;
   language: string;
+  reportToRole?: string;
 }): Promise<any> => {
   const formData = new FormData();
   formData.append('outline', params.outline);
@@ -439,6 +442,7 @@ export const generateReportSlides = async (params: {
   formData.append('personality', params.personality);
   formData.append('num_slides', String(params.numSlides));
   formData.append('language', params.language);
+  if (params.reportToRole) formData.append('report_to_role', params.reportToRole);
   const res = await fetch(`${BASE_URL}/api/work-report/generate-slides`, { method: 'POST', body: formData });
   if (!res.ok) throw new Error(`Report slide generation failed: ${res.status}`);
   return res.json();

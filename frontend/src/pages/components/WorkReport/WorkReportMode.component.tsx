@@ -355,6 +355,7 @@ export default function WorkReportMode({
         askedQuestions: askedQuestions.map(i => aiQuestions[i]).filter(Boolean),
         language: selectedLanguage.replace(/-.*$/, ''),
         currentSlideIndex: slideIndex,
+        reportToRole: config.reportToRole,
       });
 
       // Use the reply as the TTS text (AI elaboration)
@@ -405,9 +406,10 @@ export default function WorkReportMode({
   // ── CTO Q&A Phase ────────────────────────────────────
 
   const askCTOQuestionOpen = useCallback(async () => {
+    const roleName = config.reportToRole;
     const msg: ChatMessage = {
       role: 'ai',
-      content: 'That concludes the presentation. Do you have any questions, CTO? I\'m happy to address any concerns or dive deeper into any topic.',
+      content: `That concludes the presentation. Do you have any questions, ${roleName}? I'm happy to address any concerns or dive deeper into any topic.`,
     };
     setMessages(prev => [...prev, msg]);
 
@@ -424,6 +426,7 @@ export default function WorkReportMode({
         askedQuestions: askedQuestions.map(i => aiQuestions[i]).filter(Boolean),
         language: selectedLanguage.replace(/-.*$/, ''),
         currentSlideIndex: currentSlide,
+        reportToRole: config.reportToRole,
       });
       if (reply && reply.trim()) {
         speakText(reply, currentSlide);
@@ -445,12 +448,12 @@ export default function WorkReportMode({
     if (unanswered.length === 0) {
       // All questions done
       setPhase('ended');
-      const msg: ChatMessage = {
+      const endMsg: ChatMessage = {
         role: 'ai',
-        content: 'Thank you for your time, CTO. The work report is complete. I\'ll prepare the summary document for you.',
+        content: `Thank you for your time, ${config.reportToRole}. The work report is complete. I'll prepare the summary document for you.`,
       };
-      setMessages(prev => [...prev, msg]);
-      speakText('Thank you for your time, CTO! The work report is complete.', currentSlide);
+      setMessages(prev => [...prev, endMsg]);
+      speakText(`Thank you for your time, ${config.reportToRole}! The work report is complete.`, currentSlide);
       return;
     }
 
@@ -476,6 +479,7 @@ export default function WorkReportMode({
         askedQuestions: askedQuestions.map(i => aiQuestions[i]).filter(Boolean),
         language: selectedLanguage.replace(/-.*$/, ''),
         currentSlideIndex: currentSlide,
+        reportToRole: config.reportToRole,
       });
 
       if (reply && reply.trim()) {
@@ -601,6 +605,7 @@ export default function WorkReportMode({
         askedQuestions: askedQuestions.map(i => aiQuestions[i]).filter(Boolean),
         language: selectedLanguage.replace(/-.*$/, ''),
         currentSlideIndex: currentSlide,
+        reportToRole: config.reportToRole,
       });
 
       const aiMsg: ChatMessage = { role: 'ai', content: reply };
@@ -690,7 +695,7 @@ export default function WorkReportMode({
 
   const downloadTranscript = useCallback(() => {
     const transcript = messages.map(m =>
-      `[${m.role === 'ai' ? 'AI Lead (' + characterName + ')' : 'CTO'}]: ${m.content}`
+      `[${m.role === 'ai' ? 'AI Lead (' + characterName + ')' : config.reportToRole}]: ${m.content}`
     ).join('\n\n');
     const blob = new Blob([transcript], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -732,7 +737,7 @@ export default function WorkReportMode({
 
   const phaseLabel = {
     'presentation': 'Presentation',
-    'cto-qa': 'CTO Q&A',
+    'cto-qa': `${config.reportToRole} Q&A`,
     'ai-questions': 'AI Questions',
     'ended': 'Completed',
   }[phase];
@@ -921,7 +926,7 @@ export default function WorkReportMode({
           {phase === 'cto-qa' && !isReading && !isWaiting && (
             <div className="shrink-0 px-4 py-2 bg-purple-50 border-b border-purple-100 flex items-center justify-between">
               <span className="text-xs text-purple-700 font-medium">
-                💬 CTO Q&A — Ask questions about the report
+                💬 {config.reportToRole} Q&A — Ask questions about the report
               </span>
               <button
                 onClick={startAIQuestions}
@@ -979,7 +984,7 @@ export default function WorkReportMode({
                     </span>
                   )}
                   {msg.role === 'user' && (
-                    <span className="text-xs font-semibold text-gray-400 block mb-1">CTO</span>
+                    <span className="text-xs font-semibold text-gray-400 block mb-1">{config.reportToRole}</span>
                   )}
                   <span className="whitespace-pre-wrap">{msg.content}</span>
                 </div>

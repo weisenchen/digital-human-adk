@@ -17,6 +17,7 @@ export interface WorkReportConfig {
   uploadedSlides?: SlideData[];
   slideOutline?: string;
   totalMinutes: number;
+  reportToRole: string;
 }
 
 interface PresentationSetupProps {
@@ -33,7 +34,7 @@ const MODE_OPTIONS = [
     icon: Briefcase,
     title: 'Work Report (工作汇报模式)',
     description:
-      'AI local lead reports to CTO with slides. Configure personality, background materials, preset questions, and slide generation.',
+      'AI local lead reports with slides. Configure personality, background materials, preset questions, and slide generation. You can set who to report to (e.g. CTO, Manager, Director).',
   },
   {
     id: 'classic' as const,
