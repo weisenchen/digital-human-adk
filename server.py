@@ -1882,6 +1882,234 @@ def create_app() -> FastAPI:
             except Exception:
                 return default_result
 
+    # ── Team Retro Perspective (팀 회고) ─────────────────────────────────
+    _retro_sessions: dict[str, dict] = {}
+
+    def _get_retro_session(session_id: str) -> dict:
+        """Get or create a retro session."""
+        if session_id not in _retro_sessions:
+            _retro_sessions[session_id] = {
+                "name": "Team Retro",
+                "participants": [],
+                "votes_per_person": 5,
+                "cards": [],
+                "card_id_counter": 1,
+            }
+        return _retro_sessions[session_id]
+
+    @app.post("/api/team-retro/config")
+    async def team_retro_config(
+        session_id: str = Form("default"),
+        name: str = Form("Team Retro"),
+        participants_json: str = Form("[]"),
+        votes_per_person: int = Form(5),
+    ):
+        """Create or update a retro session configuration."""
+        import json
+        try:
+            participants: list = json.loads(participants_json)
+        except (json.JSONDecodeError, TypeError):
+            participants = []
+        session = _get_retro_session(session_id)
+        session["name"] = name
+        session["participants"] = participants
+        session["votes_per_person"] = votes_per_person
+        return {"status": "ok", "session_id": session_id}
+
+    @app.post("/api/team-retro/submit")
+    async def team_retro_submit(
+        session_id: str = Form("default"),
+        title: str = Form(""),
+        description: str = Form(""),
+        category: str = Form("improvement"),
+        author: str = Form("Anonymous"),
+    ):
+        """Submit a new retro card."""
+        if not title.strip():
+            return {"status": "error", "error": "Title is required"}
+        session = _get_retro_session(session_id)
+        card_id = session["card_id_counter"]
+        session["card_id_counter"] += 1
+        card = {
+            "id": card_id,
+            "title": title.strip(),
+            "description": description.strip(),
+            "category": category,
+            "author": author.strip() or "Anonymous",
+            "status": "new",
+            "votes": 0,
+            "voters": [],
+            "created_at": int(__import__("time").time() * 1000),
+        }
+        session["cards"].append(card)
+        return {"status": "ok", "card": card}
+
+    @app.post("/api/team-retro/vote")
+    async def team_retro_vote(
+        session_id: str = Form("default"),
+        card_id: int = Form(0),
+        voter: str = Form("Anonymous"),
+    ):
+        """Toggle a vote on a card. Returns updated card."""
+        session = _get_retro_session(session_id)
+        card = next((c for c in session["cards"] if c["id"] == card_id), None)
+        if not card:
+            return {"status": "error", "error": "Card not found"}
+
+        votes_per_person = session["votes_per_person"]
+
+        if voter in card["voters"]:
+            # Unvote
+            card["voters"].remove(voter)
+            card["votes"] = len(card["voters"])
+        else:
+            # Check voter hasn't exceeded votes_per_person
+            total_votes = sum(1 for c in session["cards"] if voter in c["voters"])
+            if total_votes >= votes_per_person:
+                return {
+                    "status": "error",
+                    "error": f"Maximum {votes_per_person} votes per person",
+                    "max_votes": votes_per_person,
+                }
+            card["voters"].append(voter)
+            card["votes"] = len(card["voters"])
+
+        # Return sorted cards (by votes desc)
+        sorted_cards = sorted(session["cards"], key=lambda c: c["votes"], reverse=True)
+        return {"status": "ok", "card": card, "cards": sorted_cards}
+
+    @app.post("/api/team-retro/update-status")
+    async def team_retro_update_status(
+        session_id: str = Form("default"),
+        card_id: int = Form(0),
+        status: str = Form("new"),
+    ):
+        """Update a card's status."""
+        VALID_STATUSES = {"new", "under-review", "approved", "in-progress", "done", "declined"}
+        if status not in VALID_STATUSES:
+            return {"status": "error", "error": f"Invalid status: {status}"}
+        session = _get_retro_session(session_id)
+        card = next((c for c in session["cards"] if c["id"] == card_id), None)
+        if not card:
+            return {"status": "error", "error": "Card not found"}
+        card["status"] = status
+        return {"status": "ok", "card": card}
+
+    @app.get("/api/team-retro/data")
+    async def team_retro_data(
+        session_id: str = "default",
+    ):
+        """Get all retro session data."""
+        session = _get_retro_session(session_id)
+        sorted_cards = sorted(session["cards"], key=lambda c: c["votes"], reverse=True)
+        return {
+            "name": session["name"],
+            "participants": session["participants"],
+            "votes_per_person": session["votes_per_person"],
+            "cards": sorted_cards,
+        }
+
+    @app.post("/api/team-retro/summarize")
+    async def team_retro_summarize(
+        session_id: str = Form("default"),
+        language: str = Form("en"),
+    ):
+        """AI generates a structured retro summary from all cards."""
+        session = _get_retro_session(session_id)
+        cards = session["cards"]
+        if not cards:
+            return {"summary": "No cards to summarize.", "markdown": "# Team Retro Summary\n\nNo items were submitted."}
+
+        lang_label = "Chinese" if language.split("-")[0] in ("zh", "cmn") else "English"
+
+        # Group cards by category
+        cats = {}
+        for c in cards:
+            cat = c.get("category", "other")
+            cats.setdefault(cat, []).append(c)
+
+        cards_text = ""
+        for cat, items in cats.items():
+            cards_text += f"\n## {cat.upper()}\n"
+            for c in items:
+                status_emoji = {"new": "🆕", "under-review": "🔍", "approved": "✅", "in-progress": "🚧", "done": "✅", "declined": "❌"}
+                se = status_emoji.get(c.get("status", "new"), "🆕")
+                cards_text += f"- [{se}] \"{c['title']}\" (by {c['author']}, 👍{c['votes']})\n"
+                if c.get("description"):
+                    cards_text += f"  > {c['description']}\n"
+
+        prompt = (
+            f"You are a facilitator helping a team review their retrospective data.\n\n"
+            f"── RETRO DATA ──\n"
+            f"Session: {session['name']}\n"
+            f"Participants: {', '.join(session['participants']) if session['participants'] else 'N/A'}\n"
+            f"Total cards: {len(cards)}\n"
+            f"{cards_text}\n\n"
+            f"── OUTPUT (use {lang_label}) ──\n"
+            f"Generate a structured retro summary with:\n"
+            f"1. Overview: 2-3 sentence summary of the retro\n"
+            f"2. Key Themes: Group cards into 2-4 themes/topics, list which cards belong to each\n"
+            f"3. Top Priorities: Top 3 highest-voted items with explanation\n"
+            f"4. Action Items: 3-5 concrete action items the team should take\n"
+            f"5. Mood/Vibe: Quick read on team sentiment\n\n"
+            f"Return as markdown with ## headings."
+        )
+
+        model_id = _get_model_for_session("team_retro_session")
+        info = MODEL_CATALOG.get(model_id)
+
+        default_summary = "# Team Retro Summary\n\n## Overview\nA retrospective session was held with feedback collected from the team.\n\n## Cards\n" + "\n".join(f"- [{c.get('status','new')}] {c['title']} (👍{c['votes']})" for c in cards)
+
+        if info and info.get("backend") == "openai":
+            client = get_openai_client(model_id)
+            if client:
+                try:
+                    resp = client.chat.completions.create(
+                        model=info["model"],
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.5,
+                        max_tokens=1000,
+                    )
+                    text = resp.choices[0].message.content or default_summary
+                    return {"summary": text, "markdown": text}
+                except Exception as exc:
+                    logger.error("Retro summarize error: %s", exc)
+                    return {"summary": default_summary, "markdown": default_summary}
+
+        # ADK route
+        if info:
+            runner = _get_adk_runner(model_id)
+            svc = _get_adk_session_service(model_id)
+            if runner and svc:
+                try:
+                    await svc.create_session(
+                        app_name="digital_human",
+                        user_id="default_user",
+                        session_id="team_retro_session",
+                    )
+                except Exception:
+                    pass
+                try:
+                    new_msg = types.Content(role="user", parts=[types.Part(text=prompt)])
+                    events = []
+                    async for event in runner.run_async(
+                        user_id="default_user",
+                        session_id="team_retro_session",
+                        new_message=new_msg,
+                    ):
+                        events.append(event)
+                    text = ""
+                    for e in reversed(events):
+                        if e.author != "user" and e.content and e.content.parts and not e.partial:
+                            text = e.content.parts[0].text or ""
+                            break
+                    if text:
+                        return {"summary": text, "markdown": text}
+                except Exception:
+                    pass
+
+        return {"summary": default_summary, "markdown": default_summary}
+
     @app.get("/api/voices")
     async def get_voices():
         """Return available TTS voices with locale, gender, and popular names."""

@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTO 视察模式 — 场景研究报告 & 产品方案</title>
+<style>
+:root {
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --primary: #1e40af;
+  --primary-light: #dbeafe;
+  --accent: #0891b2;
+  --accent-light: #cffafe;
+  --text: #1e293b;
+  --text-secondary: #64748b;
+  --border: #e2e8f0;
+  --radius: 12px;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 15px;
+}
+.container { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+
+/* ── Header ── */
+header {
+  background: linear-gradient(135deg, #1e3a5f 0%, #1e40af 50%, #3b82f6 100%);
+  color: white;
+  padding: 52px 0 44px;
+  margin-bottom: 40px;
+}
+header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+header .subtitle { font-size: 1.15rem; opacity: 0.85; }
+header .meta { margin-top: 16px; font-size: 0.85rem; opacity: 0.7; }
+header .badge {
+  display: inline-block;
+  background: rgba(255,255,255,0.2);
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  margin-top: 12px;
+  font-weight: 500;
+}
+
+/* ── Sections ── */
+section { margin-bottom: 48px; }
+h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1e3a5f;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 3px solid var(--primary-light);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+h2 .icon { font-size: 1.3rem; }
+h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 20px 0 10px;
+  color: var(--text);
+}
+h4 { font-size: 0.95rem; font-weight: 600; margin: 14px 0 6px; color: var(--text); }
+p { margin-bottom: 12px; color: var(--text-secondary); }
+
+/* ── Cards ── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: box-shadow 0.2s;
+}
+.card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+.card h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+.card p { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0; }
+
+/* ── Tables ── */
+.table-wrap { overflow-x: auto; margin: 16px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+th {
+  background: var(--primary-light);
+  color: #1e3a5f;
+  font-weight: 600;
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 2px solid var(--primary);
+}
+td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+
+/* ── Highlight ── */
+.highlight-box {
+  background: var(--primary-light);
+  border-left: 4px solid var(--primary);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+.highlight-box p { color: #1e3a5f; font-weight: 500; margin-bottom: 4px; }
+.highlight-box .note { font-size: 0.85rem; color: var(--text-secondary); font-weight: 400; }
+
+.highlight-cyan {
+  background: var(--accent-light);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+.highlight-cyan p { color: #155e75; font-weight: 500; }
+
+/* ── Diagram ── */
+.diagram {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin: 16px 0;
+  text-align: center;
+  overflow-x: auto;
+}
+.diagram svg { max-width: 100%; height: auto; }
+
+/* ── Lists ── */
+ul, ol { margin: 8px 0 12px 20px; color: var(--text-secondary); }
+li { margin-bottom: 6px; }
+strong { color: var(--text); }
+
+/* ── Tags ── */
+.tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-right: 4px;
+}
+.tag-blue { background: var(--primary-light); color: #1e40af; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-amber { background: #fef3c7; color: #92400e; }
+.tag-cyan { background: var(--accent-light); color: #155e75; }
+
+/* ── Footer ── */
+footer {
+  margin-top: 60px;
+  padding: 24px 0 40px;
+  border-top: 1px solid var(--border);
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+footer h4 { color: var(--text); font-weight: 600; margin-bottom: 8px; }
+
+/* ── Scenario box ── */
+.scenario-box {
+  background: linear-gradient(135deg, #f0f4ff 0%, #e0ecff 100%);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  margin: 16px 0;
+}
+.scenario-box h3 { color: #1e3a5f; margin-top: 0; }
+.scenario-box p { color: #334155; }
+.scenario-box .role-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin: 4px;
+}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>🏢 工作汇报模式</h1>
+    <p class="subtitle">AI 模拟本地负责人用 PPT 向 CTO 做工作汇报 — 汇报 + 问答 + 会议形式</p>
+    <p class="meta">Digital Human ADK · 2026-07-06 · Weisen Chen</p>
+    <span class="badge">📋 产品名: WorkReport · 工作汇报模式</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- ═══════ TL;DR ═══════ -->
+<section>
+  <h2><span class="icon">📌</span> 执行摘要</h2>
+  <p>建议在 Digital Human 中新增 <strong>「WorkReport / 工作汇报模式」</strong>，作为与 TalkShow、Meeting 并列的第三大交互模式。</p>
+  <p>该模式模拟<strong>总部 CTO 亲临本地办公室参加汇报会议</strong>的完整场景。<strong>角色：你是 CTO，AI 是本地负责人</strong>。AI 会做一份 PPT（slide 演示）展示工作成果，然后展开互动问答——<strong>AI 还会向你提出 3~4 个准备好的问题</strong>，如同一場真正的匯報會議。</p>
+  <div class="highlight-box">
+    <p>🎯 核心目标：AI 模拟本地负责人向你汇报 → 你作为 CTO 评估并决定是否批准资源</p>
+    <p class="note">你扮演领导角色，练习如何提问、评估、做决策——提升你的领导力和判断力</p>
+  </div>
+
+  <div class="highlight-cyan">
+    <p>💡 产品名称建议：<strong>「WorkReport」</strong> — 工作汇报模式</p>
+    <p class="note">汇报名称: <strong>「工作汇报模式研究报告 — WorkReport 产品方案」</strong></p>
+  </div>
+</section>
+
+<!-- ═══════ Scenario ═══════ -->
+<section>
+  <h2><span class="icon">🎬</span> 场景设定</h2>
+
+  <div class="scenario-box">
+    <h3>👤 角色设定</h3>
+    <div style="display:flex; flex-wrap:wrap; gap:12px; margin:12px 0;">
+      <span class="role-tag">🧑‍💼 <strong>你 → CTO 张总</strong></span>
+      <span class="role-tag">🤖 <strong>AI → 本地负责人 (Alex)</strong></span>
+      <span class="role-tag">🏢 <strong>总部 → 北京 HQ</strong></span>
+      <span class="role-tag">📍 <strong>本地 → 深圳办公室</strong></span>
+    </div>
+    <h3>📖 故事背景</h3>
+    <p>你作为 CTO 张总，从北京总部飞来深圳参加本地团队的<strong>季度汇报会议</strong>。会议前你可以提供<strong>背景材料</strong>（公司战略方向、关注重点等）。AI 扮演的<strong>本地负责人 Alex</strong> 会用 <strong>HTML 幻灯片</strong>做演示，支持<strong>两种方式</strong>：</p>
+    <ol>
+      <li><strong>📤 上传现有 PPT</strong> — 你提供一个做好的 HTML slide 文件，AI 照着内容演讲</li>
+      <li><strong>🤖 AI 自动生成</strong> — 你提供文字大纲，AI 自动生成 HTML 幻灯片并演示</li>
+    </ol>
+    <p>演示后展开讨论——<strong>Alex 也准备了 3~4 个问题向你请教</strong>。</p>
+    <ul>
+      <li>✅ AI 做的 slide 展示团队组建和运营成果</li>
+      <li>✅ 图表和数据展示本地市场机会和竞争分析</li>
+      <li>✅ 已完成的里程碑和关键指标</li>
+      <li>✅ 未来的扩展计划和资源需求</li>
+      <li>❓ AI 准备好的问题：战略方向、资源支持、决策建议</li>
+    </ul>
+    <p><strong>你的目标（作为CTO）：</strong>评估团队表现，决定是否批准预算和扩编申请。</p>
+    <p style="margin-top:8px; font-size:0.85rem; color:#64748b;">AI 本地负责人的性格可以配置：数据型 / 技术型 / 激情型 / 谨慎型</p>
+  </div>
+
+  <h3>为什么这个场景有意义</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>🎯 领导力训练</h4>
+      <p>站在 CTO 的角度，练习如何提问、评估团队、做资源分配决策</p>
+    </div>
+    <div class="card">
+      <h4>🧠 多维判断力</h4>
+      <p>从数据、团队、技术、市场等多个维度评估下属汇报的真伪</p>
+    </div>
+    <div class="card">
+      <h4>🔄 场景多变</h4>
+      <p>换不同性格的本地负责人，看他们如何向你汇报——识别好的和差的汇报</p>
+    </div>
+    <div class="card">
+      <h4>📊 决策可量化</h4>
+      <p>每次视察后有决策评分——你的提问质量和决策准确度</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ User Journey ═══════ -->
+<section>
+  <h2><span class="icon">🔄</span> 完整用户旅程</h2>
+
+  <div class="diagram">
+    <svg viewBox="0 0 900 720" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10" fill="#1e40af"/></marker>
+        <filter id="shadow"><feDropShadow dx="1" dy="2" stdDeviation="2" flood-opacity="0.1"/></filter>
+      </defs>
+
+      <!-- Row 0: Setup -->
+      <rect x="340" y="5" width="220" height="50" rx="10" fill="#dbeafe" stroke="#1e40af" filter="url(#shadow)"/>
+      <text x="450" y="28" text-anchor="middle" font-size="13" font-weight="600" fill="#1e3a5f">⚙️ Setup</text>
+      <text x="450" y="45" text-anchor="middle" font-size="10" fill="#64748b">Local Lead Type · Topic · Difficulty</text>
+
+      <line x1="450" y1="55" x2="450" y2="80" stroke="#1e40af" stroke-width="2" marker-end="url(#arrow)"/>
+
+      <!-- Row 1: AI Presentation with Slides -->
+      <rect x="180" y="80" width="540" height="75" rx="12" fill="#d1fae5" stroke="#10b981" stroke-width="2" filter="url(#shadow)"/>
+      <text x="450" y="105" text-anchor="middle" font-size="14" font-weight="700" fill="#065f46">📊 AI Presents Slides (PPT) — 10 min ← TTS</text>
+      <text x="450" y="125" text-anchor="middle" font-size="10" fill="#64748b">Slide 1: Team Progress · Slide 2: Market Data · Slide 3: Achievements</text>
+      <text x="450" y="140" text-anchor="middle" font-size="10" fill="#64748b">Slide 4: Challenges · Slide 5: Expansion Plan · You watch + listen</text>
+
+      <line x1="450" y1="155" x2="450" y2="180" stroke="#1e40af" stroke-width="2" marker-end="url(#arrow)"/>
+
+      <!-- Row 2: CTO (You) Ask Questions -->
+      <rect x="200" y="180" width="500" height="55" rx="10" fill="#fef3c7" stroke="#f59e0b" filter="url(#shadow)"/>
+      <text x="450" y="203" text-anchor="middle" font-size="12" font-weight="600" fill="#92400e">❓ You (CTO) Ask Follow-ups (5 min) ← auto-mic</text>
+      <text x="450" y="220" text-anchor="middle" font-size="10" fill="#64748b">Question the data · Challenge assumptions · Ask about risks</text>
+
+      <line x1="450" y1="235" x2="450" y2="260" stroke="#1e40af" stroke-width="2" marker-end="url(#arrow)"/>
+
+      <!-- Row 3: AI Responds -->
+      <rect x="240" y="260" width="420" height="55" rx="10" fill="#e0e7ff" stroke="#6366f1" filter="url(#shadow)"/>
+      <text x="450" y="283" text-anchor="middle" font-size="12" font-weight="600" fill="#3730a3">💬 AI Responds + Defends (3 min) ← TTS</text>
+      <text x="450" y="300" text-anchor="middle" font-size="10" fill="#64748b">Explains data · Shows backup slides · Defends decisions</text>
+
+      <line x1="450" y1="315" x2="450" y2="340" stroke="#1e40af" stroke-width="2" marker-end="url(#arrow)"/>
+
+      <!-- Row 4: AI Asks CTO Questions (NEW KEY FEATURE) -->
+      <rect x="160" y="340" width="580" height="60" rx="10" fill="#fce7f3" stroke="#ec4899" stroke-width="2" filter="url(#shadow)"/>
+      <text x="450" y="363" text-anchor="middle" font-size="13" font-weight="700" fill="#9d174d">❓ AI Asks YOU (CTO) 3–4 Prepared Questions</text>
+      <text x="450" y="382" text-anchor="middle" font-size="10" fill="#64748b">"公司未来在深圳的战略定位是什么？" · "Q3 预算能支持我们扩到 20 人吗？" · "您对本地市场的优先级怎么看？"</text>
+
+      <line x1="450" y1="400" x2="450" y2="430" stroke="#1e40af" stroke-width="2" marker-end="url(#arrow)"/>
+
+      <!-- Row 5: You answer AI's questions -->
+      <rect x="240" y="430" width="420" height="55" rx="10" fill="#dbeafe" stroke="#3b82f6" filter="url(#shadow)"/>
+      <text x="450" y="453" text-anchor="middle" font-size="12" font-weight="600" fill="#1e40af">💬 You Answer AI's Questions (4 min) ← auto-mic</text>
+      <text x="450" y="470" text-anchor="middle" font-size="10" fill="#64748b">Give strategic direction · Approve resources · Provide guidance</text>
+
+      <line x1="450" y1="485" x2="450" y2="510" stroke="#1e40af" stroke-width="2" marker-end="url(#arrow)"/>
+
+      <!-- Row 6: Your Decision -->
+      <rect x="260" y="510" width="380" height="55" rx="10" fill="#f0f4ff" stroke="#1e40af" filter="url(#shadow)"/>
+      <text x="450" y="533" text-anchor="middle" font-size="12" font-weight="600" fill="#1e3a5f">🤔 You (CTO) Give Final Decision (2 min)</text>
+      <text x="450" y="550" text-anchor="middle" font-size="10" fill="#64748b">Approved / Conditional / Rejected + Your reasons</text>
+
+      <line x1="450" y1="565" x2="450" y2="590" stroke="#1e40af" stroke-width="2" marker-end="url(#arrow)"/>
+
+      <!-- Row 7: Score -->
+      <rect x="280" y="590" width="340" height="65" rx="12" fill="white" stroke="#e2e8f0" filter="url(#shadow)"/>
+      <text x="450" y="613" text-anchor="middle" font-size="14" font-weight="700" fill="#1e293b">📊 Evaluation Report</text>
+      <text x="450" y="633" text-anchor="middle" font-size="11" fill="#64748b">AI Presentation · Your Q&amp;A · Decision · History</text>
+      <text x="450" y="648" text-anchor="middle" font-size="10" fill="#64748b">📥 Download slides · Transcript · Score card</text>
+    </svg>
+  </div>
+
+  <h3>流程详解</h3>
+  <table>
+    <thead><tr><th>阶段</th><th>时长</th><th>说明</th><th>交互方式</th></tr></thead>
+    <tbody>
+      <tr><td>⚙️ 设置</td><td>—</td><td>选本地负责人性格、汇报主题、AI 预置问题（3~4个）、难度</td><td>表单</td></tr>
+      <tr><td>📊 AI 做 PPT 演示</td><td>~10min</td><td>AI 展示 4~5 页 slide：团队→数据→成就→挑战→扩展计划</td><td>AI TTS + Slide 畫面</td></tr>
+      <tr><td>❓ 你（CTO）追问</td><td>~5min</td><td>你提出质疑和跟进问题</td><td>你說話 🎤 + auto-mic</td></tr>
+      <tr><td>💬 AI 回答</td><td>~3min</td><td>AI 用数据回答、补充信息</td><td>AI TTS</td></tr>
+      <tr><td>❓ AI 向你提問</td><td>~4min</td><td>AI 提出 3~4 个预置问题（如战略方向、资源分配）</td><td>AI TTS + auto-mic 你回答</td></tr>
+      <tr><td>🤔 你（CTO）決策</td><td>~2min</td><td>你给最终决定和理由</td><td>你說話 🎤</td></tr>
+      <tr><td>📊 評分報告</td><td>—</td><td>AI 演示質量 + 你的提問 + 決策評分 + Slide 下載</td><td>展示頁面</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════ CTO Personas ═══════ -->
+<section>
+  <h2><span class="icon">🎭</span> AI 本地负责人人格设计</h2>
+  <p>每次可以选不同性格的本地负责人，体验不同类型的汇报风格：</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>📊 数据汇报型 <span class="tag tag-blue">Data-Driven</span></h4>
+      <p>"张总，这是 Q2 的数据。MAU 环比增长 23%，但 CAC 上升了 8%..." 数字清晰，图表说话</p>
+    </div>
+    <div class="card">
+      <h4>🔧 技术深耕型 <span class="tag tag-blue">Engineering</span></h4>
+      <p>"我们重构了核心模块，延迟降低了 40%。这是架构图..." 关注技术深度和工程质量</p>
+    </div>
+    <div class="card">
+      <h4>🌏 市场激情型 <span class="tag tag-blue">Visionary</span></h4>
+      <p>"深圳市场是一片蓝海！我们的市占率才 5%，机会巨大！" 充满激情，但数据可能不够扎实</p>
+    </div>
+    <div class="card">
+      <h4>⚠️ 谨慎保守型 <span class="tag tag-blue">Cautious</span></h4>
+      <p>"虽然有一定进展，但人才竞争激烈，我们还需要更多支持..." 低调务实，容易显得信心不足</p>
+    </div>
+    <div class="card">
+      <h4>🎯 目标导向型 <span class="tag tag-blue">Results-Driven</span></h4>
+      <p>"年初定的 3 个 OKR 全部达成。Q3 目标是翻倍。" 简洁有力，执行力强</p>
+    </div>
+    <div class="card">
+      <h4>🎭 自定义</h4>
+      <p>自由描述本地负责人的性格、表达方式，AI 按设定扮演</p>
+    </div>
+  </div>
+
+  <h3>你的 CTO 提问参考</h3>
+  <p>作为 CTO，你可以问 AI 本地负责人的问题：</p>
+  <div class="card-grid">
+    <div class="card"><h4>📈 增长可持续？</h4><p>"这个增长是市场红利还是团队能力？去掉特殊因素还剩多少？"</p></div>
+    <div class="card"><h4>🤝 总部协同</h4><p>"你们和北京团队怎么分工？有没有重复造轮子？"</p></div>
+    <div class="card"><h4>⚔️ 竞争格局</h4><p>"本地竞争对手有哪些？我们的差异化优势在哪？"</p></div>
+    <div class="card"><h4>🧑‍💻 团队评估</h4><p>"团队核心成员是谁？流失率多少？招聘难吗？"</p></div>
+    <div class="card"><h4>💰 资源回报</h4><p>"给你 20 个人，一年后能多产出多少？怎么衡量？"</p></div>
+    <div class="card"><h4>⚠️ 风险评估</h4><p>"最大的风险是什么？如果项目失败，Plan B 是什么？"</p></div>
+  </div>
+</section>
+
+<!-- ═══════ Architecture ═══════ -->
+<section>
+  <h2><span class="icon">🏗️</span> 技术架构</h2>
+  <p>基于 TalkShow 代码骨架改造，新增组件如下：</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>组件</th><th>说明</th><th>基于</th></tr></thead>
+      <tbody>
+        <tr><td><code>WorkReportSetup</code></td><td>本地负责人性格、场景、PPT 方式选择、背景材料输入</td><td>TalkShowSetup</td></tr>
+        <tr><td><code>WorkReportMode</code></td><td>主交互 — AI 演示 Slide → 你提问 → AI 回答 → AI 提问 → 你决策</td><td>TalkShowMode + Presentation</td></tr>
+        <tr><td><code>SlideViewer</code></td><td>HTML 幻灯片播放器 — 显示 AI 当前讲解的 slide</td><td>新组件</td></tr>
+        <tr><td><code>SlideGenerator</code></td><td>AI 根据文字大纲自动生成 HTML slide 文件</td><td>LLM 生成 HTML</td></tr>
+        <tr><td><code>SlideUploader</code></td><td>用户选择本地 HTML 文件作为 PPT 内容</td><td>文件上传</td></tr>
+        <tr><td><code>WorkReportScore</code></td><td>双维评分：AI 演示质量 + 你的 CTO 表现</td><td>新组件</td></tr>
+        <tr><td><code>/api/work-report/ask</code></td><td>后端 API — 本地负责人 LLM 交互</td><td>/api/talk-show/ask</td></tr>
+        <tr><td><code>/api/work-report/generate-slides</code></td><td>后端 API — 根据文字大纲生成 HTML slide</td><td>新 endpoint</td></tr>
+        <tr><td><code>/api/work-report/evaluate</code></td><td>后端 API — 双维评分生成</td><td>新 endpoint</td></tr>
+        <tr><td>Live2D 表情</td><td>AI 负责人点头/思考/微笑等表情</td><td>setMouthOpen 扩展</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Prompt 核心</h3>
+  <div class="highlight-box">
+    <p>AI 本地负责人的 System Prompt 设计要点</p>
+  </div>
+  <p style="font-family:var(--font-mono); font-size:0.82rem; background:#f1f5f9; padding:16px; border-radius:8px; white-space:pre-wrap;">
+You are the local office team lead preparing to report to the CTO who is 
+visiting from HQ. You are [Data-Driven / Engineering / Visionary / ...].
+
+CONTEXT:
+- HQ is in Beijing. The CTO is visiting your local office for the first time.
+- Your team has 10 people, operating for 18 months.
+- Your goal: demonstrate local team performance and pitch for expansion.
+
+YOUR PERSONA:
+- [性格描述: 数据型/技术型/激情型/谨慎型]
+- You report proactively with data and concrete examples
+- You respond to the CTO's follow-up questions honestly
+- You pitch for more resources (team: 10→30 people)
+- You react to CTO's feedback via {{NOD}} / {{THINK}} / {{SMILE}} tags
+
+SESSION STRUCTURE:
+1. Greet CTO → 2. Office tour → 3. Work report 
+4. Answer CTO's questions → 5. Pitch for resources → 6. Accept decision
+
+RULES:
+- Never use stage directions — use {{SOUND}} tags only
+- Be realistic: good reports have strengths AND acknowledge challenges
+- Always provide data when possible
+- Language: [Chinese/English]
+  </p>
+</section>
+
+<!-- ═══════ Evaluation System ═══════ -->
+<section>
+  <h2><span class="icon">📊</span> 评分体系</h2>
+  <p><strong>双维评分</strong>——既评估 AI 的汇报质量，也评估你作为 CTO 的表现：</p>
+
+  <h3>🧑‍💼 维度一：你的 CTO 表现</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>🎯 提问精准度 <span class="tag tag-amber">Question Quality</span></h4>
+      <p>问题是否切中要害？是否能发现汇报中的漏洞？</p>
+    </div>
+    <div class="card">
+      <h4>🔍 洞察力 <span class="tag tag-amber">Insight</span></h4>
+      <p>是否能从数据中看到深层问题？追问是否有深度？</p>
+    </div>
+    <div class="card">
+      <h4>⚖️ 决策力 <span class="tag tag-amber">Decision</span></h4>
+      <p>最终决定是否合理？理由是否充分？</p>
+    </div>
+    <div class="card">
+      <h4>🤝 领导风范 <span class="tag tag-amber">Leadership</span></h4>
+      <p>沟通方式是否得体？既不失威严又不过分苛刻？</p>
+    </div>
+  </div>
+
+  <h3>🤖 维度二：AI 本地负责人表现</h3>
+  <div class="card-grid">
+    <div class="card">
+      <h4>📈 数据呈现 <span class="tag tag-blue">Data</span></h4>
+      <p>是否用数据说话？数据是否准确、有对比？</p>
+    </div>
+    <div class="card">
+      <h4>🧩 结构逻辑 <span class="tag tag-blue">Structure</span></h4>
+      <p>汇报是否有清晰的逻辑线？从问题→方案→结果→下一步？</p>
+    </div>
+    <div class="card">
+      <h4>⚡ 执行成果 <span class="tag tag-blue">Execution</span></h4>
+      <p>团队实际产出了什么？里程碑是否达成？</p>
+    </div>
+    <div class="card">
+      <h4>💬 说服力 <span class="tag tag-blue">Persuasion</span></h4>
+      <p>资源争取的论点是否有说服力？是否能打动人？</p>
+    </div>
+  </div>
+
+  <div class="highlight-cyan">
+    <p>📋 你的 CTO 最终决定</p>
+    <p class="note">✅ <strong>Approved</strong> — 批准预算和扩编 | ⚠️ <strong>Conditional</strong> — 有条件批准 | ❌ <strong>Rejected</strong> — 拒绝，给出理由</p>
+  </div>
+</section>
+
+<!-- ═══════ UI Mockup ═══════ -->
+<section>
+  <h2><span class="icon">🎨</span> UI 设计方案</h2>
+
+  <h3>设置界面 (WorkReportSetup)</h3>
+  <div style="background:white; border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin:12px 0;">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; font-size:0.85rem;">
+      <div style="background:#f8fafc; padding:14px; border-radius:8px;">
+        <strong>🏢 行业背景</strong>
+        <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">下拉选择: 互联网 / 金融 / 医疗 / 制造 / 教育 / 自定义</div>
+      </div>
+      <div style="background:#f8fafc; padding:14px; border-radius:8px;">
+        <strong>🎭 AI 负责人性格</strong>
+        <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">数据型 / 技术型 / 激情型 / 谨慎型 / 目标导向</div>
+      </div>
+      <div style="background:#f8fafc; padding:14px; border-radius:8px; grid-column: span 2;">
+        <strong>📤 PPT 演示方式</strong>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <span style="flex:1; background:white; border:2px solid #1e40af; border-radius:8px; padding:10px; text-align:center;">
+            <strong style="color:#1e40af;">📂 上传 HTML PPT</strong><br>
+            <span style="font-size:0.75rem; color:#64748b;">上传你准备好的 HTML slide 文件<br>AI 照着内容演讲</span>
+          </span>
+          <span style="flex:1; background:white; border:2px solid #e2e8f0; border-radius:8px; padding:10px; text-align:center;">
+            <strong style="color:#64748b;">🤖 AI 自动生成</strong><br>
+            <span style="font-size:0.75rem; color:#64748b;">提供文字大纲<br>AI 生成 HTML slide + 演讲</span>
+          </span>
+        </div>
+      </div>
+      <div style="background:#f8fafc; padding:14px; border-radius:8px; grid-column: span 2;">
+        <strong>📋 背景材料（输入给领导参考）</strong>
+        <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">公司战略方向、重点关注领域、本次视察的核心关切——这些会注入 AI 的汇报内容中</div>
+        <div style="background:white; border:1px dashed #cbd5e1; border-radius:6px; padding:8px; margin-top:6px; font-size:0.78rem; color:#94a3b8; text-align:center;">
+          "公司今年聚焦降本增效，关注 ROI 和团队能力建设。对深圳市场期望是..."<br>
+          [可粘贴文字 / 上传文件]
+        </div>
+      </div>
+      <div style="background:#f8fafc; padding:14px; border-radius:8px;">
+        <strong>❓ AI 预置问题</strong>
+        <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">3~4 个 AI 要向你提问的问题（可编辑）</div>
+      </div>
+      <div style="background:#f8fafc; padding:14px; border-radius:8px;">
+        <strong>⏱ 总时长</strong>
+        <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">15 / 20 / 30 分钟</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>主界面 (WorkReportMode) 布局</h3>
+  <div style="background:white; border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin:12px 0;">
+    <div style="display:flex; gap:16px; min-height:200px;">
+      <div style="flex:4; display:flex; flex-direction:column; gap:8px;">
+        <div style="flex:1; background:#f8fafc; border-radius:8px; padding:12px; text-align:center;">
+          🎭<br>Digital Human<br>本地负责人 Alex<br><small style="color:#94a3b8;">Live2D + 微表情</small>
+        </div>
+        <div style="background:#f8fafc; border-radius:8px; padding:8px;">
+          <div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">
+            <span style="background:#10b981; color:white; padding:2px 6px; border-radius:6px; font-size:0.65rem;">📊 Slide 1/5</span>
+            <span style="background:#e2e8f0; color:#94a3b8; padding:2px 6px; border-radius:6px; font-size:0.65rem;">📊 Slide 2/5</span>
+            <span style="background:#e2e8f0; color:#94a3b8; padding:2px 6px; border-radius:6px; font-size:0.65rem;">📊 Slide 3/5</span>
+            <span style="background:#e2e8f0; color:#94a3b8; padding:2px 6px; border-radius:6px; font-size:0.65rem;">📊 Slide 4/5</span>
+            <span style="background:#e2e8f0; color:#94a3b8; padding:2px 6px; border-radius:6px; font-size:0.65rem;">📊 Slide 5/5</span>
+          </div>
+        </div>
+      </div>
+      <div style="flex:6; display:flex; flex-direction:column; gap:8px;">
+        <div style="background:#f8fafc; border-radius:8px; padding:12px; flex:1;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:600; font-size:0.85rem;">📋 会议进度</span>
+            <span style="font-size:0.75rem; color:#64748b;">⏱ 08:30 / 30:00</span>
+          </div>
+          <div style="display:flex; gap:4px; margin-top:8px; flex-wrap:wrap;">
+            <span style="background:#10b981; color:white; padding:2px 8px; border-radius:10px; font-size:0.7rem;">✅ Slide 1</span>
+            <span style="background:#10b981; color:white; padding:2px 8px; border-radius:10px; font-size:0.7rem;">✅ Slide 2</span>
+            <span style="background:#3b82f6; color:white; padding:2px 8px; border-radius:10px; font-size:0.7rem;">🔄 Slide 3</span>
+            <span style="background:#e2e8f0; color:#94a3b8; padding:2px 8px; border-radius:10px; font-size:0.7rem;">⏳ Slide 4</span>
+            <span style="background:#e2e8f0; color:#94a3b8; padding:2px 8px; border-radius:10px; font-size:0.7rem;">⏳ Slide 5</span>
+            <span style="background:#e2e8f0; color:#94a3b8; padding:2px 8px; border-radius:10px; font-size:0.7rem;">⏳ CTO Q&A</span>
+            <span style="background:#e2e8f0; color:#94a3b8; padding:2px 8px; border-radius:10px; font-size:0.7rem;">⏳ AI 提問</span>
+            <span style="background:#e2e8f0; color:#94a3b8; padding:2px 8px; border-radius:10px; font-size:0.7rem;">⏳ 決策</span>
+          </div>
+        </div>
+        <div style="background:#f8fafc; border-radius:8px; padding:12px; flex:2;">
+          <div style="font-size:0.8rem; color:#64748b;">💬 对话区</div>
+            <div style="margin-top:6px; font-size:0.85rem;">
+              <div style="background:#d1fae5; padding:8px 12px; border-radius:8px; margin-bottom:6px; max-width:85%;">
+                <strong style="color:#065f46; font-size:0.75rem;">📊 Alex (Slide 3/5)</strong><br>
+                <span style="color:#334155;">"这是 Q2 的核心指标。MAU 从 8.5 万增长到 10.4 万，环比 +23%。右边是各渠道的获客成本对比，可以看到..."</span>
+              </div>
+              <div style="background:#fce7f3; padding:8px 12px; border-radius:8px; margin-bottom:6px; max-width:85%;">
+                <strong style="color:#9d174d; font-size:0.75rem;">❓ Alex 问 CTO</strong><br>
+                <span style="color:#334155;">"张总，我想请教一个问题——公司在深圳市场的长期战略定位是什么？我们应该是独立发展还是和总部紧密协同？"</span>
+              </div>
+              <div style="background:#dbeafe; padding:8px 12px; border-radius:8px; margin-bottom:6px; max-width:85%; margin-left:auto;">
+                <strong style="color:#1e40af; font-size:0.75rem;">你 (CTO)</strong><br>
+                <span style="color:#334155;">"很好的问题。深圳是华南的桥头堡，我希望你们能本地化独立运作，但在技术架构上要和总部保持一致..."</span>
+              </div>
+            </div>
+        </div>
+        <div style="background:#f8fafc; border-radius:8px; padding:8px 12px;">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span style="background:#e2e8f0; padding:6px 10px; border-radius:8px; font-size:0.75rem;">🎤 自动录音中... <span style="color:#10b981;">⏱ 45s</span></span>
+            <span style="color:#94a3b8; font-size:0.75rem;">或输入文字...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>评分界面</h3>
+  <div style="background:white; border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin:12px 0;">
+    <div style="text-align:center;">
+      <div style="font-size:1.2rem; font-weight:700; color:#1e3a5f; margin-bottom:4px;">你的 CTO 最终决定</div>
+      <div style="font-size:2rem; margin:8px 0;">✅</div>
+      <div style="font-size:1.1rem; font-weight:600; color:#065f46;">Approved ✅</div>
+      <div style="font-size:0.85rem; color:#64748b; margin-top:4px;">"汇报很清晰，数据扎实。我同意扩编到 20 人，Q4 再看结果。"</div>
+    </div>
+    <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+      <div>
+        <h4 style="font-size:0.9rem; margin-bottom:8px;">🧑‍💼 你的 CTO 表现</h4>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; text-align:center;">
+          <div><div style="font-size:1.4rem; font-weight:700; color:#10b981;">85</div><div style="font-size:0.7rem; color:#64748b;">提问精准</div></div>
+          <div><div style="font-size:1.4rem; font-weight:700; color:#f59e0b;">72</div><div style="font-size:0.7rem; color:#64748b;">洞察力</div></div>
+          <div><div style="font-size:1.4rem; font-weight:700; color:#10b981;">90</div><div style="font-size:0.7rem; color:#64748b;">决策力</div></div>
+          <div><div style="font-size:1.4rem; font-weight:700; color:#10b981;">88</div><div style="font-size:0.7rem; color:#64748b;">领导风范</div></div>
+        </div>
+      </div>
+      <div>
+        <h4 style="font-size:0.9rem; margin-bottom:8px;">🤖 AI 负责人表现</h4>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; text-align:center;">
+          <div><div style="font-size:1.4rem; font-weight:700; color:#10b981;">82</div><div style="font-size:0.7rem; color:#64748b;">数据呈现</div></div>
+          <div><div style="font-size:1.4rem; font-weight:700; color:#3b82f6;">78</div><div style="font-size:0.7rem; color:#64748b;">结构逻辑</div></div>
+          <div><div style="font-size:1.4rem; font-weight:700; color:#10b981;">85</div><div style="font-size:0.7rem; color:#64748b;">执行成果</div></div>
+          <div><div style="font-size:1.4rem; font-weight:700; color:#f59e0b;">70</div><div style="font-size:0.7rem; color:#64748b;">说服力</div></div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:16px; background:#f8fafc; padding:12px; border-radius:8px;">
+      <strong style="font-size:0.85rem;">💡 对你（CTO）的建议</strong>
+      <ul style="font-size:0.82rem; margin-top:6px;">
+        <li>提问可以更有深度——抓住"CAC上升"这个点继续追问渠道策略</li>
+        <li>可以测试一下 AI 的数据真实性，挑战一些假设</li>
+        <li>决策理由可以说得更具体，帮助团队明确方向</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ Implementation Roadmap ═══════ -->
+<section>
+  <h2><span class="icon">🚀</span> 实施路线图</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Phase</th><th>内容</th><th>交付物</th><th>工时</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-green">P0</span></td>
+          <td>后端 API + Agent Prompt</td>
+          <td><code>/api/work-report/ask</code> + 本地负责人 agent prompt</td>
+          <td>~1h</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-green">P0</span></td>
+          <td>前端 Setup + Mode</td>
+          <td>背景材料输入、PPT 方式选择、主交互流程</td>
+          <td>~2.5h</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-green">P0</span></td>
+          <td>SlideViewer 组件</td>
+          <td>HTML 幻灯片播放 + AI 演讲同步</td>
+          <td>~1h</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-green">P0</span></td>
+          <td>SlideUploader 组件</td>
+          <td>用户上传 HTML 文件做 PPT</td>
+          <td>~0.5h</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-amber">P1</span></td>
+          <td>SlideGenerator API</td>
+          <td><code>/api/work-report/generate-slides</code> — AI 生成 HTML slide</td>
+          <td>~1h</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-amber">P1</span></td>
+          <td>评分 + CTO 决策</td>
+          <td><code>/api/work-report/evaluate</code> + Score 组件</td>
+          <td>~1.5h</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-amber">P1</span></td>
+          <td>入口集成</td>
+          <td>Sidebar + "+" 菜单 + index.tsx 路由</td>
+          <td>~0.5h</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-red">P2</span></td>
+          <td>历史记录 + 趋势</td>
+          <td>localStorage 存历史 + 评分趋势图 + Slide 存档</td>
+          <td>~1h</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-red">P2</span></td>
+          <td>难度自适应</td>
+          <td>AI 根据情况调整演示深度和问题难度</td>
+          <td>~1h</td>
+        </tr>
+        <tr style="font-weight:600; background:#f8fafc;">
+          <td></td>
+          <td>总计</td>
+          <td></td>
+          <td>~10-12h</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight-cyan">
+    <p>🚀 建议先做 P0 + P1（~6h），P2 后续迭代</p>
+    <p class="note">P0 完成后即可上线使用，核心功能和体验完整</p>
+  </div>
+</section>
+
+<!-- ═══════ Market Comparison ═══════ -->
+<section>
+  <h2><span class="icon">🔍</span> 市场对标分析</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>产品</th><th>类型</th><th>SiteVisit 差异</th></tr></thead>
+      <tbody>
+        <tr><td>Yoodli</td><td>演讲教练</td><td>单向演讲 vs 双向视察互动 — 你练提问</td></tr>
+        <tr><td>Interview Warmup</td><td>面试练习</td><td>面试 vs 工作汇报 + 资源决策</td></tr>
+        <tr><td>Character.AI</td><td>角色扮演</td><td>通用聊天 vs 结构化视察场景 + 双维评分</td></tr>
+        <tr><td>Poised</td><td>沟通教练</td><td>被动监听 vs AI 主动扮演本地负责人</td></tr>
+        <tr><td>Loom AI</td><td>录制工具</td><td>异步录制 vs 实时互动 + 你的决策评分</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="highlight-box">
+    <p>✅ WorkReport 在市场上没有直接竞品，是一个创新场景</p>
+    <p class="note">结合了"角色扮演 + 目标驱动 + 评分反馈"三个要素，形成了独特的价值</p>
+  </div>
+</section>
+
+<!-- ═══════ Sources ═══════ -->
+<footer>
+  <h4>📚 参考来源</h4>
+  <ul>
+    <li>Digital Human ADK — TalkShow Mode / Meeting Mode 代码架构</li>
+    <li>TalkShowMode.component.tsx — 自动开麦、TTS、音效系统</li>
+    <li>Server.py — /api/talk-show/ask API 设计</li>
+    <li>Yoodli (yoodli.ai) — 演讲评分概念参考</li>
+    <li>Google Interview Warmup — AI 追问机制</li>
+    <li>Character.AI — 角色人格化设计</li>
+  </ul>
+  <p style="margin-top:12px;">报告生成: 2026-07-06 · 作者: Hermes Agent</p>
+</footer>
+
+</div>
+</body>
+</html>

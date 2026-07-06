@@ -484,3 +484,109 @@ export const evaluateToastmasterSpeech = async (params: {
   if (!res.ok) throw new Error(`Toastmaster evaluation request failed: ${res.status}`);
   return res.json();
 };
+
+/** ── Team Retro Perspective ── */
+
+export interface RetroCard {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  author: string;
+  status: string;
+  votes: number;
+  voters: string[];
+  created_at: number;
+}
+
+export interface RetroSessionData {
+  name: string;
+  participants: string[];
+  votes_per_person: number;
+  cards: RetroCard[];
+}
+
+/** Initialize/update a retro session */
+export const setupTeamRetro = async (params: {
+  sessionId: string;
+  name: string;
+  participants: string[];
+  votesPerPerson: number;
+}): Promise<{status: string}> => {
+  const formData = new FormData();
+  formData.append('session_id', params.sessionId);
+  formData.append('name', params.name);
+  formData.append('participants_json', JSON.stringify(params.participants));
+  formData.append('votes_per_person', String(params.votesPerPerson));
+  const res = await fetch(`${BASE_URL}/api/team-retro/config`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`Retro config failed: ${res.status}`);
+  return res.json();
+};
+
+/** Submit a new retro card */
+export const submitRetroCard = async (params: {
+  sessionId: string;
+  title: string;
+  description: string;
+  category: string;
+  author: string;
+}): Promise<{status: string; card: RetroCard}> => {
+  const formData = new FormData();
+  formData.append('session_id', params.sessionId);
+  formData.append('title', params.title);
+  formData.append('description', params.description);
+  formData.append('category', params.category);
+  formData.append('author', params.author);
+  const res = await fetch(`${BASE_URL}/api/team-retro/submit`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`Retro submit failed: ${res.status}`);
+  return res.json();
+};
+
+/** Toggle vote on a card */
+export const voteRetroCard = async (params: {
+  sessionId: string;
+  cardId: number;
+  voter: string;
+}): Promise<{status: string; card?: RetroCard; cards?: RetroCard[]; error?: string; max_votes?: number}> => {
+  const formData = new FormData();
+  formData.append('session_id', params.sessionId);
+  formData.append('card_id', String(params.cardId));
+  formData.append('voter', params.voter);
+  const res = await fetch(`${BASE_URL}/api/team-retro/vote`, { method: 'POST', body: formData });
+  return res.json();
+};
+
+/** Update card status */
+export const updateRetroCardStatus = async (params: {
+  sessionId: string;
+  cardId: number;
+  status: string;
+}): Promise<{status: string; card?: RetroCard}> => {
+  const formData = new FormData();
+  formData.append('session_id', params.sessionId);
+  formData.append('card_id', String(params.cardId));
+  formData.append('status', params.status);
+  const res = await fetch(`${BASE_URL}/api/team-retro/update-status`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`Retro status update failed: ${res.status}`);
+  return res.json();
+};
+
+/** Get all retro data */
+export const getRetroData = async (sessionId: string): Promise<RetroSessionData> => {
+  const res = await fetch(`${BASE_URL}/api/team-retro/data?session_id=${encodeURIComponent(sessionId)}`);
+  if (!res.ok) throw new Error(`Retro data fetch failed: ${res.status}`);
+  return res.json();
+};
+
+/** Generate AI summary */
+export const summarizeRetro = async (params: {
+  sessionId: string;
+  language: string;
+}): Promise<{summary: string; markdown: string}> => {
+  const formData = new FormData();
+  formData.append('session_id', params.sessionId);
+  formData.append('language', params.language);
+  const res = await fetch(`${BASE_URL}/api/team-retro/summarize`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`Retro summarize failed: ${res.status}`);
+  return res.json();
+};

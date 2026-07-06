@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useContext } from 'react';
-import { MessageSquarePlus, FileText, Settings, Brain, ChevronDown, ChevronUp, History, Mic, ChevronsLeft, Target, Trophy } from 'lucide-react';
+import { MessageSquarePlus, FileText, Settings, Brain, ChevronDown, ChevronUp, History, Mic, ChevronsLeft, Target, Trophy, Eye } from 'lucide-react';
 import CharacterSelector from '../CharacterSelector/CharacterSelector.component';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 
@@ -49,6 +49,10 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
     window.dispatchEvent(new CustomEvent('open-toastmaster'));
   };
 
+  const handleTeamRetro = () => {
+    window.dispatchEvent(new CustomEvent('open-team-retro'));
+  };
+
   return (
     <aside className="w-[280px] flex-shrink-0 bg-white border-r border-[var(--md-outline)] flex flex-col h-full overflow-y-auto">
       {/* Header */}
@@ -88,6 +92,15 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
         >
           <Trophy className="w-4 h-4 text-[var(--md-tertiary)]" />
           <span>Toastmaster</span>
+        </button>
+
+        {/* ── Team Retro Perspective ── */}
+        <button
+          onClick={handleTeamRetro}
+          className="w-full flex items-center gap-2 px-3 py-2.5 text-label-sm text-[var(--md-on-surface)] hover:bg-[var(--md-surface-variant)] rounded-[var(--shape-md)] border border-[var(--md-outline)] transition-colors"
+        >
+          <Eye className="w-4 h-4 text-[var(--md-tertiary)]" />
+          <span>Team Retro Perspective</span>
         </button>
 
         {/* ── Presentation (3rd) ── */}

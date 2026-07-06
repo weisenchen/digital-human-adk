@@ -19,6 +19,9 @@ import PresentationMode from './components/PresentationMode/PresentationMode.com
 import ToastmasterSetup from './components/Toastmaster/ToastmasterSetup.component';
 import ToastmasterMode from './components/Toastmaster/ToastmasterMode.component';
 import type { ToastmasterConfig } from './components/Toastmaster/ToastmasterSetup.component';
+import TeamRetroSetup from './components/TeamRetro/TeamRetroSetup.component';
+import TeamRetroMode from './components/TeamRetro/TeamRetroMode.component';
+import type { TeamRetroConfig } from './components/TeamRetro/TeamRetroSetup.component';
 
 interface TalkShowConfig {
   topic: string;
@@ -43,6 +46,8 @@ export default function Home() {
   const [showClassicPresentation, setShowClassicPresentation] = useState(false);
   const [showToastmasterSetup, setShowToastmasterSetup] = useState(false);
   const [toastmasterConfig, setToastmasterConfig] = useState<ToastmasterConfig | null>(null);
+  const [showTeamRetroSetup, setShowTeamRetroSetup] = useState(false);
+  const [teamRetroConfig, setTeamRetroConfig] = useState<TeamRetroConfig | null>(null);
 
   // Listen for open-talk-show event from sidebar
   useEffect(() => {
@@ -72,6 +77,13 @@ export default function Home() {
     return () => window.removeEventListener('open-toastmaster', handler);
   }, []);
 
+  // Listen for open-team-retro event from sidebar
+  useEffect(() => {
+    const handler = () => setShowTeamRetroSetup(true);
+    window.addEventListener('open-team-retro', handler);
+    return () => window.removeEventListener('open-team-retro', handler);
+  }, []);
+
   return (
     <VoiceAssistantProvider>
       <div className="h-screen flex flex-col bg-[var(--md-background)]">
@@ -94,6 +106,11 @@ export default function Home() {
           <ToastmasterMode
             config={toastmasterConfig}
             onEnd={() => setToastmasterConfig(null)}
+          />
+        ) : teamRetroConfig ? (
+          <TeamRetroMode
+            config={teamRetroConfig}
+            onEnd={() => setTeamRetroConfig(null)}
           />
         ) : showClassicPresentation ? (
           <PresentationMode
@@ -199,6 +216,18 @@ export default function Home() {
             setShowCyborg(false);
           }}
           onClose={() => setShowToastmasterSetup(false)}
+        />
+      )}
+
+      {/* Team Retro Perspective Setup modal */}
+      {showTeamRetroSetup && (
+        <TeamRetroSetup
+          onStart={(config) => {
+            setTeamRetroConfig(config);
+            setShowTeamRetroSetup(false);
+            setShowCyborg(false);
+          }}
+          onClose={() => setShowTeamRetroSetup(false)}
         />
       )}
     </VoiceAssistantProvider>
