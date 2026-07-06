@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useContext } from 'react';
-import { MessageSquarePlus, FileText, Settings, Brain, ChevronDown, ChevronUp, History, Mic, ChevronsLeft, Target } from 'lucide-react';
+import { MessageSquarePlus, FileText, Settings, Brain, ChevronDown, ChevronUp, History, Mic, ChevronsLeft, Target, Trophy } from 'lucide-react';
 import CharacterSelector from '../CharacterSelector/CharacterSelector.component';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 
@@ -45,6 +45,10 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
     window.dispatchEvent(new CustomEvent('open-meeting'));
   };
 
+  const handleToastmaster = () => {
+    window.dispatchEvent(new CustomEvent('open-toastmaster'));
+  };
+
   return (
     <aside className="w-[280px] flex-shrink-0 bg-white border-r border-[var(--md-outline)] flex flex-col h-full overflow-y-auto">
       {/* Header */}
@@ -75,6 +79,15 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
         >
           <Target className="w-4 h-4 text-[var(--md-tertiary)]" />
           <span>New Meeting</span>
+        </button>
+
+        {/* ── Toastmaster (speech training) ── */}
+        <button
+          onClick={handleToastmaster}
+          className="w-full flex items-center gap-2 px-3 py-2.5 text-label-sm text-[var(--md-on-surface)] hover:bg-[var(--md-surface-variant)] rounded-[var(--shape-md)] border border-[var(--md-outline)] transition-colors"
+        >
+          <Trophy className="w-4 h-4 text-[var(--md-tertiary)]" />
+          <span>Toastmaster</span>
         </button>
 
         {/* ── Presentation (3rd) ── */}

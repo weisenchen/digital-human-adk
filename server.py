@@ -1601,6 +1601,287 @@ def create_app() -> FastAPI:
             logger.error("Work report slide gen error: %s", exc, exc_info=True)
             return {"slides": [{"display": outline, "speech": outline}], "error": str(exc)}
 
+    # ── Toastmaster (演讲训练) ────────────────────────────────────────────
+    _toastmaster_topics_cache: list[str] | None = None
+
+    async def _get_toastmaster_topics() -> list[str]:
+        """Generate a diverse set of Table Topics topics using the AI model."""
+        nonlocal _toastmaster_topics_cache
+        if _toastmaster_topics_cache:
+            return _toastmaster_topics_cache
+
+        prompt = (
+            "Generate 30 diverse Table Topics® style impromptu speaking prompts in English. "
+            "These are used for Toastmasters speech training. "
+            "Mix of:\n"
+            "- Personal reflection (e.g., 'Describe a moment that changed your perspective')\n"
+            "- Opinion/debate (e.g., 'Is technology making us more or less connected?')\n"
+            "- Storytelling (e.g., 'Tell us about a time you failed and what you learned')\n"
+            "- Abstract/creative (e.g., 'If you could have dinner with any historical figure, who would it be?')\n"
+            "- Problem-solving (e.g., 'If you were mayor for a day, what would you change?')\n\n"
+            "Return ONLY a JSON array of 30 strings, no other text.\n"
+            'Example: ["Topic one", "Topic two", "Topic three"]'
+        )
+
+        model_id = _get_model_for_session("toastmaster_session")
+        info = MODEL_CATALOG.get(model_id)
+
+        if not info:
+            # Fallback topics
+            _toastmaster_topics_cache = [
+                "Describe a moment that changed your perspective on life.",
+                "What is the best piece of advice you've ever received?",
+                "If you could travel anywhere tomorrow, where would you go and why?",
+                "Is technology making us more or less connected?",
+                "Tell us about a time you failed and what you learned.",
+                "What does leadership mean to you?",
+                "If you could have dinner with any historical figure, who would it be?",
+                "What is the most important skill for the 21st century?",
+                "Describe your ideal day — what does it look like?",
+                "If you were mayor for a day, what would you change?",
+                "What book or movie has influenced you the most?",
+                "Is social media a net positive or negative for society?",
+                "Tell us about a person who has inspired you.",
+                "What is something you believe that most people disagree with?",
+                "If you could solve one global problem, what would it be?",
+                "What does success mean to you?",
+                "Describe a cultural tradition you love.",
+                "What is the biggest challenge facing your generation?",
+                "If you could master any skill instantly, what would it be?",
+                "What is the role of artificial intelligence in our future?",
+                "Tell us about a small act of kindness that made a big impact.",
+                "What is the biggest lesson you've learned from a mistake?",
+                "If you could relive one day in your life, which would it be?",
+                "What does work-life balance mean in today's world?",
+                "Describe a time you had to step out of your comfort zone.",
+                "What is the most underrated quality in a person?",
+                "If you could invent something to make the world better, what would it be?",
+                "What is a goal you're currently working toward?",
+                "How do you stay motivated when things get difficult?",
+                "What does 'living a good life' mean to you?",
+            ]
+            return _toastmaster_topics_cache
+
+        if info.get("backend") == "openai":
+            client = get_openai_client(model_id)
+            if client:
+                try:
+                    resp = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            client.chat.completions.create,
+                            model=info["model"],
+                            messages=[{"role": "user", "content": prompt}],
+                            temperature=0.8,
+                            max_tokens=1000,
+                        ),
+                        timeout=30,
+                    )
+                    text = resp.choices[0].message.content or ""
+                    import json as _json
+                    try:
+                        topics = _json.loads(text)
+                        if isinstance(topics, list) and len(topics) >= 10:
+                            _toastmaster_topics_cache = topics[:30]
+                            return _toastmaster_topics_cache
+                    except (_json.JSONDecodeError, TypeError):
+                        pass
+                except Exception:
+                    pass
+
+        # Fallback
+        _toastmaster_topics_cache = [
+            "Describe a moment that changed your perspective on life.",
+            "What is the best piece of advice you've ever received?",
+            "If you could travel anywhere tomorrow, where would you go and why?",
+            "Is technology making us more or less connected?",
+            "Tell us about a time you failed and what you learned.",
+            "What does leadership mean to you?",
+            "If you could have dinner with any historical figure, who would it be?",
+            "What is the most important skill for the 21st century?",
+            "Describe your ideal day — what does it look like?",
+            "If you were mayor for a day, what would you change?",
+        ]
+        return _toastmaster_topics_cache
+
+    @app.post("/api/toastmaster/topic")
+    async def toastmaster_topic(
+        language: str = Form("en"),
+        used_topics_json: str = Form("[]"),
+    ):
+        """Get a random Table Topics topic."""
+        import json as _json
+        import random
+        try:
+            used_topics: list = _json.loads(used_topics_json)
+        except (_json.JSONDecodeError, TypeError):
+            used_topics = []
+
+        topics = await _get_toastmaster_topics()
+        # Filter out used topics; if all used, reset
+        available = [t for t in topics if t not in used_topics]
+        if not available:
+            available = topics
+            used_topics = []
+
+        topic = random.choice(available)
+        return {"topic": topic, "topic_id": topics.index(topic)}
+
+    @app.post("/api/toastmaster/evaluate")
+    async def toastmaster_evaluate(
+        mode: str = Form("table_topics"),
+        topic: str = Form(""),
+        speech_text: str = Form(""),
+        duration_seconds: int = Form(0),
+        language: str = Form("en"),
+        round_number: int = Form(1),
+    ):
+        """Evaluate a Toastmasters speech (Table Topics or prepared speech).
+
+        Returns structured evaluation with scores, strengths, and recommendations.
+        """
+        lang_label = "Chinese" if language.split("-")[0] in ("zh", "cmn") else "English"
+
+        if mode == "table_topics":
+            prompt = (
+                f"You are a Toastmasters speech evaluator. A member has just completed "
+                f"a Table Topics® impromptu speech. Evaluate their performance.\n\n"
+                f"Topic: \"{topic}\"\n"
+                f"Speaking time: {duration_seconds} seconds\n"
+                f"Speech: \"{speech_text}\"\n\n"
+                f"── EVALUATION CRITERIA (score each 1-10) ──\n"
+                f"1. Content (内容): Relevance to topic, quality of ideas, examples used\n"
+                f"2. Organization (结构): Clear opening/body/close, logical flow\n"
+                f"3. Delivery (表达): Confidence, vocal variety, pacing, enthusiasm\n"
+                f"4. Language (语言): Word choice, grammar, vocabulary range\n"
+                f"5. Overall Impact (整体效果): How compelling was the speech overall?\n\n"
+                f"── OUTPUT FORMAT (return valid JSON only) ──\n"
+                f"{{\n"
+                f'  "scores": {{"content": N, "organization": N, "delivery": N, "language": N, "overall_impact": N}},\n'
+                f'  "total_score": N,\n'
+                f'  "strengths": ["Strength 1", "Strength 2"],\n'
+                f'  "improvements": ["Area 1", "Area 2"],\n'
+                f'  "recommendations": ["Specific recommendation 1", "Specific recommendation 2"],\n'
+                f'  "general_comment": "2-3 sentence summary of the evaluation"\n'
+                f"}}\n\n"
+                f"Use {lang_label} for all text fields (strengths, improvements, recommendations, comment). "
+                f"Scores are always numbers 1-10. Return ONLY valid JSON."
+            )
+        else:
+            # Prepared speech evaluation
+            prompt = (
+                f"You are a Toastmasters speech evaluator. A member has submitted "
+                f"a prepared speech for evaluation.\n\n"
+                f"Speech title/topic: \"{topic}\"\n"
+                f"Speech text: \"{speech_text}\"\n\n"
+                f"── EVALUATION CRITERIA (score each 1-10) ──\n"
+                f"1. Content (内容): Substance, research, examples, clarity of message\n"
+                f"2. Organization (结构): Structure, transitions, logical flow\n"
+                f"3. Delivery (表达): Would it be engaging to listen to? Vocal potential\n"
+                f"4. Language (语言): Rhetorical devices, word choice, imagery\n"
+                f"5. Overall Impact (整体效果): Would this speech leave a lasting impression?\n\n"
+                f"── OUTPUT FORMAT (return valid JSON only) ──\n"
+                f"{{\n"
+                f'  "scores": {{"content": N, "organization": N, "delivery": N, "language": N, "overall_impact": N}},\n'
+                f'  "total_score": N,\n'
+                f'  "strengths": ["Strength 1", "Strength 2"],\n'
+                f'  "improvements": ["Area 1", "Area 2"],\n'
+                f'  "recommendations": ["Specific recommendation 1", "Specific recommendation 2"],\n'
+                f'  "general_comment": "2-3 sentence summary of the evaluation"\n'
+                f"}}\n\n"
+                f"Use {lang_label} for all text fields. Scores are always numbers 1-10. Return ONLY valid JSON."
+            )
+
+        model_id = _get_model_for_session("toastmaster_session")
+        info = MODEL_CATALOG.get(model_id)
+
+        if not info:
+            return {"error": "No model selected. Please select a model in Settings."}
+
+        import json as _json
+
+        default_result = {
+            "scores": {"content": 7, "organization": 7, "delivery": 7, "language": 7, "overall_impact": 7},
+            "total_score": 35,
+            "strengths": ["Good effort!"],
+            "improvements": ["Keep practicing"],
+            "recommendations": ["Practice with a timer", "Record yourself"],
+            "general_comment": "Keep up the good work!",
+        }
+
+        if info.get("backend") == "openai":
+            client = get_openai_client(model_id)
+            if not client:
+                return default_result
+            try:
+                resp = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        client.chat.completions.create,
+                        model=info["model"],
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.5,
+                        max_tokens=800,
+                    ),
+                    timeout=60,
+                )
+                text = resp.choices[0].message.content or ""
+                # Try to extract JSON from the response
+                _json_match = _json.loads(text) if text.strip() else default_result
+                if isinstance(_json_match, dict) and "scores" in _json_match and "strengths" in _json_match:
+                    return _json_match
+                return default_result
+            except (_json.JSONDecodeError, Exception):
+                try:
+                    # Try to find JSON in the response
+                    import re as _re
+                    match = _re.search(r'\{.*"scores".*\}', text, _re.DOTALL)
+                    if match:
+                        return _json.loads(match.group())
+                except Exception:
+                    pass
+                return default_result
+        else:
+            # ADK (Gemini) route
+            runner = _get_adk_runner(model_id)
+            svc = _get_adk_session_service(model_id)
+            if not runner or not svc:
+                return default_result
+            try:
+                await svc.create_session(
+                    app_name="digital_human",
+                    user_id="default_user",
+                    session_id="toastmaster_session",
+                )
+            except Exception:
+                pass
+            try:
+                new_msg = types.Content(role="user", parts=[types.Part(text=prompt)])
+                events = []
+                async for event in runner.run_async(
+                    user_id="default_user",
+                    session_id="toastmaster_session",
+                    new_message=new_msg,
+                ):
+                    events.append(event)
+                text = ""
+                for e in reversed(events):
+                    if e.author != "user" and e.content and e.content.parts and not e.partial:
+                        text = e.content.parts[0].text or ""
+                        break
+                try:
+                    if text.strip():
+                        return _json.loads(text)
+                except (_json.JSONDecodeError, TypeError):
+                    import re as _re
+                    match = _re.search(r'\{.*"scores".*\}', text, _re.DOTALL)
+                    if match:
+                        try:
+                            return _json.loads(match.group())
+                        except Exception:
+                            pass
+                return default_result
+            except Exception:
+                return default_result
+
     @app.get("/api/voices")
     async def get_voices():
         """Return available TTS voices with locale, gender, and popular names."""

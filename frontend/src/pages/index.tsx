@@ -16,6 +16,9 @@ import type { WorkReportConfig } from './components/PresentationMode/Presentatio
 import WorkReportSetup from './components/WorkReport/WorkReportSetup.component';
 import WorkReportMode from './components/WorkReport/WorkReportMode.component';
 import PresentationMode from './components/PresentationMode/PresentationMode.component';
+import ToastmasterSetup from './components/Toastmaster/ToastmasterSetup.component';
+import ToastmasterMode from './components/Toastmaster/ToastmasterMode.component';
+import type { ToastmasterConfig } from './components/Toastmaster/ToastmasterSetup.component';
 
 interface TalkShowConfig {
   topic: string;
@@ -38,6 +41,8 @@ export default function Home() {
   const [showWorkReportSetup, setShowWorkReportSetup] = useState(false);
   const [workReportConfig, setWorkReportConfig] = useState<WorkReportConfig | null>(null);
   const [showClassicPresentation, setShowClassicPresentation] = useState(false);
+  const [showToastmasterSetup, setShowToastmasterSetup] = useState(false);
+  const [toastmasterConfig, setToastmasterConfig] = useState<ToastmasterConfig | null>(null);
 
   // Listen for open-talk-show event from sidebar
   useEffect(() => {
@@ -60,6 +65,13 @@ export default function Home() {
     return () => window.removeEventListener('open-presentation', handler);
   }, []);
 
+  // Listen for open-toastmaster event from sidebar
+  useEffect(() => {
+    const handler = () => setShowToastmasterSetup(true);
+    window.addEventListener('open-toastmaster', handler);
+    return () => window.removeEventListener('open-toastmaster', handler);
+  }, []);
+
   return (
     <VoiceAssistantProvider>
       <div className="h-screen flex flex-col bg-[var(--md-background)]">
@@ -77,6 +89,11 @@ export default function Home() {
             config={workReportConfig}
             characterName=""
             onEnd={() => setWorkReportConfig(null)}
+          />
+        ) : toastmasterConfig ? (
+          <ToastmasterMode
+            config={toastmasterConfig}
+            onEnd={() => setToastmasterConfig(null)}
           />
         ) : showClassicPresentation ? (
           <PresentationMode
@@ -170,6 +187,18 @@ export default function Home() {
             setShowCyborg(false);
           }}
           onClose={() => setShowWorkReportSetup(false)}
+        />
+      )}
+
+      {/* Toastmaster Setup modal */}
+      {showToastmasterSetup && (
+        <ToastmasterSetup
+          onStart={(config) => {
+            setToastmasterConfig(config);
+            setShowToastmasterSetup(false);
+            setShowCyborg(false);
+          }}
+          onClose={() => setShowToastmasterSetup(false)}
         />
       )}
     </VoiceAssistantProvider>

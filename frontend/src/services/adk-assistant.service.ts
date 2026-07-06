@@ -443,3 +443,44 @@ export const generateReportSlides = async (params: {
   if (!res.ok) throw new Error(`Report slide generation failed: ${res.status}`);
   return res.json();
 };
+
+/** Get a random Toastmaster Table Topics topic */
+export const getToastmasterTopic = async (params: {
+  language: string;
+  usedTopics: string[];
+}): Promise<{topic: string; topic_id: number}> => {
+  const formData = new FormData();
+  formData.append('language', params.language);
+  formData.append('used_topics_json', JSON.stringify(params.usedTopics));
+  const res = await fetch(`${BASE_URL}/api/toastmaster/topic`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`Toastmaster topic request failed: ${res.status}`);
+  return res.json();
+};
+
+/** Evaluate a Toastmasters speech */
+export const evaluateToastmasterSpeech = async (params: {
+  mode: 'table_topics' | 'prepared_speech';
+  topic: string;
+  speechText: string;
+  durationSeconds: number;
+  language: string;
+  roundNumber: number;
+}): Promise<{
+  scores: {content: number; organization: number; delivery: number; language: number; overall_impact: number};
+  total_score: number;
+  strengths: string[];
+  improvements: string[];
+  recommendations: string[];
+  general_comment: string;
+}> => {
+  const formData = new FormData();
+  formData.append('mode', params.mode);
+  formData.append('topic', params.topic);
+  formData.append('speech_text', params.speechText);
+  formData.append('duration_seconds', String(params.durationSeconds));
+  formData.append('language', params.language);
+  formData.append('round_number', String(params.roundNumber));
+  const res = await fetch(`${BASE_URL}/api/toastmaster/evaluate`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`Toastmaster evaluation request failed: ${res.status}`);
+  return res.json();
+};
