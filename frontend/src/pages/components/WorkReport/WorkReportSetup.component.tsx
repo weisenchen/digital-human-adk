@@ -86,7 +86,6 @@ export default function WorkReportSetup({ onStart, onClose }: WorkReportSetupPro
   };
 
   const canStart =
-    (slideMethod === 'ai-generate' ? slideOutline.trim() : !!uploadedFileName) ||
     background.trim();
 
   const handleStart = () => {
@@ -255,7 +254,7 @@ export default function WorkReportSetup({ onStart, onClose }: WorkReportSetupPro
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Slide Outline
                   <span className="text-gray-400 font-normal ml-1">
-                    (structure — defines what each slide covers)
+                    (optional — leave empty for AI to auto-generate structure)
                   </span>
                 </label>
                 <textarea
@@ -298,9 +297,9 @@ export default function WorkReportSetup({ onStart, onClose }: WorkReportSetupPro
           {/* Background Materials — fills slide content */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Background Materials
+              Background Materials <span className="text-red-400">*</span>
               <span className="text-gray-400 font-normal ml-1">
-                (data & context — fills slide content with real facts)
+                (required — provides data for slide content)
               </span>
             </label>
             <textarea

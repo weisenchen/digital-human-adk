@@ -1634,7 +1634,7 @@ def create_app() -> FastAPI:
                 f"You are a professional presentation designer creating a WORK REPORT (工作汇报) for a local team lead "
                 f"to present to the {report_to_role}.\n\n"
                 f"Personality: {style}\n\n"
-                f"Generate exactly {num_slides} well-structured slides based on the outline below.\n\n"
+                f"Generate exactly {num_slides} well-structured slides. Follow the outline below if provided; otherwise create a logical structure from the background materials.\n\n"
                 f"Each slide has TWO parts separated by '===SPEECH===':\n"
                 f"  1. DISPLAY content — what appears on screen (markdown, presentation-ready)\n"
                 f"  2. SPEECH script — what the team lead says aloud (conversational narration)\n\n"
@@ -1662,7 +1662,10 @@ def create_app() -> FastAPI:
             if background.strip():
                 prompt += f"\n── BACKGROUND / STRATEGIC CONTEXT ──\n{background}\n\n"
 
-            prompt += f"\n── OUTLINE ──\n{outline}\n\n"
+            if outline.strip():
+                prompt += f"\n── OUTLINE ──\n{outline}\n\n"
+            else:
+                prompt += "\n── OUTLINE ──\nNo outline provided. Create a logical slide structure based on the Background/Strategic Context above.\n\n"
 
             prompt += (
                 f"EXAMPLE OUTPUT (2 slides):\n"
