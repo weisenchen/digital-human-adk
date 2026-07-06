@@ -32,14 +32,14 @@ const MODE_OPTIONS = [
   {
     id: 'work-report' as const,
     icon: Briefcase,
-    title: 'Work Report (工作汇报模式)',
+    title: 'Work Report',
     description:
       'AI local lead reports with slides. Configure personality, background materials, preset questions, and slide generation. You can set who to report to (e.g. CTO, Manager, Director).',
   },
   {
     id: 'classic' as const,
     icon: Presentation,
-    title: 'Classic Presentation (纯演讲模式)',
+    title: 'Classic Presentation',
     description:
       'The original presentation mode. Paste your script, AI-generate slides, and present with auto-advance & TTS narration.',
   },

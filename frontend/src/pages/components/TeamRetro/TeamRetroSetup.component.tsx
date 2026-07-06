@@ -160,7 +160,7 @@ export default function TeamRetroSetup({ onStart, onClose }: TeamRetroSetupProps
                   language === 'zh' ? 'bg-violet-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                中文
+                Chinese
               </button>
               <button
                 onClick={() => setLanguage('ko')}

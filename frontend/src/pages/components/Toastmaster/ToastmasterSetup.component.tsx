@@ -9,14 +9,14 @@ const MODE_OPTIONS = [
   {
     id: 'table_topics' as const,
     icon: Mic,
-    title: 'Table Topics (即兴演讲)',
+    title: 'Table Topics',
     description:
       'AI gives you a random topic. You speak for 1-2 minutes. AI evaluates with scores and feedback.',
   },
   {
     id: 'prepared_speech' as const,
     icon: FileText,
-    title: 'Speech Evaluation (演讲评估)',
+    title: 'Speech Evaluation',
     description:
       'Submit your prepared speech text. AI evaluates with structured scoring and recommendations.',
   },
@@ -183,7 +183,7 @@ export default function ToastmasterSetup({ onStart, onClose }: ToastmasterSetupP
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              中文
+              Chinese
             </button>
           </div>
         </div>

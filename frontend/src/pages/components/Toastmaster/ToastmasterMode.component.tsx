@@ -401,18 +401,18 @@ export default function ToastmasterMode({ config, onEnd }: ToastmasterModeProps)
             {/* Detailed Scores */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
               <h4 className="text-sm font-semibold text-gray-900 mb-4">Detailed Scores</h4>
-              <ScoreBar label="Content (内容)" score={result.scores.content} />
-              <ScoreBar label="Organization (结构)" score={result.scores.organization} color="blue" />
-              <ScoreBar label="Delivery (表达)" score={result.scores.delivery} color="green" />
-              <ScoreBar label="Language (语言)" score={result.scores.language} />
-              <ScoreBar label="Overall Impact (整体效果)" score={result.scores.overall_impact} color="green" />
+              <ScoreBar label="Content" score={result.scores.content} />
+              <ScoreBar label="Organization" score={result.scores.organization} color="blue" />
+              <ScoreBar label="Delivery" score={result.scores.delivery} color="green" />
+              <ScoreBar label="Language" score={result.scores.language} />
+              <ScoreBar label="Overall Impact" score={result.scores.overall_impact} color="green" />
             </div>
 
             {/* Strengths */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
               <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
-                Strengths (亮点)
+                Strengths
               </h4>
               <ul className="space-y-2">
                 {result.strengths.map((s, i) => (
@@ -428,7 +428,7 @@ export default function ToastmasterMode({ config, onEnd }: ToastmasterModeProps)
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
               <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
-                Areas for Improvement (待改进)
+                Areas for Improvement
               </h4>
               <ul className="space-y-2">
                 {result.improvements.map((s, i) => (
@@ -444,7 +444,7 @@ export default function ToastmasterMode({ config, onEnd }: ToastmasterModeProps)
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
               <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-blue-500" />
-                Recommendations (具体建议)
+                Recommendations
               </h4>
               <ul className="space-y-2">
                 {result.recommendations.map((s, i) => (
@@ -459,7 +459,7 @@ export default function ToastmasterMode({ config, onEnd }: ToastmasterModeProps)
             {/* Round History */}
             {roundHistory.length > 1 && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">Progress (历次成绩)</h4>
+                <h4 className="text-sm font-semibold text-gray-900 mb-3">Progress</h4>
                 <div className="space-y-2">
                   {roundHistory.map((h, i) => (
                     <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
