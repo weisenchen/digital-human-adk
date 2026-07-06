@@ -1122,6 +1122,107 @@ def create_app() -> FastAPI:
                 logger.error("Meeting host ADK error: %s", exc, exc_info=True)
                 return {"reply": f"(Error: {exc})"}
 
+    @app.post("/api/meeting/summarize")
+    async def meeting_summarize(
+        title: str = Form(""),
+        agenda_json: str = Form("[]"),
+        participants_json: str = Form("[]"),
+        history_json: str = Form("[]"),
+    ):
+        """Generate a structured meeting summary from the full conversation."""
+        import json
+        try:
+            history: list = json.loads(history_json)
+        except (json.JSONDecodeError, TypeError):
+            history = []
+        try:
+            agenda: list = json.loads(agenda_json)
+        except (json.JSONDecodeError, TypeError):
+            agenda = []
+        try:
+            participants: list = json.loads(participants_json)
+        except (json.JSONDecodeError, TypeError):
+            participants = []
+
+        agenda_str = "\n".join(
+            f"  {i+1}. {a.get('title', 'Untitled')}"
+            for i, a in enumerate(agenda)
+        ) or "  (no agenda)"
+
+        participants_str = ", ".join(p.get("name", "?") for p in participants) or "None"
+
+        transcript = "\n".join(
+            f"[{h.get('role', '?')}] {h.get('content', '')}"
+            for h in history
+        )[:4000]
+
+        prompt = (
+            f"You are a professional meeting minutes writer. Summarize the following meeting.\n\n"
+            f"── MEETING INFO ──\n"
+            f"Title: {title}\n"
+            f"Participants: {participants_str}\n\n"
+            f"── AGENDA ──\n{agenda_str}\n\n"
+            f"── TRANSCRIPT ──\n{transcript}\n\n"
+            f"── OUTPUT FORMAT (return in this exact structure) ──\n"
+            f"## Summary\n"
+            f"[2-3 sentence overview of the meeting]\n\n"
+            f"## Agenda Items Covered\n"
+            f"- Item 1: [key points discussed]\n"
+            f"- Item 2: [key points discussed]\n\n"
+            f"## Key Decisions\n"
+            f"- [Decision 1]\n"
+            f"- [Decision 2]\n\n"
+            f"## Action Items\n"
+            f"- [Who]: [What] ([optional: deadline])\n"
+            f"- [Who]: [What]\n\n"
+            f"## Next Steps\n"
+            f"- [Next step 1]\n"
+            f"- [Next step 2]\n"
+        )
+
+        model_id = _get_model_for_session("meeting_session")
+        info = MODEL_CATALOG.get(model_id)
+        if not info:
+            return {"summary": "Summary unavailable — no model selected."}
+
+        if info.get("backend") == "openai":
+            client = get_openai_client(model_id)
+            if not client:
+                return {"summary": "Summary unavailable."}
+            try:
+                resp = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        client.chat.completions.create,
+                        model=info["model"],
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.5,
+                        max_tokens=800,
+                    ),
+                    timeout=60,
+                )
+                return {"summary": resp.choices[0].message.content or ""}
+            except Exception as exc:
+                return {"summary": f"(Error generating summary: {exc})"}
+        else:
+            try:
+                import google.adk.types as _types_adk
+                new_msg = _types_adk.Content(role="user", parts=[_types_adk.Part(text=prompt)])
+                events = []
+                async for event in runner.run_async(
+                    user_id="default_user",
+                    session_id="meeting_session",
+                    new_message=new_msg,
+                ):
+                    events.append(event)
+                text = ""
+                for e in reversed(events):
+                    if e.author != "user" and e.content and e.content.parts and not e.partial:
+                        text = e.content.parts[0].text or ""
+                        break
+                return {"summary": text}
+            except Exception as exc:
+                return {"summary": f"(Error: {exc})"}
+
     @app.get("/api/voices")
     async def get_voices():
         """Return available TTS voices with locale, gender, and popular names."""

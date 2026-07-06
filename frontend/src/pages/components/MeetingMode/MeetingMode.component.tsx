@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { X, Send, Volume2, Clock, Target, Mic, Square } from 'lucide-react';
-import { sendMeetingMessage, getAIAudioFromText } from '@/services/adk-assistant.service';
+import { sendMeetingMessage, getMeetingSummary, getAIAudioFromText } from '@/services/adk-assistant.service';
 import { getSharedAudioContext } from '@/lib/audio-context';
 import VoiceAssistantContext from '../../context/VoiceAssistantContext';
 import type { MeetingConfig } from './MeetingSetup.component';
@@ -27,6 +27,8 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [summaryText, setSummaryText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesRef = useRef<MeetingMessage[]>([]);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -224,6 +226,27 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
     handleSend(input);
   };
 
+  const handleEnd = async () => {
+    stopSpeaking();
+    const msgs = messagesRef.current;
+    if (msgs.length > 1) {
+      try {
+        const { summary } = await getMeetingSummary({
+          title: config.title,
+          agenda: config.agenda,
+          participants: config.participants,
+          history: msgs.map(m => ({ role: m.role, content: m.content })),
+        });
+        setSummaryText(summary);
+      } catch {
+        setSummaryText('Failed to generate summary.');
+      }
+    } else {
+      setSummaryText('Meeting ended with no discussion.');
+    }
+    setShowSummary(true);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -262,7 +285,7 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
             Minutes
           </button>
           <button
-            onClick={onEnd}
+            onClick={handleEnd}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
             <X className="w-3.5 h-3.5" />
@@ -389,6 +412,47 @@ export default function MeetingMode({ config, onEnd }: MeetingModeProps) {
           </div>
         </div>
       </div>
+
+      {/* ── Summary Overlay ── */}
+      {showSummary && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-[640px] max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-[var(--md-tertiary)]" />
+                <h2 className="text-lg font-semibold text-gray-900">Meeting Summary</h2>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-mono text-xs">
+                {summaryText || 'Generating summary...'}
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+              <button
+                onClick={() => {
+                  const blob = new Blob([summaryText], { type: 'text/markdown' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url; a.download = `meeting-${config.title.replace(/\s+/g, '-')}-summary.md`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <Volume2 className="w-4 h-4" />
+                Download .md
+              </button>
+              <button
+                onClick={onEnd}
+                className="flex items-center gap-1.5 px-5 py-2 text-sm font-medium text-white bg-[var(--md-tertiary)] hover:opacity-90 rounded-lg transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -377,3 +377,20 @@ export const sendMeetingMessage = async (params: {
   const data = await res.json();
   return { reply: data.reply as string };
 };
+
+/** Generate meeting summary from the full transcript */
+export const getMeetingSummary = async (params: {
+  title: string;
+  agenda: { id: string; title: string; durationMinutes: number }[];
+  participants: { id: string; name: string; role: string }[];
+  history: Array<{role: string; content: string}>;
+}): Promise<{summary: string}> => {
+  const formData = new FormData();
+  formData.append('title', params.title);
+  formData.append('agenda_json', JSON.stringify(params.agenda));
+  formData.append('participants_json', JSON.stringify(params.participants));
+  formData.append('history_json', JSON.stringify(params.history));
+  const res = await fetch(`${BASE_URL}/api/meeting/summarize`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error(`Meeting summary request failed: ${res.status}`);
+  return res.json();
+};
