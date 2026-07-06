@@ -94,58 +94,61 @@ export default function CyborgSidebar({ onClose }: CyborgSidebarProps) {
             </div>
             {settingsOpen ? <ChevronUp className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" />}
           </button>
-          {settingsOpen && <CharacterSelector />}
-
-          {/* ── Model (collapsible) ── */}
-          <div className="mt-1">
-            <button
-              onClick={() => setModelOpen(!modelOpen)}
-              className="w-full flex items-center justify-between gap-2 px-1 py-1.5 rounded-[var(--shape-sm)] hover:bg-[var(--md-surface-variant)] transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Brain className="w-4 h-4 text-[var(--md-on-surface-variant)]" />
-                <span className="text-label-sm text-[var(--md-on-surface)]">Model</span>
-              </div>
-              {modelOpen ? <ChevronUp className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" />}
-            </button>
-            {modelOpen && (
-              <div className="pt-1">
-                {context.models && context.models.length > 0 ? (
-                  <div className="space-y-1 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
-                    {context.models.map((m: any) => {
-                      const isSelected = context.selectedModel === m.id;
-                      return (
-                        <label
-                          key={m.id}
-                          className={`flex items-center gap-2 p-2 rounded-[var(--shape-md)] cursor-pointer transition-all border ${
-                            isSelected
-                              ? 'bg-white border-[var(--md-outline)] shadow-sm'
-                              : 'border-transparent hover:bg-[var(--md-surface-variant)] hover:border-[var(--md-outline)]'
-                          } ${!m.available ? 'opacity-40 cursor-not-allowed' : ''}`}
-                        >
-                          <input
-                            type="radio"
-                            name="model"
-                            value={m.id}
-                            checked={isSelected}
-                            disabled={!m.available}
-                            onChange={() => context.handleModelSelect(m.id)}
-                            className="accent-[var(--md-tertiary)] w-3 h-3 flex-shrink-0"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium text-[var(--md-on-surface)] truncate">{m.name}</div>
-                            <div className="text-[10px] text-[var(--md-on-surface-variant)] truncate">{m.provider}</div>
-                          </div>
-                        </label>
-                      );
-                    })}
+          {settingsOpen && (
+            <>
+              <CharacterSelector />
+              {/* ── Model sub-section ── */}
+              <div className="mt-1">
+                <button
+                  onClick={() => setModelOpen(!modelOpen)}
+                  className="w-full flex items-center justify-between gap-2 px-1 py-1.5 rounded-[var(--shape-sm)] hover:bg-[var(--md-surface-variant)] transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-[var(--md-on-surface-variant)]" />
+                    <span className="text-label-sm text-[var(--md-on-surface)]">Model</span>
                   </div>
-                ) : (
-                  <div className="text-label-xs text-[var(--md-on-surface-variant)] text-center py-3">No models available</div>
+                  {modelOpen ? <ChevronUp className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--md-on-surface-variant)]" />}
+                </button>
+                {modelOpen && (
+                  <div className="pt-1">
+                    {context.models && context.models.length > 0 ? (
+                      <div className="space-y-1 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
+                        {context.models.map((m: any) => {
+                          const isSelected = context.selectedModel === m.id;
+                          return (
+                            <label
+                              key={m.id}
+                              className={`flex items-center gap-2 p-2 rounded-[var(--shape-md)] cursor-pointer transition-all border ${
+                                isSelected
+                                  ? 'bg-white border-[var(--md-outline)] shadow-sm'
+                                  : 'border-transparent hover:bg-[var(--md-surface-variant)] hover:border-[var(--md-outline)]'
+                              } ${!m.available ? 'opacity-40 cursor-not-allowed' : ''}`}
+                            >
+                              <input
+                                type="radio"
+                                name="model"
+                                value={m.id}
+                                checked={isSelected}
+                                disabled={!m.available}
+                                onChange={() => context.handleModelSelect(m.id)}
+                                className="accent-[var(--md-tertiary)] w-3 h-3 flex-shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-medium text-[var(--md-on-surface)] truncate">{m.name}</div>
+                                <div className="text-[10px] text-[var(--md-on-surface-variant)] truncate">{m.provider}</div>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-label-xs text-[var(--md-on-surface-variant)] text-center py-3">No models available</div>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
 
         {/* ── Spacer to push Recent to bottom ── */}
