@@ -23,6 +23,19 @@ interface TalkShowModeProps {
   onEnd: () => void;
 }
 
+/** Highlight question sentences in host messages */
+function renderContent(text: string, role: 'host' | 'guest'): React.ReactNode {
+  if (role !== 'host') return text;
+  // Split on sentence boundaries, keeping the delimiter
+  const parts = text.split(/(?<=[.!?])\s+/);
+  return parts.map((part, i) => {
+    const isQuestion = part.trim().endsWith('?');
+    return isQuestion
+      ? <span key={i} className="font-bold text-purple-700 bg-purple-50 px-1 -mx-1 rounded">{part} </span>
+      : <span key={i}>{part} </span>;
+  });
+}
+
 export default function TalkShowMode({
   topic,
   guestName,
@@ -426,7 +439,7 @@ export default function TalkShowMode({
                   {msg.role === 'guest' && (
                     <span className="text-xs font-semibold text-gray-400 block mb-1">{guestName}</span>
                   )}
-                  <span className="whitespace-pre-wrap">{msg.content}</span>
+                  <span className="whitespace-pre-wrap">{renderContent(msg.content, msg.role)}</span>
                 </div>
               </div>
             ))}
