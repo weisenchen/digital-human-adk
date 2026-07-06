@@ -54,6 +54,9 @@ export default function TalkShowMode({
   const [isPaused, setIsPaused] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [voiceRecording, setVoiceRecording] = useState(false);
+  const [soundLabel, setSoundLabel] = useState<string | null>(null);
+  const soundTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playedAutoSoundsRef = useRef<Set<string>>(new Set());
   const voiceRecogRef = useRef<any>(null);
   const voiceFinalRef = useRef<string>('');
 
@@ -101,6 +104,11 @@ export default function TalkShowMode({
       laugh: '/sounds/laugh.wav',
       whoosh: '/sounds/whoosh.wav',
     };
+    const labelMap: Record<string, string> = {
+      applause: '👏 Applause',
+      laugh: '😂 Laughter',
+      whoosh: '💨 Whoosh',
+    };
     const url = soundMap[effect];
     if (!url) return;
     try {
@@ -111,8 +119,15 @@ export default function TalkShowMode({
       const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
       const source = audioCtx.createBufferSource();
       source.buffer = audioBuffer;
-      source.connect(audioCtx.destination);
+      const gain = audioCtx.createGain();
+      gain.gain.value = 1.5; // 50% louder
+      source.connect(gain);
+      gain.connect(audioCtx.destination);
       source.start(0);
+      // Show visual badge
+      setSoundLabel(labelMap[effect] || effect);
+      if (soundTimerRef.current) clearTimeout(soundTimerRef.current);
+      soundTimerRef.current = setTimeout(() => setSoundLabel(null), 2000);
     } catch {}
   }, [getAudioContext]);
 
@@ -185,7 +200,16 @@ export default function TalkShowMode({
     if (lastMsg.content.startsWith('(Error')) return;
     spokenIdsRef.current.add(lastIdx);
     speakHostResponse(lastMsg.content, selectedVoice);
-  }, [messages, isPaused, isWaiting, selectedVoice, speakHostResponse]);
+    // Auto-sounds at key moments
+    const hostCount = messages.filter(m => m.role === 'host').length;
+    const autoKey = `auto-${hostCount}`;
+    if (!playedAutoSoundsRef.current.has(autoKey)) {
+      playedAutoSoundsRef.current.add(autoKey);
+      if (hostCount === 1) playSound('applause');
+      else if (hostCount === 3) playSound('whoosh');
+      else if (hostCount === 8) playSound('whoosh');
+    }
+  }, [messages, isPaused, isWaiting, selectedVoice, speakHostResponse, playSound]);
 
   // Fetch guest suggestions after host responds
   useEffect(() => {
@@ -400,6 +424,13 @@ export default function TalkShowMode({
           </div>
         );
       })()}
+
+      {/* ── Sound Effect Badge ── */}
+      {soundLabel && (
+        <div className="shrink-0 flex items-center justify-center py-1.5 bg-purple-50 border-b border-purple-100">
+          <span className="text-xs font-semibold text-purple-700 animate-pulse">{soundLabel}</span>
+        </div>
+      )}
 
       {/* Main content: avatar left + chat right */}
       <div className="flex flex-1 overflow-hidden">
